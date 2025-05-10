@@ -89,7 +89,16 @@ CMT         {SCMT}|{TCMT}
                 yylval.type.lineno = yylineno;
                 return T_INT;
             }
-
+[0-9]+\.[0-9]*([eE][-+]?[0-9]+)? {
+    yylval.float_num.val = strtof(yytext, NULL);
+    yylval.float_num.lineno = yylineno;
+    return T_FLOAT_LITERAL;
+}
+"float" {
+    yylval.type.type = BasicType::TYPE_FLOAT;
+    yylval.type.lineno = yylineno;
+    return T_FLOAT;
+}
 "return"    {
                 // return关键字 关键字的识别要在标识符识别的前边，，这是因为关键字也是标识符，不过是保留的
                 return RETURN;

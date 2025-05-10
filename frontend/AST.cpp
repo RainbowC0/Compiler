@@ -22,6 +22,7 @@
 #include "AttrType.h"
 #include "Types/IntegerType.h"
 #include "Types/VoidType.h"
+#include "FloatType.h"
 
 /* 整个AST的根节点 */
 ast_node * ast_root = nullptr;
@@ -41,8 +42,7 @@ ast_node::ast_node(Type * _type) : ast_node(ast_operator_type::AST_OP_LEAF_TYPE,
 
 /// @brief 针对无符号整数字面量的构造函数
 /// @param attr 无符号整数字面量
-ast_node::ast_node(digit_int_attr attr)
-    : ast_node(ASTOP(LEAF_LITERAL_INT), IntegerType::getTypeInt(), attr.lineno)
+ast_node::ast_node(digit_int_attr attr) : ast_node(ASTOP(LEAF_LITERAL_INT), IntegerType::getTypeInt(), attr.lineno)
 {
     integer_val = attr.val;
 }
@@ -50,8 +50,7 @@ ast_node::ast_node(digit_int_attr attr)
 /// @brief 针对无符号整数字面量的构造函数
 /// @param attr 无符号整数字面量
 // TODO
-ast_node::ast_node(digit_real_attr attr)
-    : ast_node(ASTOP(LEAF_LITERAL_FLOAT), IntegerType::getTypeInt(), attr.lineno)
+ast_node::ast_node(digit_real_attr attr) : ast_node(ASTOP(LEAF_LITERAL_FLOAT), FloatType::getTypeFloat(), attr.lineno)
 {
     float_val = attr.val;
 }
@@ -297,10 +296,13 @@ ast_node * create_contain_node(ast_operator_type node_type,
 
 Type * typeAttr2Type(type_attr & attr)
 {
-    if (attr.type == BasicType::TYPE_INT) {
-        return IntegerType::getTypeInt();
-    } else {
-        return VoidType::getType();
+    switch (attr.type) {
+        case BasicType::TYPE_INT:
+            return IntegerType::getTypeInt();
+        case BasicType::TYPE_FLOAT:
+            return FloatType::getTypeFloat();
+        default:
+            return VoidType::getType();
     }
 }
 
