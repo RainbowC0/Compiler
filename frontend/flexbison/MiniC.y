@@ -37,7 +37,7 @@ ast_node* adjustCond(ast_node * node);
 // %type开始的符号称之为非终结符，需要通过文法产生式来定义
 // %token或%type之后的<>括住的内容成为文法符号的属性，定义在前面的%union中的成员名字。
 %token <integer_num> T_DIGIT
-%token <float_num> T_REAL
+%token <float_num> T_FLOAT_LITERAL
 %token <var_id> T_ID
 %token <type> T_INT
 %token <type> T_FLOAT
@@ -414,7 +414,7 @@ PrimaryExp :  T_L_PAREN Expr T_R_PAREN {
 		// 创建一个无符号整型的终结符节点
 		$$ = ast_node::New($1);
 	}
-	| T_REAL {
+	| T_FLOAT_LITERAL {
 		$$ = ast_node::New($1);
 	}
 	| LVal  {
