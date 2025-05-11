@@ -9,6 +9,10 @@
 // 此文件定义了文法中终结符的类别
 #include "BisonParser.h"
 
+#define SETINT(p) yylval.integer_num.val = strtol(yytext, NULL, p);\
+    yylval.integer_num.lineno = yylineno;\
+    return T_DIGIT
+
 // 对于整数或浮点数，词法识别无符号数，对于负数，识别为求负运算符与无符号数，请注意。
 %}
 
@@ -34,6 +38,11 @@
 %option never-interactive
 
 /* 辅助定义式或者宏，后面使用时带上大括号 */
+D           [0-9]
+L           [a-zA-Z_]
+H           [a-fA-F0-9]
+E           ([Ee][+-]?{D}+)
+P           ([Pp][+-]?{D}+)
 
 /*|{TCMT}*/
 SCMT        "//"[^\n]*
@@ -57,6 +66,7 @@ CMT         {SCMT}|{TCMT}
 "*"         { return T_MUL; }
 "/"         { return T_DIV; }
 "%"         { return T_MOD; }
+"!"         { return T_NOT; }
 "<<"        { return T_SL; }
 ">>"        { return T_SR; }
 ">"         { return T_GT; }
@@ -76,12 +86,9 @@ CMT         {SCMT}|{TCMT}
 "-="        { return T_ASSSUB; }
 
 
-"0"|[1-9][0-9]*	{
-                // 词法识别无符号整数，注意对于负数，则需要识别为负号和无符号数两个Token
-                yylval.integer_num.val = (uint32_t)strtol(yytext, (char **)NULL, 10);
-                yylval.integer_num.lineno = yylineno;
-                return T_DIGIT;
-            }
+[1-9]{D}*   { SETINT(10); }
+0[0-7]*     { SETINT(8); }
+0[xX]{H}+   { SETINT(16); }
 
 "int"       {
                 // int类型关键字 关键字的识别要在标识符识别的前边，这是因为关键字也是标识符，不过是保留的
@@ -89,16 +96,16 @@ CMT         {SCMT}|{TCMT}
                 yylval.type.lineno = yylineno;
                 return T_INT;
             }
-[0-9]+\.[0-9]*([eE][-+]?[0-9]+)? {
-    yylval.float_num.val = strtof(yytext, NULL);
-    yylval.float_num.lineno = yylineno;
-    return T_FLOAT_LITERAL;
-}
-"float" {
-    yylval.type.type = BasicType::TYPE_FLOAT;
-    yylval.type.lineno = yylineno;
-    return T_FLOAT;
-}
+{D}+{E}|{D}*"."{D}+{E}?|{D}+"."{D}*{E}?|0[xX]{H}+{P}|0[xX]{H}*"."{H}+{P}?|0[xX]{H}+"."{H}*{P}? {
+                yylval.float_num.val = strtof(yytext, NULL);
+                yylval.float_num.lineno = yylineno;
+                return T_FLOAT_LITERAL;
+            }
+"float"     {
+                yylval.type.type = BasicType::TYPE_FLOAT;
+                yylval.type.lineno = yylineno;
+                return T_FLOAT;
+            }
 "return"    {
                 // return关键字 关键字的识别要在标识符识别的前边，，这是因为关键字也是标识符，不过是保留的
                 return RETURN;
@@ -115,7 +122,7 @@ CMT         {SCMT}|{TCMT}
 "continue"  { return CONTINUE; }
 "break"     { return BREAK; }
 
-[a-zA-Z_]+[0-9a-zA-Z_]* {
+{L}({L}|{D})* {
                 // strdup 分配的空间需要在使用完毕后使用free手动释放，否则会造成内存泄漏
                 yylval.var_id.id = strdup(yytext);
                 yylval.var_id.lineno = yylineno;
@@ -124,7 +131,7 @@ CMT         {SCMT}|{TCMT}
 
 L?\"(\\.|[^\\"\n])*\"   { return STRING_LITERAL; }
 
-[ \t\f\r\n]+     {
+[ \t\v\f\r\n]+     {
                 // 空白符忽略
                 ;
             }

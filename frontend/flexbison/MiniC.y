@@ -83,16 +83,17 @@ ast_node* adjustCond(ast_node * node);
 %type <node> AddExp UnaryExp PrimaryExp
 %type <node> RealParamList
 %type <type> BasicType
-%type <type> FuncType
+//%type <type> FuncType
 %type <node> IfStmt
 %type <node> For
 %type <node> While
 %type <node> DoWhile
 %type <node> RelExp
 %type <node> CondExp
+%type <node> FuncParam
+%type <node> FuncParams
 %type <op_type> AddOp
 %type <op_type> RelOp
-%type <op_type> UnaryOp
 %%
 
 // 编译单元可包含若干个函数与全局变量定义。要在语义分析时检查main函数存在
@@ -125,8 +126,7 @@ CompileUnit : FuncDef {
 	;
 
 // 函数定义，目前支持整数返回类型，不支持形参
-FuncDef : BasicType T_ID T_L_PAREN T_R_PAREN Block  {
-
+FuncDef : BasicType T_ID T_L_PAREN T_R_PAREN Block {
 		// 函数返回类型
 		type_attr funcReturnType = $1;
 
@@ -143,7 +143,17 @@ FuncDef : BasicType T_ID T_L_PAREN T_R_PAREN Block  {
 		// create_func_def函数内会释放funcId中指向的标识符空间，切记，之后不要再释放，之前一定要是通过strdup函数或者malloc分配的空间
 		$$ = create_func_def(funcReturnType, funcId, blockNode, formalParamsNode);
 	}
+	| BasicType T_ID T_L_PAREN FuncParams T_R_PAREN Block {
+	}
 	;
+
+FuncParams : FuncParam {
+	}
+	| FuncParams T_COMMA FuncParam {
+	};
+
+FuncParam : BasicType T_ID {
+	};
 
 // 语句块的文法Block ： T_L_BRACE BlockItemList? T_R_BRACE
 // 其中?代表可有可无，在bison中不支持，需要拆分成两个产生式
@@ -238,10 +248,6 @@ VarDef : T_ID {
 // 基本类型，目前只支持整型
 BasicType: T_INT { $$ = $1; }
 	| T_FLOAT { $$ = $1; }
-	;
-
-FuncType: T_VOID { $$ = $1; }
-	| T_FLOAT { $$ = $1; }
 	| T_VOID { $$ = $1; }
 	;
 
@@ -263,7 +269,6 @@ Statement : RETURN Expr T_SEMICOLON {
 	}
 	| Block {
 		// 语句块
-
 		// 内部已创建block节点，直接传递给Statement
 		$$ = $1;
 	}
@@ -284,6 +289,12 @@ Statement : RETURN Expr T_SEMICOLON {
 	}
 	| For {
 		$$ = $1;
+	}
+	| BREAK T_SEMICOLON {
+		$$ = new ast_node(ASTOP(BREAK));
+	}
+	| CONTINUE T_SEMICOLON {
+		$$ = new ast_node(ASTOP(CONTINUE));
 	}
 	| T_SEMICOLON {
 		// 空语句
@@ -393,15 +404,17 @@ UnaryExp : PrimaryExp {
 		// 创建函数调用节点，其孩子为被调用函数名和实参，实参不为空
 		$$ = create_func_call(name_node, paramListNode);
 	}
-	| UnaryOp UnaryExp {
-		$$ = create_contain_node(ast_operator_type($1), $2);
+	| T_ADD UnaryExp { $$ = $2; }
+	| T_SUB UnaryExp {
+		// TODO 浮点数
+		auto v = ast_node::New(digit_int_attr{0,$2->line_no});
+		$$ = create_contain_node(ASTOP(SUB), v, $2);
+	}
+	| T_NOT UnaryExp {
+		$$ = create_contain_node(ASTOP(NOT), $2);
 	}
 	;
 
-UnaryOp: T_ADD { $$ = $1; }
-	| T_SUB { $$ = $1; }
-	| T_NOT { $$ = $1; }
-	;
 // 基本表达式支持无符号整型字面量、带括号的表达式、具有左值属性的表达式
 // 其文法为：primaryExp: T_L_PAREN expr T_R_PAREN | T_DIGIT | lVal
 PrimaryExp :  T_L_PAREN Expr T_R_PAREN {
@@ -481,9 +494,14 @@ void yyerror(char * msg)
     printf("Line %d: %s\n", yylineno, msg);
 }
 
-// 转换条件 a -> a!=0
+// 转换条件 a -> a!=0，保证条件式内无NOT节点
 ast_node* adjustCond(ast_node *node) {
     // TODO 浮点数
     auto v = ast_node::New(digit_int_attr{0,0});
-    return create_contain_node(ASTOP(NE), node, v);
+    int tp = (int)ASTOP(NE);
+    while (node->node_type==ASTOP(NOT)) {
+        tp = (((int)ASTOP(EQ))^((int)ASTOP(NE)))^tp;
+        node = node->sons[0];
+    }
+    return create_contain_node(ast_operator_type(tp), node, v);
 }

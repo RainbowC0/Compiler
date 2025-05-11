@@ -31,7 +31,7 @@ using namespace std;
 class InstSelectorArm32 {
 
     /// @brief 所有的IR指令
-    std::vector<Instruction *> & ir;
+    const std::vector<Instruction *> & ir;
 
     /// @brief 指令变换
     ILocArm32 & iloc;
@@ -81,6 +81,7 @@ protected:
     /// @param operator_name 操作码
     void translate_two_operator(Instruction * inst, string operator_name);
 
+    void translate_bi_op(Instruction *);
     /// @brief 函数调用指令翻译成ARM32汇编
     /// @param inst IR指令
     void translate_call(Instruction * inst);
@@ -100,7 +101,7 @@ protected:
     typedef void (InstSelectorArm32::*translate_handler)(Instruction *);
 
     /// @brief IR动作处理函数清单
-    map<IRInstOperator, translate_handler> translator_handlers;
+    translate_handler translator_handlers[IRINST_OP_MAX] = {nullptr};
 
     ///
     /// @brief 简单的朴素寄存器分配方法
@@ -115,10 +116,13 @@ protected:
     /// @brief 累计的实参个数
     int32_t realArgCount = 0;
 
-    ///
-    /// @brief 显示IR指令内容
-    ///
+    /**
+     * @brief 显示IR指令内容
+     */
     bool showLinearIR = false;
+
+    /// @brief 指令栈
+    IRInstOperator lstcmp = IRINST_OP_MAX;
 
 public:
     /// @brief 构造函数

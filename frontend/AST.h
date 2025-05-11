@@ -114,6 +114,9 @@ enum class ast_operator_type : int {
     AST_OP_FOR,
     AST_OP_DOWHILE,
 
+    AST_OP_BREAK,
+    AST_OP_CONTINUE,
+
     /// @brief 最大标识符，表示非法运算符
     AST_OP_MAX,
 };
@@ -133,7 +136,7 @@ public:
     Type * type;
 
     /// @brief 无符号整数字面量值
-    union {uint32_t integer_val;
+    union {int32_t integer_val;
 
     /// @brief float类型字面量值
     float float_val;};

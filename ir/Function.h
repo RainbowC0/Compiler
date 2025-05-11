@@ -24,6 +24,7 @@
 #include "LocalVariable.h"
 #include "MemVariable.h"
 #include "IRCode.h"
+#include "CFG.h"
 
 ///
 /// @brief 描述函数信息的类，是全局静态存储，其Value的类型为FunctionType

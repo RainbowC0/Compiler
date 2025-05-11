@@ -27,6 +27,7 @@
 #include "IRGenerator.h"
 #include "RecursiveDescentExecutor.h"
 #include "Module.h"
+#include "CFG.h"
 #include "getopt-port.h"
 
 ///
@@ -74,6 +75,8 @@ static bool gFrontEndRecursiveDescentParsing = false;
 ///
 static bool gAsmAlsoShowIR = false;
 
+static bool gCFG = false;
+
 /// @brief 优化的级别，即-O后面的数字，默认为0
 static int gOptLevel = 0;
 
@@ -109,7 +112,8 @@ static int ArgsAnalysis(int argc, char * argv[])
     // -O要求必须带有附加整数，指明优化的级别
     // -t要求必须带有目标CPU，指明目标CPU的汇编
     // -c选项在输出汇编时有效，附带输出IR指令内容
-    const char options[] = "ho:STIADO:t:c";
+    // -g生成CFG图
+    const char options[] = "ho:STIADO:t:c:g";
 
     opterr = 1;
 
@@ -154,6 +158,9 @@ lb_check:
                 break;
             case 'c':
                 gAsmAlsoShowIR = true;
+                break;
+            case 'g':
+                gCFG = true;
                 break;
             default:
                 return -1;
@@ -311,6 +318,19 @@ static int compile(std::string inputFile, std::string outputFile)
 
             // 对IR的名字重命名
             module->renameIR();
+
+            std::string file;
+
+            if (gCFG) {
+                for (auto fun:module->getFunctionList()) {
+                    if (!fun->isBuiltin()) {
+                        file = "."+fun->getName()+".dot";
+                        CFG *cfg = new CFG();
+                        cfg->buildCFG(fun);
+                        cfg->dumpCFG(fun, file.c_str());
+                    }
+                }
+            }
 
             // 输出IR
             module->outputIR(outputFile);

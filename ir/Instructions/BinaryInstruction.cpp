@@ -52,6 +52,7 @@ void BinaryInstruction::toString(std::string & str)
         case IROP(IGE): opstr = " = icmp sge "; break;
         case IROP(ILT): opstr = " = icmp slt "; break;
         case IROP(ILE): opstr = " = icmp sle "; break;
+        case IROP(XOR): opstr = " = xor "; break;
         default: opstr = NULL;
     }
     if (opstr)

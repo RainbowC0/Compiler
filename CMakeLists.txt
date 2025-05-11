@@ -187,6 +187,8 @@ set(IR_SRCS
 	ir/Values/LocalVariable.h
 	ir/Values/MemVariable.h
 	ir/Values/RegVariable.h
+	ir/CFG.cpp
+	ir/CFG.h
 	ir/IRCode.h
 	ir/IRCode.cpp
 	ir/Constant.h

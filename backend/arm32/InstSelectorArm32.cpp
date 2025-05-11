@@ -28,6 +28,9 @@
 #include "GotoInstruction.h"
 #include "FuncCallInstruction.h"
 #include "MoveInstruction.h"
+#include "BinaryInstruction.h"
+
+static char *cmpmap[] = {"eq", "ne", "gt", "ge", "lt", "le"};
 
 /// @brief 构造函数
 /// @param _irCode 指令
@@ -39,19 +42,26 @@ InstSelectorArm32::InstSelectorArm32(vector<Instruction *> & _irCode,
                                      SimpleRegisterAllocator & allocator)
     : ir(_irCode), iloc(_iloc), func(_func), simpleRegisterAllocator(allocator)
 {
-    translator_handlers[IRInstOperator::IRINST_OP_ENTRY] = &InstSelectorArm32::translate_entry;
-    translator_handlers[IRInstOperator::IRINST_OP_EXIT] = &InstSelectorArm32::translate_exit;
+    translator_handlers[IRINST_OP_ENTRY] = &InstSelectorArm32::translate_entry;
+    translator_handlers[IRINST_OP_EXIT] = &InstSelectorArm32::translate_exit;
 
-    translator_handlers[IRInstOperator::IRINST_OP_LABEL] = &InstSelectorArm32::translate_label;
-    translator_handlers[IRInstOperator::IRINST_OP_GOTO] = &InstSelectorArm32::translate_goto;
+    translator_handlers[IRINST_OP_LABEL] = &InstSelectorArm32::translate_label;
+    translator_handlers[IRINST_OP_GOTO] = &InstSelectorArm32::translate_goto;
 
-    translator_handlers[IRInstOperator::IRINST_OP_ASSIGN] = &InstSelectorArm32::translate_assign;
+    translator_handlers[IRINST_OP_ASSIGN] = &InstSelectorArm32::translate_assign;
 
     translator_handlers[IROP(IADD)] = &InstSelectorArm32::translate_add_int32;
     translator_handlers[IROP(ISUB)] = &InstSelectorArm32::translate_sub_int32;
 
-    translator_handlers[IRInstOperator::IRINST_OP_FUNC_CALL] = &InstSelectorArm32::translate_call;
-    translator_handlers[IRInstOperator::IRINST_OP_ARG] = &InstSelectorArm32::translate_arg;
+    translator_handlers[IRINST_OP_FUNC_CALL] = &InstSelectorArm32::translate_call;
+    translator_handlers[IRINST_OP_ARG] = &InstSelectorArm32::translate_arg;
+
+    translator_handlers[IRINST_OP_IEQ] = &InstSelectorArm32::translate_bi_op;
+    translator_handlers[IRINST_OP_INE] = &InstSelectorArm32::translate_bi_op;
+    translator_handlers[IRINST_OP_IGT] = &InstSelectorArm32::translate_bi_op;
+    translator_handlers[IRINST_OP_IGE] = &InstSelectorArm32::translate_bi_op;
+    translator_handlers[IRINST_OP_ILT] = &InstSelectorArm32::translate_bi_op;
+    translator_handlers[IRINST_OP_ILE] = &InstSelectorArm32::translate_bi_op;
 }
 
 ///
@@ -79,9 +89,8 @@ void InstSelectorArm32::translate(Instruction * inst)
     // 操作符
     IRInstOperator op = inst->getOp();
 
-    map<IRInstOperator, translate_handler>::const_iterator pIter;
-    pIter = translator_handlers.find(op);
-    if (pIter == translator_handlers.end()) {
+    translate_handler pIter;
+    if (op >= IRINST_OP_MAX || (pIter = translator_handlers[op]) == nullptr) {
         // 没有找到，则说明当前不支持
         printf("Translate: Operator(%d) not support", (int) op);
         return;
@@ -92,7 +101,7 @@ void InstSelectorArm32::translate(Instruction * inst)
         outputIRInstruction(inst);
     }
 
-    (this->*(pIter->second))(inst);
+    (this->*(pIter))(inst);
 }
 
 ///
@@ -133,9 +142,12 @@ void InstSelectorArm32::translate_goto(Instruction * inst)
 
     if (v) {
         // 条件分支
-        iloc.inst("cmp", PlatformArm32::regName[v->getRegId()], "#0");
-        iloc.branch("eq", gotoInst->iffalse->getName());
-        iloc.branch("ne", gotoInst->iftrue->getName());
+        if (lstcmp != IRINST_OP_MAX) {
+            iloc.branch(cmpmap[lstcmp-IRINST_OP_IEQ], gotoInst->iffalse->getName());
+        } else {
+            iloc.branch("eq", gotoInst->iffalse->getName());
+            iloc.branch("ne", gotoInst->iftrue->getName());
+        }
     } else
         // 无条件跳转
         iloc.jump(gotoInst->iftrue->getName());
@@ -314,6 +326,22 @@ void InstSelectorArm32::translate_add_int32(Instruction * inst)
 void InstSelectorArm32::translate_sub_int32(Instruction * inst)
 {
     translate_two_operator(inst, "sub");
+}
+
+void InstSelectorArm32::translate_bi_op(Instruction *inst) {
+    //const char *op;
+    switch (inst->getOp()) {
+        case IRINST_OP_IEQ:
+        case IRINST_OP_INE:
+        case IRINST_OP_IGT:
+        case IRINST_OP_IGE:
+        case IRINST_OP_ILT:
+        case IRINST_OP_ILE:
+            lstcmp = inst->getOp();
+            translate_two_operator(inst, "cmp");
+            return;
+        default: return;
+    }
 }
 
 /// @brief 函数调用指令翻译成ARM32汇编

@@ -21,6 +21,8 @@
 #include "AST.h"
 #include "Module.h"
 
+typedef struct {LabelInstruction *a,*b;} dlab;
+
 /// @brief AST遍历产生线性IR类
 class IRGenerator {
 
@@ -131,8 +133,7 @@ protected:
     bool ir_and(ast_node *node);
     bool ir_not(ast_node *node);
 
-    void checkExpr(ast_node *node);
-    void checkNot(ast_node *node);
+    bool ir_jump(ast_node *node);
 
     /// @brief 根据AST的节点运算符查找对应的翻译函数并执行翻译动作
     /// @param node AST节点
@@ -151,4 +152,7 @@ private:
 
     /// @brief 符号表:模块
     Module * module;
+
+    /// @brief 循环入口出口栈
+    std::vector<dlab> labs;
 };

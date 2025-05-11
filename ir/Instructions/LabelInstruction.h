@@ -28,6 +28,7 @@ class Function;
 class LabelInstruction : public Instruction {
 
 public:
+    uint32_t labIndex;
     ///
     /// @brief 构造函数
     /// @param _func 所属函数

@@ -16,6 +16,7 @@
 #include "VoidType.h"
 
 #include "LabelInstruction.h"
+#include "IRConstant.h"
 
 ///
 /// @brief 构造函数
@@ -23,11 +24,14 @@
 ///
 LabelInstruction::LabelInstruction(Function * _func)
     : Instruction(_func, IRInstOperator::IRINST_OP_LABEL, VoidType::getType())
-{}
+{
+}
 
 /// @brief 转换成字符串
 /// @param str 返回指令字符串
 void LabelInstruction::toString(std::string & str)
 {
-    str = IRName + ":";
+    str = IRName;
+    //IR_LABEL_PREFIX+std::to_string(labIndex)+":";
+    //sprintf(str.data(), IR_LABEL_PREFIX "%d:", labIndex);
 }

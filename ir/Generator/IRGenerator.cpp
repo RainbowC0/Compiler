@@ -14,7 +14,7 @@
 /// <tr><td>2024-11-23 <td>1.1     <td>zenglj  <td>表达式版增强
 /// </table>
 ///
-#include <algorithm>
+//#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <unordered_map>
@@ -72,6 +72,8 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ASTOP(LAND)] = &IRGenerator::ir_and;
     ast2ir_handlers[ASTOP(NOT)] = &IRGenerator::ir_not;
 
+    ast2ir_handlers[ASTOP(BREAK)] = &IRGenerator::ir_jump;
+    ast2ir_handlers[ASTOP(CONTINUE)] = &IRGenerator::ir_jump;
 
     /* 语句 */
     ast2ir_handlers[ast_operator_type::AST_OP_ASSIGN] = &IRGenerator::ir_assign;
@@ -521,7 +523,7 @@ bool IRGenerator::ir_leaf_node_type(ast_node * node)
 {
     // 不需要做什么，直接从节点中获取即可。
 
-    return true;
+    return !node->type->isVoidType();
 }
 
 /// @brief 标识符叶子节点翻译成线性中间IR，变量声明的不走这个语句
@@ -604,9 +606,9 @@ bool IRGenerator::ir_branch(ast_node *node) {
     auto lab1 = new LabelInstruction(func);
     auto lab0 = new LabelInstruction(func);
     backPatch(cond->truelist, lab1);
-    delete cond->truelist;
-    // br if1 if0
-    node->blockInsts.addInst(new GotoInstruction(func, cond->val, lab1, lab0));
+    backPatch(cond->falselist, lab0);
+    cond->truelist->clear();
+    cond->falselist->clear();
 
     // if1:
     node->blockInsts.addInst(lab1);
@@ -629,26 +631,44 @@ bool IRGenerator::ir_branch(ast_node *node) {
     return true;
 }
 
-/// @brief 循环语句
+/**
+ * @brief 循环语句
+ * 将while的条件语句放在循环体后面，在入口前加入一个goto语句进入到条件语句处，回填处
+ * 理更方便，且与do-while语句兼容。
+ */
 bool IRGenerator::ir_loop(ast_node *node) {
     int isWhile = node->node_type == ast_operator_type::AST_OP_WHILE;
-    ast_node *CHECK_NODE(body, node->sons[isWhile]);
     ast_node *CHECK_NODE(cond, node->sons[!isWhile]);
 
     auto func = module->getCurrentFunction();
-    LabelInstruction *lab = nullptr;
-    if (isWhile) {
-        lab = new LabelInstruction(func);
-        node->blockInsts.addInst(new GotoInstruction(func, lab));
-    }
     auto entry = new LabelInstruction(func);
+    backPatch(cond->truelist, entry);
+    cond->truelist->clear();
+
+    dlab mlabs;
+
+    LabelInstruction *expr = nullptr;
+    if (isWhile) { // 添加goto跳转到条件式
+        expr = new LabelInstruction(func);
+        node->blockInsts.addInst(new GotoInstruction(func, expr));
+        mlabs.a = expr;
+    } else
+        mlabs.a = entry;
+
+    auto ext = new LabelInstruction(func);
+    mlabs.b = ext;
+    labs.push_back(mlabs);
+    ast_node *CHECK_NODE(body, node->sons[isWhile]);
+    labs.pop_back();
+
     node->blockInsts.addInst(entry);
     node->blockInsts.addInst(body->blockInsts);
-    if (lab)
-        node->blockInsts.addInst(lab);
+    if (expr)
+        node->blockInsts.addInst(expr);
     node->blockInsts.addInst(cond->blockInsts);
-    auto ext = new LabelInstruction(func);
-    node->blockInsts.addInst(new GotoInstruction(func, cond->val, entry, ext));
+    backPatch(cond->falselist, ext);
+    cond->falselist->clear();
+
     node->blockInsts.addInst(ext);
     return true;
 }
@@ -683,44 +703,36 @@ bool IRGenerator::ir_and(ast_node *node) {
 }
 
 bool IRGenerator::ir_not(ast_node *node) {
-    /* Sys2022的NOT操作只针对算术表达式，不针对关系表达式
-    ast_node *kid = node->sons[0];
-
-    // 对偶操作
-    ast_operator_type tp;
-    switch (kid->node_type) {
-        case ASTOP(EQ): tp = ASTOP(NE);
-        case ASTOP(NE): tp = ASTOP(EQ);
-        case ASTOP(GT): tp = ASTOP(LE);
-        case ASTOP(GE): tp = ASTOP(LT);
-        case ASTOP(LT): tp = ASTOP(GE);
-        case ASTOP(LE): tp = ASTOP(GT);
-        default: return false;
-    }
-    kid->node_type = tp;
-    if (!ir_visit_ast_node(kid)) return false;
-
-    node->blockInsts.addInst(kid->blockInsts);
-    */
+    /* Sys2022的NOT操作只针对算术表达式，不针对关系表达式，
+     * 构建AST时已将关系表达式内所有的NOT节点转为==0操作，此处只考虑算术表达式内
+     */
     ast_node *CHECK_NODE(kid, node->sons[0]);
+    node->blockInsts.addInst(kid->blockInsts);
 
     // TODO float cmp
-    auto inst = new BinaryInstruction(module->getCurrentFunction(),
-                                      IROP(INE),
-                                      kid->val,
-                                      module->newConstInt(0),
-                                      kid->val->getType());
+    auto func = module->getCurrentFunction();
+    auto inst = new BinaryInstruction(func,
+                                    IROP(INE),
+                                    kid->val,
+                                    module->newConstInt(0),
+                                    IntegerType::getTypeBool());
     node->blockInsts.addInst(inst);
-    // 检查父节点：仅当为逻辑 and, or, not, if, while 时需要等待回填，否则直接返回0/1
-    auto tp = node->parent->node_type;
-    if (tp==ASTOP(LAND)||tp==ASTOP(LOR)||tp==ASTOP(NOT)
-        ||tp==ASTOP(IF)||tp==ASTOP(WHILE)) {
-        node->val = inst;
-        node->truelist = kid->falselist;
-        node->falselist = kid->truelist;
-    } else {
-        #warning NOT语句待完善
-    }
+    node->blockInsts.addInst(inst=new BinaryInstruction(func,
+                                    IROP(XOR),
+                                    inst,
+                                    module->newConstInt(0),
+                                    IntegerType::getTypeBool()));
+    node->val = inst;
+    return true;
+}
+
+bool IRGenerator::ir_jump(ast_node *node) {
+    if (labs.empty())
+        return false;
+    dlab d = labs.back();
+    node->blockInsts.addInst(
+        new GotoInstruction(module->getCurrentFunction(),
+            node->node_type==ASTOP(BREAK)?d.b:d.a));
     return true;
 }
 
@@ -744,9 +756,7 @@ static IRInstOperator irtype(ast_operator_type type) {
 std::vector<LabelInstruction**> *
 merge(std::vector<LabelInstruction**> *a,
       std::vector<LabelInstruction**> *b){
-    for (auto i:*b) {
-        a->push_back(i);
-    }
-    delete b;
+    a->insert(a->end(), b->begin(), b->end());
+    b->clear();
     return a;
 }

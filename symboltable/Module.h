@@ -134,6 +134,9 @@ public:
     ///
     void renameIR();
 
+    /// @brief 标签数量
+    uint32_t labs;
+
 protected:
     /// @brief 根据整数值获取当前符号
     /// \param name 变量名

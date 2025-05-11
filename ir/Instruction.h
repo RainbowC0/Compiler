@@ -17,12 +17,12 @@
 
 #include "User.h"
 
-#define IROP(OP) IRInstOperator::IRINST_OP_##OP
-
 class Function;
 
+#define IROP(OP) IRInstOperator::IRINST_OP_##OP
+
 /// @brief IR指令操作码
-enum class IRInstOperator : std::int8_t {
+typedef enum IRInstOperator {
 
     /// @brief 函数入口指令，对应函数的prologue，用户栈空间分配、寄存器保护等
     IRINST_OP_ENTRY,
@@ -60,6 +60,32 @@ enum class IRInstOperator : std::int8_t {
 
     IRINST_OP_ILE,
 
+    /// @brief 整数的加法指令，二元运算
+    IRINST_OP_FADD,
+
+    /// @brief 整数的减法指令，二元运算
+    IRINST_OP_FSUB,
+
+    IRINST_OP_FMUL,
+
+    IRINST_OP_FDIV,
+
+    IRINST_OP_FMOD,
+
+    IRINST_OP_FEQ,
+
+    IRINST_OP_FNE,
+
+    IRINST_OP_FGT,
+
+    IRINST_OP_FGE,
+
+    IRINST_OP_FLT,
+
+    IRINST_OP_FLE,
+
+    IRINST_OP_XOR,
+
     /// @brief 赋值指令，一元运算
     IRINST_OP_ASSIGN,
 
@@ -73,7 +99,7 @@ enum class IRInstOperator : std::int8_t {
 
     /// @brief 最大指令码，也是无效指令
     IRINST_OP_MAX
-};
+} IRInstOperator;
 
 ///
 /// @brief IR指令的基类, 指令自带值，也就是常说的临时变量
@@ -190,7 +216,7 @@ protected:
     ///
     /// @brief IR指令操作码
     ///
-    enum IRInstOperator op = IRInstOperator::IRINST_OP_MAX;
+    enum IRInstOperator op = IRINST_OP_MAX;
 
     ///
     /// @brief 是否是Dead指令

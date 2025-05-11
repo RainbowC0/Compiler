@@ -72,8 +72,8 @@ std::string trim(const std::string & str)
 void minic_log_common(int level, const char * content)
 {
     if (level != LOG_ERROR) {
-        std::cerr << content << std::endl;
+        std::cerr << content << '\n';
     } else {
-        std::cout << content << std::endl;
+        std::cout << content << '\n';
     }
 }

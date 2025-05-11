@@ -32,7 +32,7 @@ enum class BasicType : std::int8_t {
 /// @brief 词法与语法通信的无符号整数字面量属性
 ///
 typedef struct digit_int_attr {
-    uint32_t val;   // 整数值
+    int32_t val;   // 整数值
     int64_t lineno; // 行号
 } digit_int_attr;
 
@@ -40,7 +40,7 @@ typedef struct digit_int_attr {
 /// @brief 词法与语法通信的单精度浮点数字面量属性
 ///
 typedef struct digit_real_attr {
-    double val;     // C语言默认实数为double类型
+    float val;     // C语言默认实数为double类型
     int64_t lineno; // 行号
 } digit_real_attr;
 
