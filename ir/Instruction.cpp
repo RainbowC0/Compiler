@@ -30,7 +30,7 @@ Instruction::Instruction(Function * _func, IRInstOperator _op, Type * _type) : U
 /// @return 指令操作码
 IRInstOperator Instruction::getOp()
 {
-    return op;
+    return op; 
 }
 
 /// @brief 转换成字符串

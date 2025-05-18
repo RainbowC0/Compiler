@@ -84,6 +84,27 @@ string getNodeName(ast_node * astnode)
         case ast_operator_type::AST_OP_ASSIGN:
             nodeName = "=";
             break;
+        case ASTOP(GT):
+            nodeName = ">";
+            break;
+        case ASTOP(LT):
+            nodeName = "<";
+            break;
+        case ASTOP(EQ):
+            nodeName = "==";
+            break;
+        case ASTOP(NE):
+            nodeName = "!=";
+            break;
+        case ASTOP(GE):
+            nodeName = ">=";
+            break;
+        case ASTOP(LE):
+            nodeName = "<=";
+            break;
+        case ASTOP(NOT):
+            nodeName = "!";
+            break;
         case ast_operator_type::AST_OP_FUNC_CALL:
             nodeName = "func-call";
             break;

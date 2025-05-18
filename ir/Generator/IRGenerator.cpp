@@ -307,8 +307,6 @@ bool IRGenerator::ir_function_call(ast_node * node)
     std::string funcName = node->sons[0]->name;
     int64_t lineno = node->sons[0]->line_no;
 
-    ast_node * paramsNode = node->sons[1];
-
     // 根据函数名查找函数，看是否存在。若不存在则出错
     // 这里约定函数必须先定义后使用
     auto calledFunction = module->findFunction(funcName);
@@ -321,7 +319,9 @@ bool IRGenerator::ir_function_call(ast_node * node)
     currentFunc->setExistFuncCall(true);
 
     // 如果没有孩子，也认为是没有参数
-    if (!paramsNode->sons.empty()) {
+    if (node->sons.size()>1) {
+        ast_node *paramsNode = node->sons[1];
+        if (!paramsNode->sons.empty()) {
 
         int32_t argsCount = (int32_t) paramsNode->sons.size();
 
@@ -342,6 +342,7 @@ bool IRGenerator::ir_function_call(ast_node * node)
             node->blockInsts.addInst(temp->blockInsts);
         }
     }
+}
 
     // TODO 这里请追加函数调用的语义错误检查，这里只进行了函数参数的个数检查等，其它请自行追加。
     if (realParams.size() != calledFunction->getParams().size()) {

@@ -20,12 +20,12 @@
 #include "AST.h"
 //#include "Antlr4Executor.h"
 #include "CodeGenerator.h"
+#include "CodeGeneratorArm64.h"
 #include "CodeGeneratorArm32.h"
 #include "FlexBisonExecutor.h"
 #include "FrontEndExecutor.h"
 #include "Graph.h"
 #include "IRGenerator.h"
-#include "RecursiveDescentExecutor.h"
 #include "Module.h"
 #include "CFG.h"
 #include "getopt-port.h"
@@ -58,17 +58,7 @@ static bool gShowSymbol = false;
 ///
 /// @brief 前端分析器，默认选Flex和Bison
 ///
-static bool gFrontEndFlexBison = true;
-
-///
-/// @brief 前端分析器Antlr4，是否选中
-///
-static bool gFrontEndAntlr4 = false;
-
-///
-/// @brief 前端分析器用递归下降分析法，是否选中
-///
-static bool gFrontEndRecursiveDescentParsing = false;
+//static bool gFrontEndFlexBison = true;
 
 ///
 /// @brief 在输出汇编时是否输出中间IR作为注释
@@ -81,7 +71,7 @@ static bool gCFG = false;
 static int gOptLevel = 0;
 
 /// @brief 指定CPU目标架构，这里默认为ARM32
-static std::string gCPUTarget = "ARM32";
+static std::string gCPUTarget = "ARM64";
 
 /// @brief 输入源文件
 static std::string gInputFile;
@@ -104,16 +94,15 @@ static int ArgsAnalysis(int argc, char * argv[])
 {
     int ch;
 
-    // 指定参数解析的选项，可识别-h、-o、-S、-T、-I、-A、-D等选项
+    // 指定参数解析的选项，可识别-h、-o、-S、-T、-I等选项
     // -S必须项，输出中间IR、抽象语法树或汇编
     // -T指定时输出AST，-I输出中间IR，不指定则默认输出汇编
-    // -A指定按照antlr4进行词法与语法分析，-D指定按照递归下降分析法执行，不指定时按flex+bison执行
     // -o要求必须带有附加参数，指定输出的文件
     // -O要求必须带有附加整数，指明优化的级别
     // -t要求必须带有目标CPU，指明目标CPU的汇编
     // -c选项在输出汇编时有效，附带输出IR指令内容
     // -g生成CFG图
-    const char options[] = "ho:STIADO:t:c:g";
+    const char options[] = "ho:STIO:t:c:g";
 
     opterr = 1;
 
@@ -136,18 +125,6 @@ lb_check:
                 // 产生中间IR
                 gShowLineIR = true;
                 break;
-                break;
-            case 'A':
-                // 选用antlr4
-                gFrontEndAntlr4 = true;
-                gFrontEndFlexBison = false;
-                gFrontEndRecursiveDescentParsing = false;
-                break;
-            case 'D':
-                // 选用递归下降分析法与词法手动实现
-                gFrontEndAntlr4 = false;
-                gFrontEndFlexBison = false;
-                gFrontEndRecursiveDescentParsing = true;
                 break;
             case 'O':
                 // 优化级别分析，暂时没有用，如开启优化时请使用
@@ -252,16 +229,7 @@ static int compile(std::string inputFile, std::string outputFile)
 
         // 创建词法语法分析器
         FrontEndExecutor * frontEndExecutor;
-        if (gFrontEndAntlr4) {
-            // Antlr4
-            frontEndExecutor = new FlexBisonExecutor(inputFile);
-        } else if (gFrontEndRecursiveDescentParsing) {
-            // 递归下降分析法
-            frontEndExecutor = new RecursiveDescentExecutor(inputFile);
-        } else {
-            // 默认为Flex+Bison
-            frontEndExecutor = new FlexBisonExecutor(inputFile);
-        }
+        frontEndExecutor = new FlexBisonExecutor(inputFile);
 
         // 前端执行：词法分析、语法分析后产生抽象语法树，其root为全局变量ast_root
         subResult = frontEndExecutor->run();
@@ -357,16 +325,16 @@ static int compile(std::string inputFile, std::string outputFile)
             CodeGenerator * generator = nullptr;
 
             if (gCPUTarget == "ARM32") {
-                // 输出面向ARM32的汇编指令
                 generator = new CodeGeneratorArm32(module);
-                generator->setShowLinearIR(gAsmAlsoShowIR);
-                generator->run(outputFile);
+            } else if (gCPUTarget == "ARM64") {
+                generator = new CodeGeneratorArm64(module);
             } else {
                 // 不支持指定的CPU架构
                 minic_log(LOG_ERROR, "指定的目标CPU架构(%s)不支持", gCPUTarget.c_str());
                 break;
             }
-
+            generator->setShowLinearIR(gAsmAlsoShowIR);
+            generator->run(outputFile);
             delete generator;
         }
 

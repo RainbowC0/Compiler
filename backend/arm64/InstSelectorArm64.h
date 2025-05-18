@@ -1,4 +1,4 @@
-﻿///
+///
 /// @file InstSelectorArm32.h
 /// @brief 指令选择器-ARM32
 /// @author zenglj (zenglj@live.com)
@@ -15,26 +15,23 @@
 ///
 #pragma once
 
-#include <map>
 #include <vector>
 
 #include "Function.h"
-#include "ILocArm32.h"
+#include "ILocArm64.h"
 #include "Instruction.h"
-#include "PlatformArm32.h"
 #include "SimpleRegisterAllocator.h"
-#include "RegVariable.h"
 
 using namespace std;
 
 /// @brief 指令选择器-ARM32
-class InstSelectorArm32 {
+class InstSelectorArm64 {
 
     /// @brief 所有的IR指令
     const std::vector<Instruction *> & ir;
 
     /// @brief 指令变换
-    ILocArm32 & iloc;
+    ILocArm64 & iloc;
 
     /// @brief 要处理的函数
     Function * func;
@@ -104,7 +101,7 @@ protected:
     void outputIRInstruction(Instruction * inst);
 
     /// @brief IR翻译动作函数原型
-    typedef void (InstSelectorArm32::*translate_handler)(Instruction *);
+    typedef void (InstSelectorArm64::*translate_handler)(Instruction *);
 
     /// @brief IR动作处理函数清单
     translate_handler translator_handlers[IRINST_OP_MAX] = {nullptr};
@@ -135,15 +132,15 @@ public:
     /// @param _irCode IR指令
     /// @param _func 函数
     /// @param _iloc 后端指令
-    InstSelectorArm32(std::vector<Instruction *> & _irCode,
-                      ILocArm32 & _iloc,
+    InstSelectorArm64(std::vector<Instruction *> & _irCode,
+                      ILocArm64 & _iloc,
                       Function * _func,
                       SimpleRegisterAllocator & allocator);
 
     ///
     /// @brief 析构函数
     ///
-    ~InstSelectorArm32();
+    ~InstSelectorArm64();
 
     ///
     /// @brief 设置是否输出线性IR的内容

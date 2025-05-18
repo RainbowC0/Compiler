@@ -19,7 +19,7 @@
 ///
 /// @brief Construct a new Simple Register Allocator object
 ///
-SimpleRegisterAllocator::SimpleRegisterAllocator()
+SimpleRegisterAllocator::SimpleRegisterAllocator(size_t N):N(N),regBitmap(N),usedBitmap(N)
 {}
 
 ///
@@ -44,10 +44,8 @@ int SimpleRegisterAllocator::Allocate(Value * var, int32_t no)
     } else {
 
         // 查询空闲的寄存器
-        for (int k = 0; k < PlatformArm32::maxUsableRegNum; ++k) {
-
+        for (int k = 0, n = N; k < n; ++k) {
             if (!regBitmap.test(k)) {
-
                 // 找到空闲寄存器
                 regno = k;
                 break;
@@ -155,4 +153,53 @@ void SimpleRegisterAllocator::bitmapSet(int32_t no)
 {
     regBitmap.set(no);
     usedBitmap.set(no);
+}
+
+///
+/// @brief 访问函数，获取指定的位的值
+/// @param x 指定的位数
+/// @return true 在
+/// @return false 不在
+///
+bool BitMap::test(size_t x) {
+    // x/8 表明i是在vector中的哪一个字节当中
+    size_t i = x >> 3;
+
+    // j表明 在 vector 第i个字节中的第几位
+    size_t j = x & 7;
+
+    // 用& 只查看 不修改
+    return _bits[i] & (1 << j);
+}
+
+//复位函数，将指定位设置为0
+void BitMap::reset(size_t x)
+{
+    // x/8 表明i是在vector中的哪一个字节当中
+    size_t i = x >> 3;
+
+    // j表明 在 vector 第i个字节中的第几位
+    size_t j = x & 7;
+
+    // 把vector 第i个字节中的第j位置0；
+    _bits[i] &= ~(1 << j);
+}
+
+///
+/// @brief 置位函数，将指定的位设置为1
+/// @param x
+///
+void BitMap::set(size_t x)
+{
+    size_t i = x >> 3;
+
+    size_t j = x & 7;
+
+    _bits[i] |= 1 << j;
+}
+
+BitMap::BitMap(size_t N)
+{
+    // 开辟最少一个字节的空间
+    _bits.resize(N / 8 + 1, 0);
 }

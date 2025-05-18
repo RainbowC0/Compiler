@@ -329,13 +329,9 @@ ast_node * create_func_call(ast_node * funcname_node, ast_node * params_node)
     // 设置调用函数名
     node->name = funcname_node->name;
 
-    // 如果没有参数，则创建参数节点
-    if (!params_node) {
-        params_node = new ast_node(ast_operator_type::AST_OP_FUNC_REAL_PARAMS);
-    }
-
     (void) node->insert_son_node(funcname_node);
-    (void) node->insert_son_node(params_node);
+    if (params_node)
+        (void) node->insert_son_node(params_node);
 
     return node;
 }

@@ -339,10 +339,10 @@ AddOp: T_ADD { $$ = (int)ASTOP(ADD); }
 
 RelExp:
 	AddExp {
-		$$ = adjustCond($1);
+		$$ = $1;
 	}
 	| RelExp RelOp AddExp {
-		$$ = create_contain_node(ast_operator_type($2), $1, adjustCond($3));
+		$$ = create_contain_node(ast_operator_type($2), $1, $3);
 	}
 	;
 
@@ -355,12 +355,12 @@ RelOp: T_EQ { $$ = (int)ASTOP(EQ); }
 	;
 
 CondExp:
-	RelExp { $$ = $1; }
+	RelExp { $$ = adjustCond($1); }
 	| CondExp T_LOR RelExp {
-		$$ = create_contain_node(ASTOP(LOR), $1, $3);
+		$$ = create_contain_node(ASTOP(LOR), $1, adjustCond($3));
 	}
 	| CondExp T_LAND RelExp {
-		$$ = create_contain_node(ASTOP(LAND), $1, $3);
+		$$ = create_contain_node(ASTOP(LAND), $1, adjustCond($3));
 	}
 
 // 目前一元表达式可以为基本表达式、函数调用，其中函数调用的实参可有可无
@@ -497,7 +497,9 @@ void yyerror(char * msg)
 // 转换条件 a -> a!=0，保证条件式内无NOT节点
 ast_node* adjustCond(ast_node *node) {
     // TODO 浮点数
-    auto v = ast_node::New(digit_int_attr{0,0});
+    auto x = node->node_type;
+    if (ASTOP(EQ)<=x && x<=ASTOP(LE)) return node;
+    auto v = ast_node::New(digit_int_attr{0,yylineno});
     int tp = (int)ASTOP(NE);
     while (node->node_type==ASTOP(NOT)) {
         tp = (((int)ASTOP(EQ))^((int)ASTOP(NE)))^tp;

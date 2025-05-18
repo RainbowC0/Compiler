@@ -1,6 +1,6 @@
 ///
-/// @file CodeGeneratorArm32.cpp
-/// @brief ARM32的后端处理实现
+/// @file CodeGeneratorArm64.cpp
+/// @brief ARM64的后端处理实现
 /// @author zenglj (zenglj@live.com)
 /// @version 1.0
 /// @date 2024-11-21
@@ -20,36 +20,38 @@
 
 #include "Function.h"
 #include "Module.h"
-#include "PlatformArm32.h"
-#include "CodeGeneratorArm32.h"
-#include "InstSelectorArm32.h"
-#include "SimpleRegisterAllocator.h"
-#include "ILocArm32.h"
-#include "RegVariable.h"
+//#include "PlatformArm64.h"
+#include "CodeGeneratorArm64.h"
+#include "InstSelectorArm64.h"
+//#include "SimpleRegisterAllocator.h"
+#include "ILocArm64.h"
+//#include "RegVariable.h"
 #include "FuncCallInstruction.h"
 #include "ArgInstruction.h"
 #include "MoveInstruction.h"
+#include "PlatformArm64.h"
 
 /// @brief 构造函数
 /// @param tab 符号表
-CodeGeneratorArm32::CodeGeneratorArm32(Module * _module)
-: CodeGeneratorAsm(_module), simpleRegisterAllocator(PlatformArm32::maxUsableRegNum)
+CodeGeneratorArm64::CodeGeneratorArm64(Module * _module)
+: CodeGeneratorAsm(_module), simpleRegisterAllocator(PlatformArm64::maxUsableRegNum)
 {}
 
 /// @brief 析构函数
-CodeGeneratorArm32::~CodeGeneratorArm32()
+CodeGeneratorArm64::~CodeGeneratorArm64()
 {}
 
 /// @brief 产生汇编头部分
-void CodeGeneratorArm32::genHeader()
+void CodeGeneratorArm64::genHeader()
 {
-    fputs(".arch armv7a\n"
-          ".arm\n"
-          ".fpu vfpv4\n", fp);
+    fputs(".macro rem dst, divd, divr\n"
+          "sdiv \\dst, \\divd, \\divr\n"
+          "msub \\dst, \\dst, \\divr, \\divd\n"
+          ".endm\n", fp);
 }
 
 /// @brief 全局变量Section，主要包含初始化的和未初始化过的
-void CodeGeneratorArm32::genDataSection()
+void CodeGeneratorArm64::genDataSection()
 {
     // 生成代码段
     fputs(".text\n", fp);
@@ -68,10 +70,10 @@ void CodeGeneratorArm32::genDataSection()
         } else {
 
             // 有初值的全局变量
-            fprintf(fp, ".global %s\n", var->getName().c_str());
-            fputs(".data", fp);
+            fprintf(fp, ".globl %s\n", var->getName().c_str());
+            fputs(".data\n", fp);
             fprintf(fp, ".align %d\n", var->getAlignment());
-            fprintf(fp, ".type %s, %%object\n", var->getName().c_str());
+            fprintf(fp, ".type %s, @object\n", var->getName().c_str());
             fprintf(fp, "%s\n", var->getName().c_str());
             // TODO 后面设置初始化的值，具体请参考ARM的汇编
         }
@@ -82,7 +84,7 @@ void CodeGeneratorArm32::genDataSection()
 /// @brief 获取IR变量相关信息字符串
 /// @param str
 ///
-void CodeGeneratorArm32::getIRValueStr(Value * val, std::string & str)
+void CodeGeneratorArm64::getIRValueStr(Value * val, std::string & str)
 {
     std::string name = val->getName();
     std::string IRName = val->getIRName();
@@ -103,16 +105,16 @@ void CodeGeneratorArm32::getIRValueStr(Value * val, std::string & str)
 
     if (regId != -1) {
         // 寄存器
-        str += "\t@ " + showName + ":" + PlatformArm32::regName[regId];
+        str += "\t@ " + showName + ":" + PlatformArm64::regName[regId];
     } else if (val->getMemoryAddr(&baseRegId, &offset)) {
         // 栈内寻址，[fp,#4]
-        str += "\t@ " + showName + ":[" + PlatformArm32::regName[baseRegId] + ",#" + std::to_string(offset) + "]";
+        str += "\t@ " + showName + ":[" + PlatformArm64::regName[baseRegId] + ",#" + std::to_string(offset) + "]";
     }
 }
 
 /// @brief 针对函数进行汇编指令生成，放到.text代码段中
 /// @param func 要处理的函数
-void CodeGeneratorArm32::genCodeSection(Function * func)
+void CodeGeneratorArm64::genCodeSection(Function * func)
 {
     // 寄存器分配以及栈内局部变量的站内地址重新分配
     registerAllocation(func);
@@ -128,11 +130,11 @@ void CodeGeneratorArm32::genCodeSection(Function * func)
     }
 
     // ILOC代码序列
-    ILocArm32 iloc(module);
+    ILocArm64 iloc(module);
 
     // 指令选择生成汇编指令
-    InstSelectorArm32 instSelector(IrInsts, iloc, func, simpleRegisterAllocator);
-    instSelector.setShowLinearIR(true);
+    InstSelectorArm64 instSelector(IrInsts, iloc, func, simpleRegisterAllocator);
+    instSelector.setShowLinearIR(false);
     //this->showLinearIR);
     instSelector.run();
 
@@ -140,9 +142,9 @@ void CodeGeneratorArm32::genCodeSection(Function * func)
     iloc.deleteUsedLabel();
 
     // ILOC代码输出为汇编代码
-    fprintf(fp, ".align %d\n", func->getAlignment());
-    fprintf(fp, ".global %s\n", func->getName().c_str());
-    fprintf(fp, ".type %s, %%function\n", func->getName().c_str());
+    fprintf(fp, ".align 2\n"); // 函数统一按2对齐
+    fprintf(fp, ".globl %s\n", func->getName().c_str());
+    fprintf(fp, ".type %s, @function\n", func->getName().c_str());
     fprintf(fp, "%s:\n", func->getName().c_str());
 
     // 开启时输出IR指令作为注释
@@ -174,7 +176,7 @@ void CodeGeneratorArm32::genCodeSection(Function * func)
 
 /// @brief 寄存器分配
 /// @param func 函数指针
-void CodeGeneratorArm32::registerAllocation(Function * func)
+void CodeGeneratorArm64::registerAllocation(Function * func)
 {
     // 内置函数不需要处理
     if (func->isBuiltin()) {
@@ -186,15 +188,15 @@ void CodeGeneratorArm32::registerAllocation(Function * func)
     // SP寄存器预留，不需要保护，但需要保证值的正确性
     // R4-R10, fp(11), lx(14)都需要保护，没有函数调用的函数可不用保护lx寄存器
     // 被保留的寄存器主要有：
-    //  (1) FP寄存器用于栈寻址，即R11
-    //  (2) LX寄存器用于函数调用，即R14。没有函数调用的函数可不用保护lx寄存器
+    //  (1) FP寄存器用于栈寻址，x29
+    //  (2) LR寄存器用于函数调用，即x30。没有函数调用的函数可不用保护lx寄存器
     //  (3) R10寄存器用于立即数过大时要通过寄存器寻址，这里简化处理进行预留
 
     std::vector<int32_t> & protectedRegNo = func->getProtectedReg();
-    protectedRegNo.push_back(ARM32_TMP_REG_NO);
-    protectedRegNo.push_back(ARM32_FP_REG_NO);
+    // protectedRegNo.push_back(ARM32_TMP_REG_NO);
+    protectedRegNo.push_back(ARM64_FP_REG_NO);
     if (func->getExistFuncCall()) {
-        protectedRegNo.push_back(ARM32_LX_REG_NO);
+        protectedRegNo.push_back(ARM64_LR_REG_NO);
     }
 
     // 调整函数调用指令，主要是前四个寄存器传值，后面用栈传递
@@ -222,7 +224,7 @@ void CodeGeneratorArm32::registerAllocation(Function * func)
 
 /// @brief 寄存器分配前对函数内的指令进行调整，以便方便寄存器分配
 /// @param func 要处理的函数
-void CodeGeneratorArm32::adjustFormalParamInsts(Function * func)
+void CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
 {
     // 函数形参的前四个实参值临时变量采用的是寄存器传值
     // 前四个之后通过栈传递
@@ -231,21 +233,21 @@ void CodeGeneratorArm32::adjustFormalParamInsts(Function * func)
     // 如果不是不能使用这里的代码
     auto & params = func->getParams();
 
-    // 形参的前四个通过寄存器来传值R0-R3
-    for (int k = 0, j = std::min((int)params.size()-1, 3); k < j; k++) {
+    // 形参的前8个通过寄存器来传值R0-R7
+    for (int k = 0, j = std::min((int)params.size()-1, 7); k < j; k++) {
 
         // 前四个设置分配寄存器
 
         params[k]->setRegId(k);
     }
 
-    // 根据ARM版C语言的调用约定，除前4个外的实参进行值传递，逆序入栈
+    // 根据ARM64版C语言的调用约定，除前8个外的实参进行值传递，逆序入栈
     int64_t fp_esp = func->getMaxDep() + (func->getProtectedReg().size() * 4);
-    for (int k = 4; k < (int) params.size(); k++) {
+    for (int k = 8; k < (int) params.size(); k++) {
 
         // 目前假定变量大小都是4字节。实际要根据类型来计算
 
-        params[k]->setMemoryAddr(ARM32_FP_REG_NO, fp_esp);
+        params[k]->setMemoryAddr(ARM64_FP_REG_NO, fp_esp);
 
         // 增加4字节
         fp_esp += 4;
@@ -254,7 +256,7 @@ void CodeGeneratorArm32::adjustFormalParamInsts(Function * func)
 
 /// @brief 寄存器分配前对函数内的指令进行调整，以便方便寄存器分配
 /// @param func 要处理的函数
-void CodeGeneratorArm32::adjustFuncCallInsts(Function * func)
+void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
 {
     std::vector<Instruction *> newInsts;
 
@@ -267,17 +269,17 @@ void CodeGeneratorArm32::adjustFuncCallInsts(Function * func)
         // 检查是否是函数调用指令，并且含有返回值
         if (Instanceof(callInst, FuncCallInstruction *, *pIter)) {
 
-            // 实参前四个要寄存器传值，其它参数通过栈传递
+            // 实参前8个要寄存器传值，其它参数通过栈传递
 
-            // 前四个的后面参数采用栈传递
+            // 前8个的后面参数采用栈传递
             int esp = 0;
-            for (int32_t k = 4; k < callInst->getOperandsNum(); k++) {
+            for (int32_t k = 8; k < callInst->getOperandsNum(); k++) {
 
                 auto arg = callInst->getOperand(k);
 
                 // 新建一个内存变量，用于栈传值到形参变量中
                 LocalVariable * newVal = func->newLocalVarValue(IntegerType::getTypeInt());
-                newVal->setMemoryAddr(ARM32_SP_REG_NO, esp);
+                newVal->setMemoryAddr(ARM64_SP_REG_NO, esp);
                 esp += 4;
 
                 Instruction * assignInst = new MoveInstruction(func, newVal, arg);
@@ -289,7 +291,7 @@ void CodeGeneratorArm32::adjustFuncCallInsts(Function * func)
                 pIter++;
             }
 
-            for (int k = 0; k < callInst->getOperandsNum() && k < 4; k++) {
+            for (int k = 0; k < callInst->getOperandsNum() && k < 8; k++) {
 
                 // 检查实参的类型是否是临时变量。
                 // 如果是临时变量，该变量可更改为寄存器变量即可，或者设置寄存器号
@@ -303,9 +305,9 @@ void CodeGeneratorArm32::adjustFuncCallInsts(Function * func)
                     // 创建临时变量，指定寄存器
 
                     Instruction * assignInst =
-                        new MoveInstruction(func, PlatformArm32::intRegVal[k], callInst->getOperand(k));
+                        new MoveInstruction(func, PlatformArm64::intRegVal[k], callInst->getOperand(k));
 
-                    callInst->setOperand(k, PlatformArm32::intRegVal[k]);
+                    callInst->setOperand(k, PlatformArm64::intRegVal[k]);
 
                     // 函数调用指令前插入后，pIter仍指向函数调用指令
                     pIter = insts.insert(pIter, assignInst);
@@ -314,7 +316,6 @@ void CodeGeneratorArm32::adjustFuncCallInsts(Function * func)
             }
 
             for (int k = 0; k < callInst->getOperandsNum(); k++) {
-
                 auto arg = callInst->getOperand(k);
                 if (arg == callInst) continue;
 
@@ -335,7 +336,7 @@ void CodeGeneratorArm32::adjustFuncCallInsts(Function * func)
                 } else {
                     // 其它情况，需要产生赋值指令
                     // 新建一个赋值操作
-                    Instruction * assignInst = new MoveInstruction(func, callInst, PlatformArm32::intRegVal[0]);
+                    Instruction * assignInst = new MoveInstruction(func, callInst, PlatformArm64::intRegVal[0]);
 
                     // 函数调用指令的下一个指令的前面插入指令，因为有Exit指令，+1肯定有效
                     pIter = insts.insert(pIter + 1, assignInst);
@@ -347,7 +348,7 @@ void CodeGeneratorArm32::adjustFuncCallInsts(Function * func)
 
 /// @brief 栈空间分配
 /// @param func 要处理的函数
-void CodeGeneratorArm32::stackAlloc(Function * func)
+void CodeGeneratorArm64::stackAlloc(Function * func)
 {
     // 遍历函数内的所有指令，查找没有寄存器分配的变量，然后进行栈内空间分配
 
@@ -381,7 +382,7 @@ void CodeGeneratorArm32::stackAlloc(Function * func)
             // 之后需要对所有使用到该Value的指令在寄存器分配前要变换。
 
             // 局部变量偏移设置
-            var->setMemoryAddr(ARM32_FP_REG_NO, sp_esp);
+            var->setMemoryAddr(ARM64_FP_REG_NO, sp_esp);
 
             // 累计当前作用域大小
             sp_esp += size;
@@ -396,7 +397,7 @@ void CodeGeneratorArm32::stackAlloc(Function * func)
 
             int32_t size = inst->getType()->getSize();
 
-            // 32位ARM平台按照4字节的大小整数倍分配局部变量
+            // int、float等基本类型均按照4字节对其
             size += (4 - size % 4) % 4;
 
             // 这里要注意检查变量栈的偏移范围。一般采用机制寄存器+立即数方式间接寻址
@@ -405,7 +406,7 @@ void CodeGeneratorArm32::stackAlloc(Function * func)
             // 之后需要对所有使用到该Value的指令在寄存器分配前要变换。
 
             // 局部变量偏移设置
-            inst->setMemoryAddr(ARM32_FP_REG_NO, sp_esp);
+            inst->setMemoryAddr(ARM64_FP_REG_NO, sp_esp);
 
             // 累计当前作用域大小
             sp_esp += size;
@@ -413,6 +414,7 @@ void CodeGeneratorArm32::stackAlloc(Function * func)
     }
 
     // 设置函数的最大栈帧深度，在加上实参内存传值的空间
-    // 请注意若支持浮点数，则必须保持栈内空间8字节对齐
+    // sp必须按照16对齐
+    sp_esp = (sp_esp + 16) & 0xFFFFFFF0;
     func->setMaxDep(sp_esp);
 }

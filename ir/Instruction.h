@@ -54,11 +54,11 @@ typedef enum IRInstOperator {
 
     IRINST_OP_IGT,
 
+    IRINST_OP_ILE,
+
     IRINST_OP_IGE,
 
     IRINST_OP_ILT,
-
-    IRINST_OP_ILE,
 
     /// @brief 整数的加法指令，二元运算
     IRINST_OP_FADD,
