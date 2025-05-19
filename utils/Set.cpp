@@ -219,7 +219,7 @@ uint32_t Set::min()
 /*
     调试输出函数
 */
-std::string Set::toString()
+cstr Set::toString()
 {
     std::stringstream striostream;
 

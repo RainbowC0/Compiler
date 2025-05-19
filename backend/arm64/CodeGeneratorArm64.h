@@ -1,5 +1,19 @@
 #include "CodeGeneratorAsm.h"
 #include "SimpleRegisterAllocator.h"
+#include "Instruction.h"
+#include <vector>
+
+struct LiveRange {
+    Value *value;     // 关联的变量/临时值
+    int start;        // 起始指令位置（按指令序号）
+    int end;          // 结束指令位置
+    int reg = -1;     // 分配的寄存器编号（-1表示未分配）
+    int stackOffset = -1; // 溢出时的栈偏移
+
+    [[nodiscard]] bool overlaps(const LiveRange &other) const {
+        return !(end < other.start || start > other.end);
+    }
+};
 
 class CodeGeneratorArm64 : public CodeGeneratorAsm {
 
@@ -43,6 +57,8 @@ protected:
     /// @param str
     ///
     void getIRValueStr(Value * val, std::string & str);
+
+    void linearScanRegisterAllocation(std::vector<LiveRange> &ranges, Function *func);
 
 private:
     ///

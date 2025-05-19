@@ -910,67 +910,67 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 YY_RULE_SETUP
 #line 55 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_L_PAREN; }
+{ return '('; }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
 #line 56 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_R_PAREN; }
+{ return ')'; }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
 #line 57 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_L_BRACE; }
+{ return '{'; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
 #line 58 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_R_BRACE; }
+{ return '}'; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
 #line 60 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_SEMICOLON; }
+{ return ';'; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
 #line 61 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_COMMA; }
+{ return ','; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
 #line 63 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_ASSIGN; }
+{ return '='; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
 #line 64 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_ADD; }
+{ return '+'; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
 #line 65 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_SUB; }
+{ return '-'; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
 #line 66 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_MUL; }
+{ return '*'; }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
 #line 67 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_DIV; }
+{ return '/'; }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
 #line 68 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_MOD; }
+{ return '%'; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
 #line 69 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_NOT; }
+{ return '!'; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
@@ -985,12 +985,12 @@ YY_RULE_SETUP
 case 16:
 YY_RULE_SETUP
 #line 72 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_GT; }
+{ return '>'; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
 #line 73 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_LT; }
+{ return '<'; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
@@ -1015,17 +1015,17 @@ YY_RULE_SETUP
 case 22:
 YY_RULE_SETUP
 #line 78 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_AND; }
+{ return '&'; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
 #line 79 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_OR; }
+{ return '|'; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
 #line 80 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{ return T_XOR; }
+{ return '^'; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP

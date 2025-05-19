@@ -27,7 +27,7 @@ void CFG::buildCFG(Function *func) {
     }
 }
 
-void putLabel(Instruction *ins, FILE *f) {
+extern "C" inline void putLabel(Instruction *ins, FILE *f) {
     if (ins->getOp()==IRINST_OP_LABEL)
         fprintf(f, "L%d", ((LabelInstruction*)ins)->labIndex);
     else

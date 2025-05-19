@@ -154,6 +154,10 @@ public:
         return regId;
     }
 
+    void setRegId(int32_t reg) override {
+        regId = reg;
+    }
+
     ///
     /// @brief @brief 如是内存变量型Value，则获取基址寄存器和偏移
     /// @param regId 寄存器编号
@@ -188,11 +192,7 @@ public:
     /// @param _regId 基址寄存器编号
     /// @param _offset 偏移
     ///
-    void setMemoryAddr(int32_t _regId, int64_t _offset)
-    {
-        baseRegNo = _regId;
-        offset = _offset;
-    }
+    void setMemoryAddr(int32_t _regId, int64_t _offset) override;
 
     ///
     /// @brief 对该Value进行Load用的寄存器编号

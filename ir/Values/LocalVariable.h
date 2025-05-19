@@ -58,6 +58,9 @@ public:
         return regId;
     }
 
+    void setRegId(int32_t reg) override {
+        regId = reg;
+    }
     ///
     /// @brief @brief 如是内存变量型Value，则获取基址寄存器和偏移
     /// @param regId 寄存器编号

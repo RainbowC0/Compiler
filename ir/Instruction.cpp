@@ -72,3 +72,9 @@ bool Instruction::hasResultValue()
 {
     return !type->isVoidType();
 }
+
+void Instruction::setMemoryAddr(int32_t _regId, int64_t _offset)
+{
+    baseRegNo = _regId;
+    offset = _offset;
+}

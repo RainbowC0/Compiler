@@ -89,9 +89,16 @@ public:
     ///
     void toDeclareString(std::string & str)
     {
-        str = "declare " + getType()->toString() + " " + getIRName();
+        str = getIRName()
+            +" dso_local global "+getType()->toString()
+            +" "+std::to_string(intVal)
+            +", align "+std::to_string(alignment);
     }
 
+    union {
+        int32_t intVal;
+        float floatVal;
+    };
 private:
     ///
     /// @brief 变量加载到寄存器中时对应的寄存器编号
@@ -101,5 +108,5 @@ private:
     ///
     /// @brief 默认全局变量在BSS段，没有初始化，或者即使初始化过，但都值都为0
     ///
-    bool inBSSSection = true;
+    bool inBSSSection = false;
 };

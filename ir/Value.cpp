@@ -111,6 +111,7 @@ int32_t Value::getRegId()
     return -1;
 }
 
+void Value::setRegId(int32_t) {}
 ///
 /// @brief @brief 如是内存变量型Value，则获取基址寄存器和偏移
 /// @param regId 寄存器编号
@@ -125,6 +126,8 @@ bool Value::getMemoryAddr(int32_t * regId, int64_t * offset)
     return false;
 }
 
+void Value::setMemoryAddr(int32_t regId, int64_t offset) {
+}
 ///
 /// @brief 对该Value进行Load用的寄存器编号
 /// @return int32_t 寄存器编号

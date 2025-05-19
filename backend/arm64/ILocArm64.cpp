@@ -34,18 +34,17 @@ ILocArm64::ILocArm64(Module * _module)
 /// @brief 析构函数
 ILocArm64::~ILocArm64()
 {
-    std::list<ArmInst *>::iterator pIter;
-
-    for (pIter = code.begin(); pIter != code.end(); ++pIter) {
-        delete (*pIter);
+    for (auto pIter:code) {
+        delete pIter;
     }
 }
 
 /// @brief 删除无用的Label指令
 void ILocArm64::deleteUsedLabel()
 {
-    std::list<ArmInst *> labelInsts;
-    for (ArmInst * arm: code) {
+    ArmInsts labelInsts;
+    //ArmInst *arm;
+    for (auto arm:code) {
         if ((!arm->dead) && (arm->opcode[0] == '.') && (arm->result == ":")) {
             labelInsts.push_back(arm);
         }
@@ -54,7 +53,7 @@ void ILocArm64::deleteUsedLabel()
     for (ArmInst * labelArm: labelInsts) {
         bool labelUsed = false;
 
-        for (ArmInst * arm: code) {
+        for (auto arm:code) {
             // TODO 转移语句的指令标识符根据定义修改判断
             if ((!arm->dead) && (arm->opcode[0] == 'b') && (arm->result == labelArm->opcode)) {
                 labelUsed = true;
@@ -73,8 +72,7 @@ void ILocArm64::deleteUsedLabel()
 /// @param outputEmpty 是否输出空语句
 void ILocArm64::outPut(FILE * file, bool outputEmpty)
 {
-    for (auto arm: code) {
-
+    for (auto arm:code) {
         std::string s = arm->outPut();
 
         if (arm->result == ":") {
@@ -93,7 +91,7 @@ void ILocArm64::outPut(FILE * file, bool outputEmpty)
 
 /// @brief 获取当前的代码序列
 /// @return 代码序列
-std::list<ArmInst *> & ILocArm64::getCode()
+ArmInsts & ILocArm64::getCode()
 {
     return code;
 }
@@ -117,7 +115,7 @@ std::string ILocArm64::toStr(int num, bool flag)
 /*
     产生标签
 */
-void ILocArm64::label(const std::string &name)
+void ILocArm64::label(cstr name)
 {
     // .L1:
     emit(name, ":");
@@ -126,7 +124,7 @@ void ILocArm64::label(const std::string &name)
 /// @brief 0个源操作数指令
 /// @param op 操作码
 /// @param rs 操作数
-void ILocArm64::inst(const std::string &op, const std::string &rs)
+void ILocArm64::inst(cstr op, cstr rs)
 {
     emit(op, rs);
 }
@@ -136,9 +134,9 @@ void ILocArm64::inst(const std::string &op, const std::string &rs)
 /// @param rs 操作数
 /// @param arg1 源操作数
 void ILocArm64::inst(
-    const std::string &op,
-    const std::string &rs,
-    const std::string &arg1)
+    cstr op,
+    cstr rs,
+    cstr arg1)
 {
     emit(op, rs, arg1);
 }
@@ -148,10 +146,10 @@ void ILocArm64::inst(
 /// @param rs 操作数
 /// @param arg1 源操作数
 /// @param arg2 源操作数
-void ILocArm64::inst(const std::string &op,
-    const std::string &rs,
-    const std::string &arg1,
-    const std::string &arg2)
+void ILocArm64::inst(cstr op,
+    cstr rs,
+    cstr arg1,
+    cstr arg2)
 {
     emit(op, rs, arg1, arg2);
 }
@@ -159,7 +157,7 @@ void ILocArm64::inst(const std::string &op,
 ///
 /// @brief 注释指令，不包含分号
 ///
-void ILocArm64::comment(const std::string &str)
+void ILocArm64::comment(cstr str)
 {
     emit("@", str);
 }
@@ -167,30 +165,37 @@ void ILocArm64::comment(const std::string &str)
 /*
     加载立即数 ldr r0,=#100
 */
-union _X {
-    int32_t val;
-    struct {
-    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    uint16_t low, high;
-    #else
-    uint16_t high, low;
-    #endif
-    };
-};
+
 void ILocArm64::load_imm(int rs_reg_no, int constant)
 {
-    union _X v;
-    v.val = constant;
-    emit("mov", PlatformArm64::regName[rs_reg_no], "#"+std::to_string(v.low));
-    if (v.high)
-        emit("movk", PlatformArm64::regName[rs_reg_no], "#"+std::to_string(v.high), "lsl #16");
+    union {
+        int32_t val;
+        struct {
+        #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        uint16_t low, high;
+        #else
+        uint16_t high, low;
+        #endif
+        };
+    } z, n;
+    if (constant==0) {
+        emit("mov", PlatformArm64::regName[rs_reg_no], "wzr");
+        return;
+    }
+    z.val = constant;
+    n.val = ~constant;
+    if (z.high&&z.low&&n.high&&n.low) {
+        emit("mov", PlatformArm64::regName[rs_reg_no], "#"+std::to_string(z.low));
+        emit("movk", PlatformArm64::regName[rs_reg_no], "#"+std::to_string(z.high), "lsl #16");
+    } else
+        emit("mov", PlatformArm64::regName[rs_reg_no], "#"+std::to_string(constant));
 }
 
 #define xregs(i) ("x"+std::to_string(i))
 /// @brief 加载符号值 ldr r0,=g ldr r0,=.L1
 /// @param rs_reg_no 结果寄存器编号
 /// @param name 符号名
-void ILocArm64::load_symbol(int rs_reg_no, std::string name)
+void ILocArm64::load_symbol(int rs_reg_no, cstr name)
 {
     // movw r10, #:lower16:a
     // movt r10, #:upper16:a
@@ -216,7 +221,7 @@ void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset)
 {
     std::string rsReg = PlatformArm64::regName[rs_reg_no];
     std::string base = PlatformArm64::regName[base_reg_no];
-    if (base[0]=='w') base.data()[0] = 'x';
+    if (base[0]=='w') base[0] = 'x';
 
     if (PlatformArm64::isDisp(offset)) {
         // 有效的偏移常量
@@ -249,7 +254,7 @@ void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset)
 void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_reg_no)
 {
     std::string base = PlatformArm64::regName[base_reg_no];
-    if (base[0]=='w') base.data()[0] = 'x';
+    if (base[0]=='w') base[0] = 'x';
 
     if (PlatformArm64::isDisp(disp)) {
         // 有效的偏移常量
@@ -442,7 +447,7 @@ void ILocArm64::leaStack(int rs_reg_no, int base_reg_no, int off)
 /// @param tmp_reg_No
 void ILocArm64::allocStack(Function * func, int tmp_reg_no)
 {
-    // 超过四个的函数调用参数个数，多余4个，则需要栈传值
+    // 超过四个的函数调用参数个数，多余8个，则需要栈传值
     int funcCallArgCnt = func->getMaxFuncCallArgCnt() - 8;
     if (funcCallArgCnt < 0) {
         funcCallArgCnt = 0;
@@ -451,7 +456,7 @@ void ILocArm64::allocStack(Function * func, int tmp_reg_no)
     // 计算栈帧大小
     int off = func->getMaxDep();
 
-    off += funcCallArgCnt * 4;
+    off += funcCallArgCnt * 8;
 
     // 不需要在栈内额外分配空间，则什么都不做
     if (0 == off)
@@ -469,12 +474,12 @@ void ILocArm64::allocStack(Function * func, int tmp_reg_no)
     }
 
     // 函数调用通过栈传递的基址寄存器设置
-    inst("add", ARM64_FP, "sp", toStr(funcCallArgCnt * 4));
+    inst("add", ARM64_FP, "sp", toStr(funcCallArgCnt * 8));
 }
 
 /// @brief 调用函数fun
 /// @param fun
-void ILocArm64::call_fun(const std::string &name)
+void ILocArm64::call_fun(cstr name)
 {
     // 函数返回值在r0,不需要保护
     emit("bl", name);
@@ -491,11 +496,11 @@ void ILocArm64::nop()
 /// @brief 无条件跳转指令
 /// @param label 目标Label名称
 ///
-void ILocArm64::jump(const std::string &label)
+void ILocArm64::jump(cstr label)
 {
     emit("b", label);
 }
 
-void ILocArm64::branch(const std::string &cond, const std::string &label) {
+void ILocArm64::branch(cstr cond, cstr label) {
     emit("b"+cond, label);
 }

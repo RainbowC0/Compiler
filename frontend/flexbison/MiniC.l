@@ -52,32 +52,32 @@ CMT         {SCMT}|{TCMT}
 /* 正规式定义 */
 %%
 
-"("         { return T_L_PAREN; }
-")"         { return T_R_PAREN; }
-"{"         { return T_L_BRACE; }
-"}"         { return T_R_BRACE; }
+"("         { return '('; }
+")"         { return ')'; }
+"{"         { return '{'; }
+"}"         { return '}'; }
 
-";"         { return T_SEMICOLON; }
-","         { return T_COMMA; }
+";"         { return ';'; }
+","         { return ','; }
 
-"="         { return T_ASSIGN; }
-"+"         { return T_ADD; }
-"-"         { return T_SUB; }
-"*"         { return T_MUL; }
-"/"         { return T_DIV; }
-"%"         { return T_MOD; }
-"!"         { return T_NOT; }
+"="         { return '='; }
+"+"         { return '+'; }
+"-"         { return '-'; }
+"*"         { return '*'; }
+"/"         { return '/'; }
+"%"         { return '%'; }
+"!"         { return '!'; }
 "<<"        { return T_SL; }
 ">>"        { return T_SR; }
-">"         { return T_GT; }
-"<"         { return T_LT; }
+">"         { return '>'; }
+"<"         { return '<'; }
 ">="        { return T_GE; }
 "<="        { return T_LE; }
 "=="        { return T_EQ; }
 "!="        { return T_NE; }
-"&"         { return T_AND; }
-"|"         { return T_OR; }
-"^"         { return T_XOR; }
+"&"         { return '&'; }
+"|"         { return '|'; }
+"^"         { return '^'; }
 "&&"        { return T_LAND; }
 "||"        { return T_LOR; }
 "/="        { return T_ASSDIV; }

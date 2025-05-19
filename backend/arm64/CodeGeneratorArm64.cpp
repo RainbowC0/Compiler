@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "Function.h"
 #include "Module.h"
@@ -31,19 +32,30 @@
 #include "MoveInstruction.h"
 #include "PlatformArm64.h"
 
+static int allocateStackSlot(Function *func);
+static void expireOldRanges(std::vector<LiveRange> &active, std::vector<int> &freeRegs, int pos);
+static int findLastUse(Value *val, const std::vector<Instruction*> &insts, int startPos);
+static void extendRangeIfExists(std::vector<LiveRange> &ranges, Value *value, int currentPos);
+static const std::vector<LiveRange> &calculateLiveRanges(Function *func);
+
 /// @brief 构造函数
 /// @param tab 符号表
 CodeGeneratorArm64::CodeGeneratorArm64(Module * _module)
 : CodeGeneratorAsm(_module), simpleRegisterAllocator(PlatformArm64::maxUsableRegNum)
-{}
+{
+    ConstInt::setZeroReg(ARM64_ZR_REG_NO);
+}
 
 /// @brief 析构函数
 CodeGeneratorArm64::~CodeGeneratorArm64()
-{}
+{
+    ConstInt::setZeroReg(-1);
+}
 
 /// @brief 产生汇编头部分
 void CodeGeneratorArm64::genHeader()
 {
+    // 定义算余数的宏
     fputs(".macro rem dst, divd, divr\n"
           "sdiv \\dst, \\divd, \\divr\n"
           "msub \\dst, \\dst, \\divr, \\divd\n"
@@ -53,8 +65,6 @@ void CodeGeneratorArm64::genHeader()
 /// @brief 全局变量Section，主要包含初始化的和未初始化过的
 void CodeGeneratorArm64::genDataSection()
 {
-    // 生成代码段
-    fputs(".text\n", fp);
 
     // 可直接操作文件指针fp进行写操作
 
@@ -70,12 +80,13 @@ void CodeGeneratorArm64::genDataSection()
         } else {
 
             // 有初值的全局变量
-            fprintf(fp, ".globl %s\n", var->getName().c_str());
-            fputs(".data\n", fp);
-            fprintf(fp, ".align %d\n", var->getAlignment());
             fprintf(fp, ".type %s, @object\n", var->getName().c_str());
-            fprintf(fp, "%s\n", var->getName().c_str());
-            // TODO 后面设置初始化的值，具体请参考ARM的汇编
+            fputs(".data\n", fp);
+            fprintf(fp, ".globl %s\n", var->getName().c_str());
+            fprintf(fp, ".align 2\n");
+            fprintf(fp, "%s:\n", var->getName().c_str());
+            fprintf(fp, ".word 0x%x\n", var->intVal);
+            // TODO 数组初值
         }
     }
 }
@@ -116,6 +127,8 @@ void CodeGeneratorArm64::getIRValueStr(Value * val, std::string & str)
 /// @param func 要处理的函数
 void CodeGeneratorArm64::genCodeSection(Function * func)
 {
+    // 生成代码段
+    fputs(".text\n", fp);
     // 寄存器分配以及栈内局部变量的站内地址重新分配
     registerAllocation(func);
 
@@ -179,9 +192,7 @@ void CodeGeneratorArm64::genCodeSection(Function * func)
 void CodeGeneratorArm64::registerAllocation(Function * func)
 {
     // 内置函数不需要处理
-    if (func->isBuiltin()) {
-        return;
-    }
+    if (func->isBuiltin()) return;
 
     // 最简单/朴素的寄存器分配策略：局部变量和临时变量都保存在栈内，全局变量在静态存储.data区中
     // R0,R1,R2和R3寄存器不需要保护，可直接使用
@@ -199,19 +210,21 @@ void CodeGeneratorArm64::registerAllocation(Function * func)
         protectedRegNo.push_back(ARM64_LR_REG_NO);
     }
 
-    // 调整函数调用指令，主要是前四个寄存器传值，后面用栈传递
-    // 为了更好的进行寄存器分配，可以进行对函数调用的指令进行预处理
-    // 当然也可以不做处理，不过性能更差。这个处理是可选的。
+    // 1. 计算活跃区间
+    std::vector<LiveRange> ranges = calculateLiveRanges(func);
+
+    // 2. 按起始位置排序
+    std::sort(ranges.begin(), ranges.end(), 
+        [](const LiveRange &a, const LiveRange &b) { return a.start < b.start; });
+
+    // 3. 分配寄存器
+    linearScanRegisterAllocation(ranges, func);
+
+    // 4. 处理剩余逻辑（如保护寄存器）
     adjustFuncCallInsts(func);
 
-    // 线性扫描
-    //linearScan(func);
-
-    // 为局部变量和临时变量在栈内分配空间，指定偏移，进行栈空间的分配
     stackAlloc(func);
 
-    // 函数形参要求前四个寄存器分配，后面的参数采用栈传递，实现实参的值传递给形参
-    // 这一步是必须的
     adjustFormalParamInsts(func);
 
 #if 0
@@ -234,7 +247,7 @@ void CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
     auto & params = func->getParams();
 
     // 形参的前8个通过寄存器来传值R0-R7
-    for (int k = 0, j = std::min((int)params.size()-1, 7); k < j; k++) {
+    for (int k = 0, j = std::min((int)params.size(), 8); k < j; k++) {
 
         // 前四个设置分配寄存器
 
@@ -392,7 +405,7 @@ void CodeGeneratorArm64::stackAlloc(Function * func)
     // 遍历指令中临时变量
     for (auto inst: func->getInterCode().getInsts()) {
 
-        if (inst->hasResultValue()) {
+        if (inst->hasResultValue() && inst->getRegId()==-1) {
             // 有值
 
             int32_t size = inst->getType()->getSize();
@@ -415,6 +428,119 @@ void CodeGeneratorArm64::stackAlloc(Function * func)
 
     // 设置函数的最大栈帧深度，在加上实参内存传值的空间
     // sp必须按照16对齐
-    sp_esp = (sp_esp + 16) & 0xFFFFFFF0;
+    sp_esp = (sp_esp + 15) & 0xFFFFFFF0;
     func->setMaxDep(sp_esp);
+}
+
+const std::vector<LiveRange> &calculateLiveRanges(Function *func) {
+    auto ranges = new std::vector<LiveRange>();
+    const auto &insts = func->getInterCode().getInsts();
+
+    // 遍历指令，记录变量的定义和使用位置
+    for (int pos = 0, l = insts.size(); pos < l; ++pos) {
+        Instruction *inst = insts[pos];
+        
+        // 处理定义（赋值）
+        if (inst->hasResultValue()) {
+            LiveRange range;
+            range.value = inst;
+            range.start = pos;
+            range.end = findLastUse(inst, insts, pos);
+            ranges->push_back(range);
+        }
+
+        // 处理操作数（使用）
+        for (int i = 0; i < inst->getOperandsNum(); ++i) {
+            Value *operand = inst->getOperand(i);
+            if (dynamic_cast<Instruction*>(operand) || dynamic_cast<LocalVariable*>(operand)) {
+                extendRangeIfExists(*ranges, operand, pos);
+            }
+        }
+    }
+    return *ranges;
+}
+
+void CodeGeneratorArm64::linearScanRegisterAllocation(
+    std::vector<LiveRange> &ranges, Function *func) 
+{
+    // 使用被调用者保留寄存器
+    std::vector<int32_t> freeRegs = {19, 20, 21, 22, 23, 24, 25, 26, 27, 28}; // x9-x15
+    std::vector<LiveRange> active;
+    auto &protects = func->getProtectedReg();
+
+    for (auto &range : ranges) {
+        // 1. 过期已结束的区间
+        expireOldRanges(active, freeRegs, range.start);
+
+        // 2. 分配寄存器
+        if (!freeRegs.empty()) {
+            range.reg = freeRegs.back();
+            freeRegs.pop_back();
+            active.push_back(range);
+            if (std::find(protects.begin(), protects.end(), range.reg)==protects.end())
+                protects.push_back(range.reg);
+        } else {
+            // 3. 溢出到栈
+            range.stackOffset = allocateStackSlot(func);
+        }
+    }
+
+    // 4. 更新变量的寄存器或栈偏移
+    for (const auto &range : ranges) {
+        if (range.reg != -1) {
+            range.value->setRegId(range.reg);
+        } else {
+            range.value->setMemoryAddr(ARM64_FP_REG_NO, range.stackOffset);
+        }
+    }
+}
+
+// 查找变量的最后一次使用
+int findLastUse(Value *val, const std::vector<Instruction*> &insts, int startPos) {
+    for (int i = insts.size() - 1; i >= startPos; --i) {
+        for (int j = 0; j < insts[i]->getOperandsNum(); ++j) {
+            if (insts[i]->getOperand(j) == val) {
+                return i;
+            }
+        }
+    }
+    return startPos;
+}
+
+// 释放已结束的区间
+void expireOldRanges(std::vector<LiveRange> &active, std::vector<int> &freeRegs, int pos) {
+    for (auto it = active.begin(); it != active.end(); ) {
+        if (it->end <= pos) {
+            freeRegs.push_back(it->reg);
+            it = active.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+// 分配栈槽
+int allocateStackSlot(Function *func) {
+    int offset = func->getMaxDep();
+    func->setMaxDep(offset + 4); // 假设4字节对齐
+    return offset;
+}
+
+void extendRangeIfExists(std::vector<LiveRange> &ranges, Value *value, int currentPos) {
+    for (auto &range : ranges) {
+        if (range.value == value) {
+            // 扩展活跃范围到当前指令位置
+            range.end = std::max(range.end, currentPos);
+            return;
+        }
+    }
+    // 如果未找到匹配的LiveRange，新的定义
+    Instanceof(cz, ConstInt*, value);
+    if (!cz) {
+        LiveRange lr;
+        lr.value = value;
+        lr.start = currentPos;
+        lr.end = currentPos;
+        ranges.push_back(lr);
+    }
 }

@@ -79,6 +79,8 @@ protected:
 
     void translate_rem_int32(Instruction * inst);
 
+    void translate_xor_int32(Instruction * inst);
+
     /// @brief 二元操作指令翻译成ARM32汇编
     /// @param inst IR指令
     /// @param operator_name 操作码

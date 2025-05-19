@@ -36,7 +36,7 @@ public:
     /// @brief 构造函数
     /// @param name  模块名
     ///
-    Module(std::string _name);
+    Module(const std::string &_name);
 
     ///
     /// @brief 缺省的析构函数
@@ -83,12 +83,12 @@ public:
     /// @param builtin 是否内置函数
     /// @return 新建的函数对象实例
     Function *
-    newFunction(std::string name, Type * returnType, std::vector<FormalParam *> params = {}, bool builtin = false);
+    newFunction(const std::string &name, Type * returnType, const std::vector<FormalParam *> &params = {}, bool builtin = false);
 
     /// @brief 根据函数名查找函数信息
     /// @param name 函数名
     /// @return 函数信息
-    Function * findFunction(std::string name);
+    Function * findFunction(const std::string &name);
 
     ///
     /// @brief 获取全局变量列表，用于外部遍历全局变量
@@ -114,13 +114,13 @@ public:
     /// ! 该函数只有在AST遍历生成线性IR中使用，其它地方不能使用
     /// @param name 变量ID
     /// @param type 变量类型
-    Value * newVarValue(Type * type, std::string name = "");
+    Value * newVarValue(Type * type, const std::string &name = "");
 
     /// @brief 查找变量（全局变量或局部变量），会根据作用域栈进行逐级查找。
     /// ! 该函数只有在AST遍历生成线性IR中使用，其它地方不能使用
     /// @param name 变量ID
     /// @return 指针有效则找到，空指针未找到
-    Value * findVarValue(std::string name);
+    Value * findVarValue(const std::string &name);
 
     /// @brief 清理Module中管理的所有信息资源
     void Delete();
@@ -149,12 +149,12 @@ protected:
     /// @param name 名字
     /// @return Value* 全局变量
     ///
-    GlobalVariable * newGlobalVariable(Type * type, std::string name);
+    GlobalVariable * newGlobalVariable(Type * type, const std::string &name);
 
     /// @brief 根据变量名获取当前符号（只管理全局变量）
     /// \param name 变量名
     /// \return 变量对应的值
-    GlobalVariable * findGlobalVariable(std::string name);
+    GlobalVariable * findGlobalVariable(const std::string &name);
 
     /// @brief 直接插入函数到符号表中，不考虑现有的表中是否存在
     /// @param func 函数对象

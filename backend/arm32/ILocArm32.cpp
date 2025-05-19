@@ -22,24 +22,24 @@
 #include "PlatformArm32.h"
 #include "Module.h"
 
-ArmInst::ArmInst(std::string _opcode,
-                 std::string _result,
-                 std::string _arg1,
-                 std::string _arg2,
-                 std::string _cond,
-                 std::string _addition)
+ArmInst::ArmInst(cstr _opcode,
+                 cstr _result,
+                 cstr _arg1,
+                 cstr _arg2,
+                 cstr _cond,
+                 cstr _addition)
     : opcode(_opcode), cond(_cond), result(_result), arg1(_arg1), arg2(_arg2), addition(_addition), dead(false)
 {}
 
 /*
     指令内容替换
 */
-void ArmInst::replace(std::string _opcode,
-                      std::string _result,
-                      std::string _arg1,
-                      std::string _arg2,
-                      std::string _cond,
-                      std::string _addition)
+void ArmInst::replace(cstr _opcode,
+                      cstr _result,
+                      cstr _arg1,
+                      cstr _arg2,
+                      cstr _cond,
+                      cstr _addition)
 {
     opcode = _opcode;
     result = _result;
@@ -207,7 +207,7 @@ std::string ILocArm32::toStr(int num, bool flag)
 /*
     产生标签
 */
-void ILocArm32::label(const std::string &name)
+void ILocArm32::label(cstr name)
 {
     // .L1:
     emit(name, ":");
@@ -216,7 +216,7 @@ void ILocArm32::label(const std::string &name)
 /// @brief 0个源操作数指令
 /// @param op 操作码
 /// @param rs 操作数
-void ILocArm32::inst(const std::string &op, const std::string &rs)
+void ILocArm32::inst(cstr op, cstr rs)
 {
     emit(op, rs);
 }
@@ -226,9 +226,9 @@ void ILocArm32::inst(const std::string &op, const std::string &rs)
 /// @param rs 操作数
 /// @param arg1 源操作数
 void ILocArm32::inst(
-    const std::string &op,
-    const std::string &rs,
-    const std::string &arg1)
+    cstr op,
+    cstr rs,
+    cstr arg1)
 {
     emit(op, rs, arg1);
 }
@@ -238,10 +238,10 @@ void ILocArm32::inst(
 /// @param rs 操作数
 /// @param arg1 源操作数
 /// @param arg2 源操作数
-void ILocArm32::inst(const std::string &op,
-    const std::string &rs,
-    const std::string &arg1,
-    const std::string &arg2)
+void ILocArm32::inst(cstr op,
+    cstr rs,
+    cstr arg1,
+    cstr arg2)
 {
     emit(op, rs, arg1, arg2);
 }
@@ -249,7 +249,7 @@ void ILocArm32::inst(const std::string &op,
 ///
 /// @brief 注释指令，不包含分号
 ///
-void ILocArm32::comment(const std::string &str)
+void ILocArm32::comment(cstr str)
 {
     emit("@", str);
 }
@@ -544,7 +544,7 @@ void ILocArm32::allocStack(Function * func, int tmp_reg_no)
 
 /// @brief 调用函数fun
 /// @param fun
-void ILocArm32::call_fun(const std::string &name)
+void ILocArm32::call_fun(cstr name)
 {
     // 函数返回值在r0,不需要保护
     emit("bl", name);
@@ -561,11 +561,11 @@ void ILocArm32::nop()
 /// @brief 无条件跳转指令
 /// @param label 目标Label名称
 ///
-void ILocArm32::jump(const std::string &label)
+void ILocArm32::jump(cstr label)
 {
     emit("b", label);
 }
 
-void ILocArm32::branch(const std::string &cond, const std::string &label) {
+void ILocArm32::branch(cstr cond, cstr label) {
     emit("b"+cond, label);
 }

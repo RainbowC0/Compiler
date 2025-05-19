@@ -18,7 +18,7 @@
 #include "IntegerType.h"
 #include <algorithm>
 
-const std::string PlatformArm64::regName[PlatformArm64::maxRegNum] = {
+const std::string PlatformArm64::regName[] = {
     "w0",  // 用于传参或返回值等，不需要栈保护
     "w1",  // 用于传参或返回值（64位结果时后32位）等，不需要栈保护
     "w2",  // 用于传参等，不需要栈保护
@@ -38,19 +38,21 @@ const std::string PlatformArm64::regName[PlatformArm64::maxRegNum] = {
     "w16",
     "w17",
     "w18",
-    "x19",
-    "x20",
-    "x21",
-    "x22",
-    "x23",
-    "x24",
-    "x25",
-    "x26",
-    "x27",
-    "x28",
+    "w19",
+    "w20",
+    "w21",
+    "w22",
+    "w23",
+    "w24",
+    "w25",
+    "w26",
+    "w27",
+    "w28",
     "x29",
     "x30",
     "sp",
+    //
+    "wzr"
 };
 
 RegVariable * PlatformArm64::intRegVal[PlatformArm64::maxRegNum] = {
@@ -141,5 +143,5 @@ bool PlatformArm64::isDisp(int num)
 /// @return 是否是
 bool PlatformArm64::isReg(const std::string &name)
 {
-    return std::find(regName, regName+32, name);
+    return std::find(regName, regName+(sizeof(regName)/sizeof(regName[0])), name);
 }

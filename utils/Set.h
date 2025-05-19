@@ -19,6 +19,7 @@
 #include <set>
 #include <string>
 
+typedef const std::string cstr;
 ///
 /// @brief 集合类——使用位图表达集合运算
 ///
@@ -57,7 +58,7 @@ public:
     /// @brief 变换成字符串显示
     /// @return std::string 字符串
     ///
-    std::string toString();
+    cstr toString();
 
     ///
     /// @brief 交集运算

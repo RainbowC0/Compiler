@@ -20,8 +20,14 @@
 
 #include "AST.h"
 #include "Module.h"
+#include <sys/queue.h>
 
-typedef struct {LabelInstruction *a,*b;} dlab;
+struct db {
+    LabelInstruction *a, *b;
+    SLIST_ENTRY(db) entries;
+};
+
+SLIST_HEAD(dbhead, db);
 
 /// @brief AST遍历产生线性IR类
 class IRGenerator {
@@ -96,7 +102,7 @@ protected:
     /// @brief 标识符叶子节点翻译成线性中间IR
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
-    bool ir_leaf_node_var_id(ast_node * node);
+    bool ir_node_var_id(ast_node * node);
 
     /// @brief 无符号整数字面量叶子节点翻译成线性中间IR
     /// @param node AST节点
@@ -107,11 +113,6 @@ protected:
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_leaf_node_float(ast_node * node);
-
-    /// @brief 变量声明语句节点翻译成线性中间IR
-    /// @param node AST节点
-    /// @return 翻译是否成功，true：成功，false：失败
-    bool ir_declare_statment(ast_node * node);
 
     /// @brief 变量定声明节点翻译成线性中间IR
     /// @param node AST节点
@@ -154,5 +155,5 @@ private:
     Module * module;
 
     /// @brief 循环入口出口栈
-    std::vector<dlab> labs;
+    dbhead labs;
 };

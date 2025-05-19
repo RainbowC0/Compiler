@@ -50,24 +50,24 @@ ast_node* adjustCond(ast_node * node);
 %left ELSE
 
 // 分隔符 一词一类 不需要赋予语义属性
-%token T_L_BRACE T_R_BRACE
-%token T_COMMA
+%token '{' '}'
+%token ','
 
 // 运算符
-%left T_SEMICOLON
-%right T_ASSIGN T_ASSDIV T_ASSMUL T_ASSADD T_ASSSUB
+%left ';'
+%right '=' T_ASSDIV T_ASSMUL T_ASSADD T_ASSSUB
 %left T_LOR
 %left T_LAND
-%left <op_type> T_OR
-%left <op_type> T_XOR
-%left <op_type> T_AND
+%left <op_type> '|'
+%left <op_type> '^'
+%left <op_type> '&'
 %left <op_type> T_EQ T_NE
-%left <op_type> T_GT T_GE T_LT T_LE
+%left <op_type> '>' T_GE '<' T_LE
 %left <op_type> T_SL T_SR
-%left <op_type> T_ADD T_SUB
-%left <op_type> T_MUL T_DIV T_MOD
-%left <op_type> T_NOT
-%left T_L_PAREN T_R_PAREN
+%left <op_type> '+' '-'
+%left <op_type> '*' '/' '%'
+%left <op_type> '!'
+%left '(' ')'
 
 // 非终结符
 // %type指定文法的非终结符号，<>可指定文法属性
@@ -80,7 +80,7 @@ ast_node* adjustCond(ast_node * node);
 %type <node> Expr
 %type <node> LVal
 %type <node> VarDecl VarDeclExpr VarDef
-%type <node> AddExp UnaryExp PrimaryExp
+%type <node> CondExp RelExp MulExp AddExp UnaryExp PrimaryExp
 %type <node> RealParamList
 %type <type> BasicType
 //%type <type> FuncType
@@ -88,11 +88,10 @@ ast_node* adjustCond(ast_node * node);
 %type <node> For
 %type <node> While
 %type <node> DoWhile
-%type <node> RelExp
-%type <node> CondExp
 %type <node> FuncParam
 %type <node> FuncParams
 %type <op_type> AddOp
+%type <op_type> MulOp
 %type <op_type> RelOp
 %%
 
@@ -126,7 +125,7 @@ CompileUnit : FuncDef {
 	;
 
 // 函数定义，目前支持整数返回类型，不支持形参
-FuncDef : BasicType T_ID T_L_PAREN T_R_PAREN Block {
+FuncDef : BasicType T_ID '(' ')' Block {
 		// 函数返回类型
 		type_attr funcReturnType = $1;
 
@@ -143,28 +142,29 @@ FuncDef : BasicType T_ID T_L_PAREN T_R_PAREN Block {
 		// create_func_def函数内会释放funcId中指向的标识符空间，切记，之后不要再释放，之前一定要是通过strdup函数或者malloc分配的空间
 		$$ = create_func_def(funcReturnType, funcId, blockNode, formalParamsNode);
 	}
-	| BasicType T_ID T_L_PAREN FuncParams T_R_PAREN Block {
+	| BasicType T_ID '(' FuncParams ')' Block  {
+        $$ = create_func_def($1, $2, $6, nullptr);
 	}
 	;
 
 FuncParams : FuncParam {
 	}
-	| FuncParams T_COMMA FuncParam {
+	| FuncParams ',' FuncParam {
 	};
 
 FuncParam : BasicType T_ID {
 	};
 
-// 语句块的文法Block ： T_L_BRACE BlockItemList? T_R_BRACE
+// 语句块的文法Block ： '{' BlockItemList? '}'
 // 其中?代表可有可无，在bison中不支持，需要拆分成两个产生式
-// Block ： T_L_BRACE T_R_BRACE | T_L_BRACE BlockItemList T_R_BRACE
-Block : T_L_BRACE T_R_BRACE {
+// Block ： '{' '}' | '{' BlockItemList '}'
+Block : '{' '}' {
 		// 语句块没有语句
 
 		// 为了方便创建一个空的Block节点
 		$$ = create_contain_node(ASTOP(BLOCK));
 	}
-	| T_L_BRACE BlockItemList T_R_BRACE {
+	| '{' BlockItemList '}' {
 		// 语句块含有语句
 
 		// BlockItemList归约时内部创建Block节点，并把语句加入，这里不创建Block节点
@@ -200,37 +200,26 @@ BlockItem : Statement  {
 	;
 
 // 变量声明语句
-// 语法：varDecl: basicType varDef (T_COMMA varDef)* T_SEMICOLON
+// 语法：varDecl: basicType varDef (',' varDef)* ';'
 // 因Bison不支持闭包运算符，因此需要修改成左递归，修改后的文法为：
-// VarDecl : VarDeclExpr T_SEMICOLON
-// VarDeclExpr: BasicType VarDef | VarDeclExpr T_COMMA varDef
-VarDecl : VarDeclExpr T_SEMICOLON {
+// VarDecl : VarDeclExpr ';'
+// VarDeclExpr: BasicType VarDef | VarDeclExpr ',' varDef
+VarDecl : VarDeclExpr ';' {
 		$$ = $1;
 	}
 	;
 
 // 变量声明表达式，可支持逗号分隔定义多个
 VarDeclExpr: BasicType VarDef {
-
-		// 创建类型节点
-		ast_node * type_node = create_type_node($1);
-
-		// 创建变量定义节点
-		ast_node * decl_node = create_contain_node(ASTOP(VAR_DECL), type_node, $2);
+        ast_node * tp = create_type_node($1);
 
 		// 创建变量声明语句，并加入第一个变量
-		$$ = create_var_decl_stmt_node(decl_node);
+		$$ = create_contain_node(ASTOP(VAR_DECL), tp, $2);
 	}
-	| VarDeclExpr T_COMMA VarDef {
-
-		// 创建类型节点，这里从VarDeclExpr获取类型，前面已经设置
-		ast_node * type_node = ast_node::New($1->type);
-
-		// 创建变量定义节点
-		ast_node * decl_node = create_contain_node(ASTOP(VAR_DECL), type_node, $3);
+	| VarDeclExpr ',' VarDef {
 
 		// 插入到变量声明语句
-		$$ = $1->insert_son_node(decl_node);
+		$$ = $1->insert_son_node($3);
 	}
 	;
 
@@ -243,6 +232,11 @@ VarDef : T_ID {
 		// 对于字符型字面量的字符串空间需要释放，因词法用到了strdup进行了字符串复制
 		free($1.id);
 	}
+    | T_ID '=' Expr {
+        $$ = ast_node::New(var_id_attr{$1.id, $1.lineno});
+        $$->insert_son_node($3);
+        free($1.id);
+    }
 	;
 
 // 基本类型，目前只支持整型
@@ -251,17 +245,17 @@ BasicType: T_INT { $$ = $1; }
 	| T_VOID { $$ = $1; }
 	;
 
-// 语句文法：statement:RETURN expr T_SEMICOLON | lVal T_ASSIGN expr T_SEMICOLON
-// | block | expr? T_SEMICOLON
+// 语句文法：statement:RETURN expr ';' | lVal '=' expr ';'
+// | block | expr? ';'
 // 支持返回语句、赋值语句、语句块、表达式语句
 // 其中表达式语句可支持空语句，由于bison不支持?，修改成两条
-Statement : RETURN Expr T_SEMICOLON {
+Statement : RETURN Expr ';' {
 		// 返回语句
 
 		// 创建返回节点AST_OP_RETURN，其孩子为Expr，即$2
 		$$ = create_contain_node(ASTOP(RETURN), $2);
 	}
-	| LVal T_ASSIGN Expr T_SEMICOLON {
+	| LVal '=' Expr ';' {
 		// 赋值语句
 
 		// 创建一个AST_OP_ASSIGN类型的中间节点，孩子为LVal($1)和Expr($3)
@@ -272,9 +266,8 @@ Statement : RETURN Expr T_SEMICOLON {
 		// 内部已创建block节点，直接传递给Statement
 		$$ = $1;
 	}
-	| Expr T_SEMICOLON {
+	| Expr ';' {
 		// 表达式语句
-
 		// 内部已创建表达式，直接传递给Statement
 		$$ = $1;
 	}
@@ -290,13 +283,13 @@ Statement : RETURN Expr T_SEMICOLON {
 	| For {
 		$$ = $1;
 	}
-	| BREAK T_SEMICOLON {
+	| BREAK ';' {
 		$$ = new ast_node(ASTOP(BREAK));
 	}
-	| CONTINUE T_SEMICOLON {
+	| CONTINUE ';' {
 		$$ = new ast_node(ASTOP(CONTINUE));
 	}
-	| T_SEMICOLON {
+	| ';' {
 		// 空语句
 
 		// 直接返回空指针，需要再把语句加入到语句块时要注意判断，空语句不要加入
@@ -316,25 +309,28 @@ Expr : AddExp {
 // 由于bison不支持用闭包表达，因此需要拆分成左递归的形式
 // 改造后的左递归文法：
 // addExp : unaryExp | unaryExp addOp unaryExp | addExp addOp unaryExp
-AddExp : UnaryExp {
+AddExp : MulExp {
 		// 一目表达式
 		// 直接传递到归约后的节点
 		$$ = $1;
 	}
-	| AddExp AddOp UnaryExp { // TODO 隐式转换
+    | AddExp AddOp MulExp { // TODO 隐式转换
 		// 创建加减运算节点，孩子为AddExp($1)和UnaryExp($3)
 		$$ = create_contain_node(ast_operator_type($2), $1, $3);
-		printf("%d\n", $2);
 	}
 	;
 
+AddOp: '+' { $$ = (int)ASTOP(ADD); }
+	| '-' { $$ = (int)ASTOP(SUB); }
+    ;
 
+MulExp: UnaryExp { $$ = $1; }
+    | MulExp MulOp UnaryExp { $$ = create_contain_node(ast_operator_type($2), $1, $3); }
+    ;
 
-AddOp: T_ADD { $$ = (int)ASTOP(ADD); }
-	| T_SUB { $$ = (int)ASTOP(SUB); }
-	| T_MUL { $$ = (int)ASTOP(MUL); }
-	| T_DIV { $$ = (int)ASTOP(DIV); }
-	| T_MOD { $$ = (int)ASTOP(MOD); }
+MulOp: '*' { $$ = (int)ASTOP(MUL); }
+	| '/' { $$ = (int)ASTOP(DIV); }
+	| '%' { $$ = (int)ASTOP(MOD); }
 	;
 
 RelExp:
@@ -348,9 +344,9 @@ RelExp:
 
 RelOp: T_EQ { $$ = (int)ASTOP(EQ); }
 	| T_NE { $$ = (int)ASTOP(NE); }
-	| T_GT { $$ = (int)ASTOP(GT); }
+	| '>' { $$ = (int)ASTOP(GT); }
 	| T_GE { $$ = (int)ASTOP(GE); }
-	| T_LT { $$ = (int)ASTOP(LT); }
+	| '<' { $$ = (int)ASTOP(LT); }
 	| T_LE { $$ = (int)ASTOP(LE); }
 	;
 
@@ -364,16 +360,16 @@ CondExp:
 	}
 
 // 目前一元表达式可以为基本表达式、函数调用，其中函数调用的实参可有可无
-// 其文法为：unaryExp: primaryExp | T_ID T_L_PAREN realParamList? T_R_PAREN
+// 其文法为：unaryExp: primaryExp | T_ID '(' realParamList? ')'
 // 由于bison不支持？表达，因此变更后的文法为：
-// unaryExp: primaryExp | T_ID T_L_PAREN T_R_PAREN | T_ID T_L_PAREN realParamList T_R_PAREN
+// unaryExp: primaryExp | T_ID '(' ')' | T_ID '(' realParamList ')'
 UnaryExp : PrimaryExp {
 		// 基本表达式
 
 		// 传递到归约后的UnaryExp上
 		$$ = $1;
 	}
-	| T_ID T_L_PAREN T_R_PAREN {
+	| T_ID '(' ')' {
 		// 没有实参的函数调用
 
 		// 创建函数调用名终结符节点
@@ -389,7 +385,7 @@ UnaryExp : PrimaryExp {
 		$$ = create_func_call(name_node, paramListNode);
 
 	}
-	| T_ID T_L_PAREN RealParamList T_R_PAREN {
+	| T_ID '(' RealParamList ')' {
 		// 含有实参的函数调用
 
 		// 创建函数调用名终结符节点
@@ -404,26 +400,30 @@ UnaryExp : PrimaryExp {
 		// 创建函数调用节点，其孩子为被调用函数名和实参，实参不为空
 		$$ = create_func_call(name_node, paramListNode);
 	}
-	| T_ADD UnaryExp { $$ = $2; }
-	| T_SUB UnaryExp {
+	| '+' UnaryExp { $$ = $2; }
+	| '-' UnaryExp {
 		// TODO 浮点数
-		auto v = ast_node::New(digit_int_attr{0,$2->line_no});
-		$$ = create_contain_node(ASTOP(SUB), v, $2);
+        if ($2->node_type==ASTOP(LEAF_LITERAL_INT)) {
+            $2->integer_val = -$2->integer_val;
+            $$ = $2;
+        } else {
+            auto v = ast_node::New(digit_int_attr{0,$2->line_no});
+            $$ = create_contain_node(ASTOP(SUB), v, $2);
+        }
 	}
-	| T_NOT UnaryExp {
+	| '!' UnaryExp {
 		$$ = create_contain_node(ASTOP(NOT), $2);
 	}
 	;
 
 // 基本表达式支持无符号整型字面量、带括号的表达式、具有左值属性的表达式
-// 其文法为：primaryExp: T_L_PAREN expr T_R_PAREN | T_DIGIT | lVal
-PrimaryExp :  T_L_PAREN Expr T_R_PAREN {
+// 其文法为：primaryExp: '(' expr ')' | T_DIGIT | lVal
+PrimaryExp :  '(' Expr ')' {
 		// 带有括号的表达式
 		$$ = $2;
 	}
 	| T_DIGIT {
         	// 无符号整型字面量
-
 		// 创建一个无符号整型的终结符节点
 		$$ = ast_node::New($1);
 	}
@@ -439,14 +439,14 @@ PrimaryExp :  T_L_PAREN Expr T_R_PAREN {
 	;
 
 // 实参表达式支持逗号分隔的若干个表达式
-// 其文法为：realParamList: expr (T_COMMA expr)*
+// 其文法为：realParamList: expr (',' expr)*
 // 由于Bison不支持闭包运算符表达，修改成左递归形式的文法
-// 左递归文法为：RealParamList : Expr | 左递归文法为：RealParamList T_COMMA expr
+// 左递归文法为：RealParamList : Expr | 左递归文法为：RealParamList ',' expr
 RealParamList : Expr {
 		// 创建实参列表节点，并把当前的Expr节点加入
 		$$ = create_contain_node(ast_operator_type::AST_OP_FUNC_REAL_PARAMS, $1);
 	}
-	| RealParamList T_COMMA Expr {
+	| RealParamList ',' Expr {
 		// 左递归增加实参表达式
 		$$ = $1->insert_son_node($3);
 	}
@@ -464,25 +464,25 @@ LVal : T_ID {
 	}
 	;
 
-IfStmt : IF T_L_PAREN CondExp T_R_PAREN Statement ELSE Statement {
+IfStmt : IF '(' CondExp ')' Statement ELSE Statement {
 		$$ = create_contain_node(ASTOP(IF), $3, $5, $7);
 	}
-	| IF T_L_PAREN CondExp T_R_PAREN Statement %prec mn {
+	| IF '(' CondExp ')' Statement %prec mn {
 		$$ = create_contain_node(ASTOP(IF), $3, $5);
 	}
 	;
 
-While : WHILE T_L_PAREN CondExp T_R_PAREN Statement {
+While : WHILE '(' CondExp ')' Statement {
 		$$ = create_contain_node(ast_operator_type::AST_OP_WHILE, $3, $5);
 	}
 	;
 
-For : FOR T_L_PAREN Expr T_SEMICOLON CondExp T_SEMICOLON Expr T_R_PAREN Statement {
+For : FOR '(' Expr ';' CondExp ';' Expr ')' Statement {
 		//$$ = create_contain_node(ast_operator_type::AST_OP_FOR, $3, $5, $7, $9);
 	}
 	;
 
-DoWhile : DO Statement WHILE T_L_PAREN CondExp T_R_PAREN T_SEMICOLON {
+DoWhile : DO Statement WHILE '(' CondExp ')' ';' {
 		$$ = create_contain_node(ast_operator_type::AST_OP_DOWHILE, $2, $5);
 	}
 	;

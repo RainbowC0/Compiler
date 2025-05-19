@@ -135,6 +135,7 @@ set(IR_SRCS
 	ir/User.cpp
 	ir/Value.cpp
 	ir/Types/FloatType.cpp
+    ir/Values/ConstInt.cpp
 )
 
 # 符号表等共通化代码集合
@@ -240,7 +241,7 @@ add_custom_command(
 	OUTPUT
 	${BISON_OUTPUT}
 	COMMAND
-	${BISON_EXECUTABLE} -Wcounterexamples -d --debug ${BISON_EXTRA_OPTION} -o ${FLEX_GEN_DIR}/MiniCBison.cpp --defines=${FLEX_GEN_DIR}/MiniCBison.h ${BISON_INPUT}
+	${BISON_EXECUTABLE} -Wcounterexamples --debug ${BISON_EXTRA_OPTION} -o ${FLEX_GEN_DIR}/MiniCBison.cpp --defines=${FLEX_GEN_DIR}/MiniCBison.h ${BISON_INPUT}
 	DEPENDS
 	${BISON_INPUT}
 	WORKING_DIRECTORY

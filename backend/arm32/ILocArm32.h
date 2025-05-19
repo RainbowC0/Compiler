@@ -20,8 +20,10 @@
 
 #include "Instruction.h"
 #include "Module.h"
+#include <sys/queue.h>
 
 #define Instanceof(res, type, var) auto res = dynamic_cast<type>(var)
+typedef const std::string &cstr;
 
 /// @brief 底层汇编指令：ARM32
 struct ArmInst {
@@ -53,12 +55,12 @@ struct ArmInst {
     /// @param s1
     /// @param s2
     /// @param add
-    ArmInst(std::string op,
-            std::string rs = "",
-            std::string s1 = "",
-            std::string s2 = "",
-            std::string cond = "",
-            std::string extra = "");
+    ArmInst(cstr op,
+            cstr rs = "",
+            cstr s1 = "",
+            cstr s2 = "",
+            cstr cond = "",
+            cstr extra = "");
 
     /// @brief 指令更新
     /// @param op
@@ -66,12 +68,12 @@ struct ArmInst {
     /// @param s1
     /// @param s2
     /// @param add
-    void replace(std::string op,
-                 std::string rs = "",
-                 std::string s1 = "",
-                 std::string s2 = "",
-                 std::string cond = "",
-                 std::string extra = "");
+    void replace(cstr op,
+                 cstr rs = "",
+                 cstr s1 = "",
+                 cstr s2 = "",
+                 cstr cond = "",
+                 cstr extra = "");
 
     /// @brief 设置死指令
     void setDead();
@@ -81,11 +83,13 @@ struct ArmInst {
     std::string outPut();
 };
 
+typedef std::list<ArmInst*> ArmInsts;
+
 /// @brief 底层汇编序列-ARM32
 class ILocArm32 {
 
     /// @brief ARM汇编序列
-    std::list<ArmInst *> code;
+    ArmInsts code;
 
     /// @brief 符号表
     Module * module;
@@ -118,7 +122,7 @@ public:
     /// @brief 注释指令，不包含分号
     /// @param str 注释内容
     ///
-    void comment(const std::string &str);
+    void comment(cstr str);
 
     /// @brief 数字变字符串，若flag为真，则变为立即数寻址（加#）
     /// @param num 立即数
@@ -128,7 +132,7 @@ public:
 
     /// @brief 获取当前的代码序列
     /// @return 代码序列
-    std::list<ArmInst *> & getCode();
+    ArmInsts & getCode();
 
     /// @brief Load指令，基址寻址 ldr r0,[fp,#100]
     /// @param rs_reg_no 结果寄存器
@@ -145,20 +149,20 @@ public:
 
     /// @brief 标签指令
     /// @param name
-    void label(const std::string &name);
+    void label(cstr name);
 
     /// @brief 一个操作数指令
     /// @param op 操作码
     /// @param rs 操作数
-    void inst(const std::string &op, const std::string &rs);
+    void inst(cstr op, cstr rs);
 
     /// @brief 一个操作数指令
     /// @param op 操作码
     /// @param rs 操作数
     /// @param arg1 源操作数
-    void inst(const std::string &op,
-        const std::string &rs,
-        const std::string &arg1);
+    void inst(cstr op,
+        cstr rs,
+        cstr arg1);
 
     /// @brief 一个操作数指令
     /// @param op 操作码

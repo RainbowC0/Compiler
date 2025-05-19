@@ -37,13 +37,16 @@
 #define CHECK_NODE(name, son) name=ir_visit_ast_node(son);\
     if (!name) return(false)
 
-static IRInstOperator irtype(ast_operator_type type);
-inline void backPatch(std::vector<LabelInstruction**>*a, LabelInstruction*b) {
+extern "C"
+{
+static inline IRInstOperator irtype(ast_operator_type type);
+static inline void backPatch(std::vector<LabelInstruction**>*a, LabelInstruction*b) {
     for (auto i:*a) {
         *i = b;
     }
 }
-static std::vector<LabelInstruction**> *merge(std::vector<LabelInstruction**>*, std::vector<LabelInstruction**>*);
+static inline std::vector<LabelInstruction**> *merge(std::vector<LabelInstruction**>*, std::vector<LabelInstruction**>*);
+}
 
 /// @brief 构造函数
 /// @param _root AST的根
@@ -52,7 +55,7 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
 {
     /* 叶子节点 */
     ast2ir_handlers[ASTOP(LEAF_LITERAL_INT)] = &IRGenerator::ir_leaf_node_uint;
-    ast2ir_handlers[ASTOP(LEAF_VAR_ID)] = &IRGenerator::ir_leaf_node_var_id;
+    ast2ir_handlers[ASTOP(VAR_ID)] = &IRGenerator::ir_node_var_id;
     ast2ir_handlers[ASTOP(LEAF_TYPE)] = &IRGenerator::ir_leaf_node_type;
 
     /* 表达式运算， 加减 */
@@ -87,7 +90,6 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_FUNC_FORMAL_PARAMS] = &IRGenerator::ir_function_formal_params;
 
     /* 变量定义语句 */
-    ast2ir_handlers[ast_operator_type::AST_OP_DECL_STMT] = &IRGenerator::ir_declare_statment;
     ast2ir_handlers[ast_operator_type::AST_OP_VAR_DECL] = &IRGenerator::ir_variable_declare;
 
     /* 语句块 */
@@ -99,6 +101,8 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_IF] = &IRGenerator::ir_branch;
     ast2ir_handlers[ast_operator_type::AST_OP_WHILE] = &IRGenerator::ir_loop;
     ast2ir_handlers[ASTOP(DOWHILE)] = &IRGenerator::ir_loop;
+
+    SLIST_INIT(&labs);
 }
 
 /// @brief 遍历抽象语法树产生线性IR，保存到IRCode中
@@ -322,27 +326,26 @@ bool IRGenerator::ir_function_call(ast_node * node)
     if (node->sons.size()>1) {
         ast_node *paramsNode = node->sons[1];
         if (!paramsNode->sons.empty()) {
-
-        int32_t argsCount = (int32_t) paramsNode->sons.size();
-
-        // 当前函数中调用函数实参个数最大值统计，实际上是统计实参传参需在栈中分配的大小
-        // 因为目前的语言支持的int和float都是四字节的，只统计个数即可
-        if (argsCount > currentFunc->getMaxFuncCallArgCnt()) {
-            currentFunc->setMaxFuncCallArgCnt(argsCount);
-        }
-
-        // 遍历参数列表，孩子是表达式
-        // 这里自左往右计算表达式
-        for (auto son: paramsNode->sons) {
-
-            // 遍历Block的每个语句，进行显示或者运算
-            ast_node * CHECK_NODE(temp, son);
-
-            realParams.push_back(temp->val);
-            node->blockInsts.addInst(temp->blockInsts);
+            int32_t argsCount = (int32_t) paramsNode->sons.size();
+    
+            // 当前函数中调用函数实参个数最大值统计，实际上是统计实参传参需在栈中分配的大小
+            // 因为目前的语言支持的int和float都是四字节的，只统计个数即可
+            if (argsCount > currentFunc->getMaxFuncCallArgCnt()) {
+                currentFunc->setMaxFuncCallArgCnt(argsCount);
+            }
+    
+            // 遍历参数列表，孩子是表达式
+            // 这里自左往右计算表达式
+            for (auto son: paramsNode->sons) {
+    
+                // 遍历Block的每个语句，进行显示或者运算
+                ast_node * CHECK_NODE(temp, son);
+    
+                realParams.push_back(temp->val);
+                node->blockInsts.addInst(temp->blockInsts);
+            }
         }
     }
-}
 
     // TODO 这里请追加函数调用的语义错误检查，这里只进行了函数参数的个数检查等，其它请自行追加。
     if (realParams.size() != calledFunction->getParams().size()) {
@@ -530,7 +533,7 @@ bool IRGenerator::ir_leaf_node_type(ast_node * node)
 /// @brief 标识符叶子节点翻译成线性中间IR，变量声明的不走这个语句
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
-bool IRGenerator::ir_leaf_node_var_id(ast_node * node)
+bool IRGenerator::ir_node_var_id(ast_node * node)
 {
     Value * val;
 
@@ -552,7 +555,7 @@ bool IRGenerator::ir_leaf_node_uint(ast_node * node)
     ConstInt * val;
 
     // 新建一个整数常量Value
-    val = module->newConstInt((int32_t) node->integer_val);
+    val = module->newConstInt(node->integer_val);
 
     node->val = val;
 
@@ -562,33 +565,28 @@ bool IRGenerator::ir_leaf_node_uint(ast_node * node)
 /// @brief 变量声明语句节点翻译成线性中间IR
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
-bool IRGenerator::ir_declare_statment(ast_node * node)
-{
-    bool result = false;
-
-    for (auto & child: node->sons) {
-
-        // 遍历每个变量声明
-        result = ir_variable_declare(child);
-        if (!result) {
-            break;
-        }
-    }
-
-    return result;
-}
-
-/// @brief 变量定声明节点翻译成线性中间IR
-/// @param node AST节点
-/// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_variable_declare(ast_node * node)
 {
-    // 共有两个孩子，第一个类型，第二个变量名
+    Function *func = module->getCurrentFunction();
+    Type *tp = node->sons[0]->type;
 
-    // TODO 这里可强化类型等检查
-
-    node->val = module->newVarValue(node->sons[0]->type, node->sons[1]->name);
-
+    // 函数内定义
+    for (int i=1, j=node->sons.size(); i<j; i++) {
+        // 遍历每个变量声明
+        // TODO 类型检查
+        ast_node *child = node->sons[i];
+        child->val = module->newVarValue(tp, child->name);
+        if (!child->sons.empty()) {
+            ast_node *CHECK_NODE(s, child->sons[0]);
+            if (func) {
+                node->blockInsts.addInst(s->blockInsts);
+                node->blockInsts.addInst(new MoveInstruction(func, child->val, s->val));
+            } else if (Instanceof(cexp, ConstInt*, s->val)) {
+                Instanceof(gVal, GlobalVariable*, child->val);
+                gVal->intVal = cexp->getVal();
+            }
+        }
+    }
     return true;
 }
 
@@ -611,21 +609,17 @@ bool IRGenerator::ir_branch(ast_node *node) {
     cond->truelist->clear();
     cond->falselist->clear();
 
-    // if1:
-    node->blockInsts.addInst(lab1);
-    node->blockInsts.addInst(if1->blockInsts);
-
+    // if0:
     if (if0) {
-        lab1 = new LabelInstruction(func);
-        // br exit
-        node->blockInsts.addInst(new GotoInstruction(func, lab1));
-        backPatch(cond->falselist, lab0);
-        // if0:
         node->blockInsts.addInst(lab0);
         node->blockInsts.addInst(if0->blockInsts);
-        lab0 = lab1;
-        // lab0(exit):
+        lab0 = new LabelInstruction(func);
+        // br exit
+        node->blockInsts.addInst(new GotoInstruction(func, lab0));
     }
+
+    node->blockInsts.addInst(lab1);
+    node->blockInsts.addInst(if1->blockInsts);
     // if0:
     node->blockInsts.addInst(lab0);
     
@@ -646,7 +640,7 @@ bool IRGenerator::ir_loop(ast_node *node) {
     backPatch(cond->truelist, entry);
     cond->truelist->clear();
 
-    dlab mlabs;
+    db mlabs;
 
     LabelInstruction *expr = nullptr;
     if (isWhile) { // 添加goto跳转到条件式
@@ -658,9 +652,9 @@ bool IRGenerator::ir_loop(ast_node *node) {
 
     auto ext = new LabelInstruction(func);
     mlabs.b = ext;
-    labs.push_back(mlabs);
+    SLIST_INSERT_HEAD(&labs, &mlabs, entries);
     ast_node *CHECK_NODE(body, node->sons[isWhile]);
-    labs.pop_back();
+    SLIST_REMOVE_HEAD(&labs, entries);
 
     node->blockInsts.addInst(entry);
     node->blockInsts.addInst(body->blockInsts);
@@ -721,23 +715,23 @@ bool IRGenerator::ir_not(ast_node *node) {
     node->blockInsts.addInst(inst=new BinaryInstruction(func,
                                     IROP(XOR),
                                     inst,
-                                    module->newConstInt(0),
+                                    module->newConstInt(1),
                                     IntegerType::getTypeBool()));
     node->val = inst;
     return true;
 }
 
 bool IRGenerator::ir_jump(ast_node *node) {
-    if (labs.empty())
+    if (SLIST_EMPTY(&labs))
         return false;
-    dlab d = labs.back();
+    db *d = SLIST_FIRST(&labs);
     node->blockInsts.addInst(
         new GotoInstruction(module->getCurrentFunction(),
-            node->node_type==ASTOP(BREAK)?d.b:d.a));
+            node->node_type==ASTOP(BREAK)?d->b:d->a));
     return true;
 }
 
-static IRInstOperator irtype(ast_operator_type type) {
+IRInstOperator irtype(ast_operator_type type) {
     switch (type) {
         case ASTOP(ADD): return IROP(IADD);
         case ASTOP(SUB): return IROP(ISUB);

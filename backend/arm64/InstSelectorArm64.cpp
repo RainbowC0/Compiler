@@ -68,6 +68,8 @@ InstSelectorArm64::InstSelectorArm64(vector<Instruction *> & _irCode,
     translator_handlers[IRINST_OP_IGE] = &InstSelectorArm64::translate_bi_op;
     translator_handlers[IRINST_OP_ILT] = &InstSelectorArm64::translate_bi_op;
     translator_handlers[IRINST_OP_ILE] = &InstSelectorArm64::translate_bi_op;
+
+    translator_handlers[IRINST_OP_XOR] = &InstSelectorArm64::translate_xor_int32;
 }
 
 ///
@@ -153,11 +155,11 @@ void InstSelectorArm64::translate_goto(Instruction * inst)
         // 条件分支
         if (lstcmp != IRINST_OP_MAX) {
             iloc.branch(CSTR(lstcmp), gotoInst->iftrue->getName());
-            iloc.branch(CSTRJ(lstcmp), gotoInst->iffalse->getName());
+            iloc.jump(gotoInst->iffalse->getName());
             lstcmp = IRINST_OP_MAX;
         } else {
-            iloc.branch("eq", gotoInst->iffalse->getName());
             iloc.branch("ne", gotoInst->iftrue->getName());
+            iloc.jump(gotoInst->iffalse->getName());
         }
     } else
         // 无条件跳转
@@ -182,7 +184,8 @@ void InstSelectorArm64::translate_entry(Instruction * inst)
                   "[sp,#-16]!");
     }
     if (i<=m)
-        iloc.inst("str","[sp,#-16]!");
+        iloc.inst("str","x"+std::to_string(protectedReg[i]),
+                "[sp,#-16]!");
     
     // 为fun分配栈帧，含局部变量、函数调用值传递的空间等
     iloc.allocStack(func, ARM64_TMP_REG_NO);
@@ -201,22 +204,25 @@ void InstSelectorArm64::translate_exit(Instruction * inst)
     }
 
     // 恢复栈空间
-    iloc.inst("add", "sp", "sp", iloc.toStr(func->getMaxDep()));
+    int32_t dp = func->getMaxDep();
+    if (dp)
+        iloc.inst("add", "sp", "sp", iloc.toStr(dp));
 
     auto & protectedReg = func->getProtectedReg();
     if (!protectedReg.empty()) {
-        int i=0, m = protectedReg.size() - 1;
-        while (i<m) {
-            int32_t xa = protectedReg[i], xb = protectedReg[i+1];
-            i += 2;
+        int m = protectedReg.size();
+        if (m&1)
+            iloc.inst("ldr", "x"+std::to_string(protectedReg[m-1]),
+                      "[sp],#16");
+        int i = (m-2)|1;
+        while (i>0) {
+            int32_t xa = protectedReg[i-1], xb = protectedReg[i];
+            i -= 2;
             iloc.inst("ldp",
                       "x"+std::to_string(xa),
                       "x"+std::to_string(xb),
-                      "[sp], 16");
+                      "[sp],#16");
         }
-        if (i<=m)
-            iloc.inst("ldr", "x"+std::to_string(protectedReg[i]),
-                      "[sp], 16");
     }
 
     iloc.inst("ret","");
@@ -278,7 +284,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, string operat
     if (arg1_reg_no == -1) {
 
         // 分配一个寄存器r8
-        load_arg1_reg_no = simpleRegisterAllocator.Allocate(arg1);
+        load_arg1_reg_no = ARM64_TMP_REG_NO;//simpleRegisterAllocator.Allocate(arg1);
 
         // arg1 -> r8，这里可能由于偏移不满足指令的要求，需要额外分配寄存器
         iloc.load_var(load_arg1_reg_no, arg1);
@@ -290,7 +296,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, string operat
     if (arg2_reg_no == -1) {
 
         // 分配一个寄存器r9
-        load_arg2_reg_no = simpleRegisterAllocator.Allocate(arg2);
+        load_arg2_reg_no = ARM64_TMP_REG_NO2;//simpleRegisterAllocator.Allocate(arg2);
 
         // arg2 -> r9
         iloc.load_var(load_arg2_reg_no, arg2);
@@ -301,7 +307,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, string operat
     // 看结果变量是否是寄存器，若不是则需要分配一个新的寄存器来保存运算的结果
     if (result_reg_no == -1) {
         // 分配一个寄存器r10，用于暂存结果
-        load_result_reg_no = simpleRegisterAllocator.Allocate(result);
+        load_result_reg_no = ARM64_TMP_REG_NO2;//simpleRegisterAllocator.Allocate(result);
     } else {
         load_result_reg_no = result_reg_no;
     }
@@ -322,9 +328,9 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, string operat
     }
 
     // 释放寄存器
-    simpleRegisterAllocator.free(arg1);
-    simpleRegisterAllocator.free(arg2);
-    simpleRegisterAllocator.free(result);
+    //simpleRegisterAllocator.free(arg1);
+    //simpleRegisterAllocator.free(arg2);
+    //simpleRegisterAllocator.free(result);
 }
 
 /// @brief 整数加法指令翻译成ARM64汇编
@@ -359,14 +365,43 @@ void InstSelectorArm64::translate_bi_op(Instruction *inst) {
         case IRINST_OP_IEQ:
         case IRINST_OP_INE:
         case IRINST_OP_IGT:
+        case IRINST_OP_ILE:
         case IRINST_OP_IGE:
         case IRINST_OP_ILT:
-        case IRINST_OP_ILE:
-            lstcmp = inst->getOp();
-            translate_two_operator(inst, "subs");
-            return;
+            {
+                lstcmp = inst->getOp();
+                Instanceof(v, ConstInt*, inst->getOperand(1));
+                // TODO 检查参数1
+                if (v && v->getVal()==0) {
+                    ArmInst *it = iloc.getCode().back();
+                    if (it->opcode=="add"||it->opcode=="sub")
+                        it->opcode += "s";
+                } else
+                translate_two_operator(inst, "subs");
+            }
         default: return;
     }
+}
+
+void InstSelectorArm64::translate_xor_int32(Instruction *inst) {
+    Instanceof(l, Instruction*, inst->getOperand(0));
+    Instanceof(v, ConstInt*, inst->getOperand(1));
+    IRInstOperator ir;
+    if (v && l && v->getVal()==1 && (ir=l->getOp()) >= IRINST_OP_IEQ && ir <= IRINST_OP_ILT) {
+        int32_t regId = inst->getRegId(), load_regId;
+        if (regId == -1) {
+            load_regId = simpleRegisterAllocator.Allocate(inst);
+        } else {
+            load_regId = regId;
+        }
+        iloc.inst("cset", PlatformArm64::regName[load_regId], CSTR(ir));
+        if (regId == -1) {
+            iloc.store_var(load_regId, inst, ARM64_FP_REG_NO);
+        }
+        simpleRegisterAllocator.free(inst);
+        return;
+    }
+    translate_two_operator(inst, "eor");
 }
 
 /// @brief 函数调用指令翻译成ARM64汇编
@@ -393,10 +428,14 @@ void InstSelectorArm64::translate_call(Instruction * inst)
         simpleRegisterAllocator.Allocate(1);
         simpleRegisterAllocator.Allocate(2);
         simpleRegisterAllocator.Allocate(3);
+        simpleRegisterAllocator.Allocate(4);
+        simpleRegisterAllocator.Allocate(5);
+        simpleRegisterAllocator.Allocate(6);
+        simpleRegisterAllocator.Allocate(7);
 
         // 前四个的后面参数采用栈传递
         int esp = 0;
-        for (int32_t k = 4; k < operandNum; k++) {
+        for (int32_t k = 8; k < operandNum; k++) {
 
             auto arg = callInst->getOperand(k);
 
@@ -413,20 +452,24 @@ void InstSelectorArm64::translate_call(Instruction * inst)
             delete assignInst;
         }
 
-        for (int32_t k = 0; k < operandNum && k < 4; k++) {
+        for (int32_t k = 0, d=0; k < operandNum && k < 8; k++) {
 
             auto arg = callInst->getOperand(k);
+            if (arg == callInst) {
+                continue;
+            }
 
             // 检查实参的类型是否是临时变量。
             // 如果是临时变量，该变量可更改为寄存器变量即可，或者设置寄存器号
             // 如果不是，则必须开辟一个寄存器变量，然后赋值即可
 
-            Instruction * assignInst = new MoveInstruction(func, PlatformArm64::intRegVal[k], arg);
+            Instruction * assignInst = new MoveInstruction(func, PlatformArm64::intRegVal[d], arg);
 
             // 翻译赋值指令
             translate_assign(assignInst);
 
             delete assignInst;
+            d++;
         }
     }
 
@@ -437,8 +480,12 @@ void InstSelectorArm64::translate_call(Instruction * inst)
         simpleRegisterAllocator.free(1);
         simpleRegisterAllocator.free(2);
         simpleRegisterAllocator.free(3);
+        simpleRegisterAllocator.free(4);
+        simpleRegisterAllocator.free(5);
+        simpleRegisterAllocator.free(6);
+        simpleRegisterAllocator.free(7);
     }
-
+    /*
     // 赋值指令
     if (callInst->hasResultValue()) {
 
@@ -449,7 +496,7 @@ void InstSelectorArm64::translate_call(Instruction * inst)
         translate_assign(assignInst);
 
         delete assignInst;
-    }
+    }*/
 
     // 函数调用后清零，使得下次可正常统计
     realArgCount = 0;

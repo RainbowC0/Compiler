@@ -15,7 +15,7 @@
 ///
 #pragma once
 
-#include <list>
+//#include <list>
 #include <string>
 
 #include "Instruction.h"
@@ -23,70 +23,13 @@
 #include "ILocArm32.h"
 
 #define Instanceof(res, type, var) auto res = dynamic_cast<type>(var)
-
-/// @brief 底层汇编指令：ARM32
-/*struct ArmInst {
-
-    /// @brief 操作码
-    std::string opcode;
-
-    /// @brief 条件
-    std::string cond;
-
-    /// @brief 结果
-    std::string result;
-
-    /// @brief 源操作数1
-    std::string arg1;
-
-    /// @brief 源操作数2
-    std::string arg2;
-
-    /// @brief 附加信息
-    std::string addition;
-
-    /// @brief 标识指令是否无效
-    bool dead;
-
-    /// @brief 构造函数
-    /// @param op
-    /// @param rs
-    /// @param s1
-    /// @param s2
-    /// @param add
-    ArmInst(const std::string &op,
-            const std::string &rs = "",
-            const std::string &s1 = "",
-            const std::string &s2 = "",
-            const std::string &cond = "",
-            const std::string &extra = "");
-
-    /// @brief 指令更新
-    /// @param op
-    /// @param rs
-    /// @param s1
-    /// @param s2
-    /// @param add
-    void replace(const std::string &op,
-                 const std::string &rs = "",
-                 const std::string &s1 = "",
-                 const std::string &s2 = "",
-                 const std::string &cond = "",
-                 const std::string &extra = "");
-
-    /// @brief 设置死指令
-    void setDead();
-
-    /// @brief 指令字符串输出函数
-    /// @return
-    std::string outPut();
-};*/
+typedef const std::string &cstr;
 
 /// @brief 底层汇编序列-ARM32
 class ILocArm64 {
 
     /// @brief ARM汇编序列
-    std::list<ArmInst *> code;
+    ArmInsts code;
 
     /// @brief 符号表
     Module * module;
@@ -99,7 +42,7 @@ class ILocArm64 {
     /// @brief 加载符号值 ldr r0,=g; ldr r0,[r0]
     /// @param rsReg 结果寄存器号
     /// @param name Label名字
-    void load_symbol(int rs_reg_no, std::string name);
+    void load_symbol(int rs_reg_no, cstr name);
 
     /// @brief 加载栈内变量地址
     /// @param rsReg 结果寄存器号
@@ -119,7 +62,7 @@ public:
     /// @brief 注释指令，不包含分号
     /// @param str 注释内容
     ///
-    void comment(const std::string &str);
+    void comment(cstr str);
 
     /// @brief 数字变字符串，若flag为真，则变为立即数寻址（加#）
     /// @param num 立即数
@@ -129,7 +72,7 @@ public:
 
     /// @brief 获取当前的代码序列
     /// @return 代码序列
-    std::list<ArmInst *> & getCode();
+    ArmInsts & getCode();
 
     /// @brief Load指令，基址寻址 ldr r0,[fp,#100]
     /// @param rs_reg_no 结果寄存器
@@ -146,30 +89,30 @@ public:
 
     /// @brief 标签指令
     /// @param name
-    void label(const std::string &name);
+    void label(cstr name);
 
     /// @brief 一个操作数指令
     /// @param op 操作码
     /// @param rs 操作数
-    void inst(const std::string &op, const std::string &rs);
+    void inst(cstr op, cstr rs);
 
     /// @brief 一个操作数指令
     /// @param op 操作码
     /// @param rs 操作数
     /// @param arg1 源操作数
-    void inst(const std::string &op,
-        const std::string &rs,
-        const std::string &arg1);
+    void inst(cstr op,
+        cstr rs,
+        cstr arg1);
 
     /// @brief 一个操作数指令
     /// @param op 操作码
     /// @param rs 操作数
     /// @param arg1 源操作数
     /// @param arg2 源操作数
-    void inst(const std::string &op,
-        const std::string &rs,
-        const std::string &arg1,
-        const std::string &arg2);
+    void inst(cstr op,
+        cstr rs,
+        cstr arg1,
+        cstr arg2);
 
     /// @brief 加载变量到寄存器
     /// @param rs_reg_no 结果寄存器
@@ -194,7 +137,7 @@ public:
 
     /// @brief 调用函数fun
     /// @param fun
-    void call_fun(const std::string &name);
+    void call_fun(cstr name);
 
     /// @brief 分配栈帧
     /// @param func 函数
@@ -212,8 +155,8 @@ public:
     /// @brief 无条件跳转指令
     /// @param label 目标Label名称
     ///
-    void jump(const std::string &label);
-    void branch(const std::string &cond, const std::string &label);
+    void jump(cstr label);
+    void branch(cstr cond, cstr label);
 
     /// @brief 输出汇编
     /// @param file 输出的文件指针

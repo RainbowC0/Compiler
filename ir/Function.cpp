@@ -80,25 +80,18 @@ void Function::toString(std::string & str)
     }
 
     // 输出函数头
-    str = "define " + getReturnType()->toString() + " " + getIRName() + "(";
+    str = "define dso_local " + getReturnType()->toString() + " " + getIRName() + "(";
 
-    bool firstParam = false;
-    for (auto & param: params) {
-
-        if (!firstParam) {
-            firstParam = true;
-        } else {
-            str += ", ";
-        }
-
-        std::string param_str = param->getType()->toString() + param->getIRName();
-
-        str += param_str;
+    int i=0, l = params.size();
+    if (i<l) goto ENT;
+    for (; i<l; i++) {
+        str += ", ";
+ENT:
+        FormalParam *param = params[i];
+        str += param->getType()->toString() + param->getIRName();
     }
 
-    str += ")\n";
-
-    str += "{\n";
+    str += ") #0 {\n";
 
     // 输出局部变量的名字与IR名字
     for (auto & var: this->varsVector) {
@@ -106,7 +99,7 @@ void Function::toString(std::string & str)
         // 局部变量和临时变量需要输出declare语句
         str += "\tdeclare " + var->getType()->toString() + " " + var->getIRName();
 
-        std::string extraStr;
+        //std::string extraStr;
         std::string realName = var->getName();
         if (!realName.empty()) {
             str += " ; " + std::to_string(var->getScopeLevel()) + ":" + realName;

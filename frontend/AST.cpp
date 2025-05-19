@@ -57,7 +57,7 @@ ast_node::ast_node(digit_real_attr attr) : ast_node(ASTOP(LEAF_LITERAL_FLOAT), F
 
 /// @brief 针对标识符ID的叶子构造函数
 /// @param attr 字符型字面量
-ast_node::ast_node(var_id_attr attr) : ast_node(ASTOP(LEAF_VAR_ID), VoidType::getType(), attr.lineno)
+ast_node::ast_node(var_id_attr attr) : ast_node(ASTOP(VAR_ID), VoidType::getType(), attr.lineno)
 {
     name = attr.id;
 }
@@ -66,7 +66,7 @@ ast_node::ast_node(var_id_attr attr) : ast_node(ASTOP(LEAF_VAR_ID), VoidType::ge
 /// @param _id 标识符ID
 /// @param _line_no 行号
 ast_node::ast_node(std::string _id, int64_t _line_no)
-    : ast_node(ast_operator_type::AST_OP_LEAF_VAR_ID, VoidType::getType(), _line_no)
+    : ast_node(ast_operator_type::AST_OP_VAR_ID, VoidType::getType(), _line_no)
 {
     name = _id;
 }
@@ -80,12 +80,11 @@ bool ast_node::isLeafNode()
     switch (this->node_type) {
         case ASTOP(LEAF_LITERAL_INT):
         case ASTOP(LEAF_LITERAL_FLOAT):
-        case ASTOP(LEAF_VAR_ID):
         case ASTOP(LEAF_TYPE):
             is_leaf = true;
             break;
         default:
-            is_leaf = false;
+            is_leaf = this->sons.empty();
             break;
     }
 
@@ -341,6 +340,7 @@ ast_node * create_func_call(ast_node * funcname_node, ast_node * params_node)
 /// @param first_child 第一个变量定义节点，其类型为AST_OP_VAR_DECL
 /// @return ast_node* 变量声明语句节点
 ///
+/*
 ast_node * create_var_decl_stmt_node(ast_node * first_child)
 {
     // 创建变量声明语句
@@ -355,7 +355,7 @@ ast_node * create_var_decl_stmt_node(ast_node * first_child)
     }
 
     return stmt_node;
-}
+}*/
 
 ast_node * createVarDeclNode(Type * type, var_id_attr & id)
 {
@@ -389,6 +389,7 @@ ast_node * createVarDeclNode(type_attr & type, var_id_attr & id)
 /// @param id 变量的名字
 /// @return ast_node* 变量声明语句节点
 ///
+/*
 ast_node * create_var_decl_stmt_node(type_attr & type, var_id_attr & id)
 {
     // 创建变量定义节点
@@ -403,7 +404,7 @@ ast_node * create_var_decl_stmt_node(type_attr & type, var_id_attr & id)
     (void) stmt_node->insert_son_node(decl_node);
 
     return stmt_node;
-}
+}*/
 
 ///
 /// @brief 向变量声明语句中追加变量声明

@@ -32,7 +32,7 @@
 ///
 /// @brief AST节点的类型。C++专门因为枚举类来区分C语言的结构体
 ///
-enum class ast_operator_type : int {
+enum class ast_operator_type : int8_t {
 
     /* 以下为AST的叶子节点 */
 
@@ -43,7 +43,7 @@ enum class ast_operator_type : int {
     AST_OP_LEAF_LITERAL_FLOAT,
 
     /// @brief 变量ID叶子节点
-    AST_OP_LEAF_VAR_ID,
+    AST_OP_VAR_ID,
 
     /// @brief 复杂类型的节点
     AST_OP_LEAF_TYPE,
@@ -79,9 +79,6 @@ enum class ast_operator_type : int {
 
     /// @brief 赋值语句运算符
     AST_OP_ASSIGN,
-
-    /// @brief 变量声明语句
-    AST_OP_DECL_STMT,
 
     /// @brief 变量声明
     AST_OP_VAR_DECL,

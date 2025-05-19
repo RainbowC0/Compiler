@@ -31,6 +31,8 @@
 #define ARM64_LR_REG_NO 30
 #define ARM64_FP "x29"
 
+#define ARM64_ZR_REG_NO 32
+
 /// @brief ARM32平台信息
 class PlatformArm64 {
 
@@ -60,14 +62,14 @@ public:
     static bool isReg(const std::string &name);
 
     /// @brief 最大寄存器数目
-    static const int maxRegNum = 32-0;
+    static const int maxRegNum = 32;
 
     /// @brief 可使用的通用寄存器的个数r0-r10
     static const int maxUsableRegNum = 16;
 
-    /// @brief 寄存器的名字，r0-r15
-    static const std::string regName[maxRegNum];
+    /// @brief 寄存器的名字，x0-x30,sp,zr
+    static const std::string regName[maxRegNum+1];
 
     /// @brief 对寄存器R0分配Value，记录位置
-    static RegVariable * intRegVal[PlatformArm64::maxRegNum];
+    static RegVariable * intRegVal[maxRegNum];
 };

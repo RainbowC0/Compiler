@@ -24,9 +24,13 @@
 ///
 /// @brief 整型常量类
 ///
+
+//static int32_t zeroReg = -1;
+
 class ConstInt : public Constant {
 
 public:
+    static int32_t zeroReg;
     ///
     /// @brief 指定值的常量
     /// \param val
@@ -47,10 +51,7 @@ public:
     /// @brief 获取值
     /// @return int32_t
     ///
-    int32_t getVal()
-    {
-        return intVal;
-    }
+    int32_t getVal();
 
     ///
     /// @brief 对该Value进行Load用的寄存器编号
@@ -70,6 +71,12 @@ public:
         this->loadRegNo = regId;
     }
 
+    int32_t getRegId() override {
+        return intVal==0?zeroReg:-1;
+    }
+
+    static void setZeroReg(int32_t reg);
+
 private:
     ///
     /// @brief 整数值
@@ -80,4 +87,5 @@ private:
     /// @brief 变量加载到寄存器中时对应的寄存器编号
     ///
     int32_t loadRegNo = -1;
+
 };
