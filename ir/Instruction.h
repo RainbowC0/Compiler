@@ -89,11 +89,17 @@ typedef enum IRInstOperator {
     /// @brief 赋值指令，一元运算
     IRINST_OP_ASSIGN,
 
+    /// @brief 类型转换指令
+    IRINST_OP_CAST,
+
     /// @brief 函数调用，多目运算，个数不限
     IRINST_OP_FUNC_CALL,
 
     /// @brief 实参ARG指令，单目运算
     IRINST_OP_ARG,
+
+    /// @brief 数组元素访问指令
+    IRINST_OP_ARRAY_ACCESS,
 
     /* 后续可追加其他的IR指令 */
 
@@ -154,7 +160,8 @@ public:
         return regId;
     }
 
-    void setRegId(int32_t reg) override {
+    void setRegId(int32_t reg) override
+    {
         regId = reg;
     }
 

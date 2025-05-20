@@ -83,6 +83,12 @@ enum class ast_operator_type : int8_t {
     /// @brief 变量声明
     AST_OP_VAR_DECL,
 
+    /// @brief 数组定义
+    AST_OP_ARRAY_DEF,
+
+    /// @brief 数组访问
+    AST_OP_ARRAY_ACCESS,
+
     /// @brief 二元运算符+
     AST_OP_ADD,
 
@@ -133,10 +139,12 @@ public:
     Type * type;
 
     /// @brief 无符号整数字面量值
-    union {int32_t integer_val;
+    union {
+        int32_t integer_val;
 
-    /// @brief float类型字面量值
-    float float_val;};
+        /// @brief float类型字面量值
+        float float_val;
+    };
 
     /// @brief 变量名，或者函数名
     std::string name;
@@ -148,8 +156,7 @@ public:
     std::vector<ast_node *> sons;
 
     /// @brief 回填表
-    std::vector<LabelInstruction**> *truelist = nullptr,
-        *falselist = nullptr;
+    std::vector<LabelInstruction **> *truelist = nullptr, *falselist = nullptr;
 
     /// @brief 线性IR指令块，可包含多条IR指令，用于线性IR指令产生用
     InterCode blockInsts;

@@ -30,10 +30,7 @@ GotoInstruction::GotoInstruction(Function * _func, Instruction * _target)
     iftrue = static_cast<LabelInstruction *>(_target);
 }
 
-GotoInstruction::GotoInstruction(Function *func,
-    Value *cond,
-    Instruction *iftrue,
-    Instruction *iffalse)
+GotoInstruction::GotoInstruction(Function * func, Value * cond, Instruction * iftrue, Instruction * iffalse)
     : Instruction(func, IRInstOperator::IRINST_OP_GOTO, VoidType::getType())
 {
     this->cond = cond;
@@ -45,11 +42,9 @@ GotoInstruction::GotoInstruction(Function *func,
 void GotoInstruction::toString(std::string & str)
 {
     if (cond && iffalse)
-        str = "bc " + cond->getIRName()
-            + ", label " + iftrue->getIRName()
-            + ", label " + iffalse->getIRName();
+        str = "br " + cond->getIRName() + ", label " + iftrue->getIRName() + ", label " + iffalse->getIRName();
     else
-        str = "bc label " + iftrue->getIRName();
+        str = "br label " + iftrue->getIRName();
 }
 
 ///

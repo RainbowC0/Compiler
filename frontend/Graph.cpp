@@ -63,6 +63,12 @@ string getNodeName(ast_node * astnode)
         case ast_operator_type::AST_OP_VAR_DECL:
             nodeName = "var-decl";
             break;
+        case ast_operator_type::AST_OP_ARRAY_DEF:
+            nodeName = "array-def";
+            break;
+        case ast_operator_type::AST_OP_ARRAY_ACCESS:
+            nodeName = "array-access";
+            break;
         case ast_operator_type::AST_OP_ADD:
             nodeName = "+";
             break;

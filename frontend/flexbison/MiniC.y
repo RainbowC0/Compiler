@@ -225,14 +225,24 @@ VarDeclExpr: BasicType VarDef {
 
 // 变量定义包含变量名，实际上还有初值，这里没有实现。
 VarDef : T_ID {
-		// 变量ID
+		// 简单变量定义ID
 
-		$$ = ast_node::New(var_id_attr{$1.id, $1.lineno});
+		// 创建变量ID终结符节点
+		$$ = ast_node::New($1);
 
-		// 对于字符型字面量的字符串空间需要释放，因词法用到了strdup进行了字符串复制
+		// 对于字符型字面量的字符串空间需要释放
 		free($1.id);
 	}
-    | T_ID '=' Expr {
+	| T_ID '[' T_DIGIT ']' {
+		// 数组变量定义ID[n]
+
+		// 创建数组变量节点
+		$$ = create_contain_node(ASTOP(ARRAY_DEF), ast_node::New($1), ast_node::New($3));
+
+		// 对于字符型字面量的字符串空间需要释放
+		free($1.id);
+	}
+	| T_ID '=' Expr {
         $$ = ast_node::New(var_id_attr{$1.id, $1.lineno});
         $$->insert_son_node($3);
         free($1.id);
@@ -452,7 +462,7 @@ RealParamList : Expr {
 	}
 	;
 
-// 左值表达式，目前只支持变量名，实际上还有下标变量
+// 左值表达式，目前只支持变量名或数组元素
 LVal : T_ID {
 		// 变量名终结符
 
@@ -460,6 +470,15 @@ LVal : T_ID {
 		$$ = ast_node::New($1);
 
 		// 对于字符型字面量的字符串空间需要释放，因词法用到了strdup进行了字符串复制
+		free($1.id);
+	}
+	| T_ID '[' Expr ']' {
+		// 数组访问 ID[expr]
+		
+		// 创建数组访问节点
+		$$ = create_contain_node(ASTOP(ARRAY_ACCESS), ast_node::New($1), $3);
+		
+		// 对于字符型字面量的字符串空间需要释放
 		free($1.id);
 	}
 	;

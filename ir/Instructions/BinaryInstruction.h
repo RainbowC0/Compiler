@@ -25,12 +25,14 @@ class BinaryInstruction : public Instruction {
 
 public:
     /// @brief 构造函数
+    /// @param _func 所在的函数
     /// @param _op 操作符
-    /// @param _result 结果操作数
     /// @param _srcVal1 源操作数1
     /// @param _srcVal2 源操作数2
+    /// @param _type 结果类型
     BinaryInstruction(Function * _func, IRInstOperator _op, Value * _srcVal1, Value * _srcVal2, Type * _type);
 
     /// @brief 转换成字符串
+    /// @param str 转换后的字符串
     void toString(std::string & str) override;
 };

@@ -1,0 +1,21 @@
+define i32 @main() {
+	declare i32 %l0
+	declare [5 x i32] %l1 ; 1:a
+	declare float %l2 ; 1:b
+	declare i32 %t3
+	declare float %t4
+	declare i32 %t5
+	declare float %t6
+	entry
+	%t3 = getelementptr [5 x i32], %l1, 0
+	%t3 = 10
+	%l2 = 1.100000
+	%t4 = sitofp %t5 to float
+	%t5 = getelementptr [5 x i32], %l1, 0
+	%t6 = fadd %l2,%t4
+	%l2 = %t6
+	%l0 = 0
+	br label .L7
+.L7:
+	exit %l0
+}

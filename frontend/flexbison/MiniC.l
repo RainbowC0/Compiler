@@ -56,6 +56,8 @@ CMT         {SCMT}|{TCMT}
 ")"         { return ')'; }
 "{"         { return '{'; }
 "}"         { return '}'; }
+"["         { return '['; }
+"]"         { return ']'; }
 
 ";"         { return ';'; }
 ","         { return ','; }

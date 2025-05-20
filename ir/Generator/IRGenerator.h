@@ -73,15 +73,6 @@ protected:
     /// @brief 整数加法AST节点翻译成线性中间IR
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
-    /*bool ir_add(ast_node * node);
-
-    /// @brief 整数减法AST节点翻译成线性中间IR
-    /// @param node AST节点
-    /// @return 翻译是否成功，true：成功，false：失败
-    bool ir_sub(ast_node * node);
-    bool ir_mul(ast_node * node);
-    bool ir_div(ast_node * node);
-    bool ir_mod(ast_node * node);*/
     bool ir_binary(ast_node * node);
 
     /// @brief 赋值AST节点翻译成线性中间IR
@@ -93,6 +84,11 @@ protected:
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_return(ast_node * node);
+
+    /// @brief 数组访问节点翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_array_access(ast_node * node);
 
     /// @brief 类型叶子节点翻译成线性中间IR
     /// @param node AST节点
@@ -124,17 +120,17 @@ protected:
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_default(ast_node * node);
 
-    bool ir_branch(ast_node *node);
+    bool ir_branch(ast_node * node);
 
-    bool ir_relop(ast_node *node);
+    bool ir_relop(ast_node * node);
 
-    bool ir_loop(ast_node *node);
+    bool ir_loop(ast_node * node);
 
-    bool ir_or(ast_node *node);
-    bool ir_and(ast_node *node);
-    bool ir_not(ast_node *node);
+    bool ir_or(ast_node * node);
+    bool ir_and(ast_node * node);
+    bool ir_not(ast_node * node);
 
-    bool ir_jump(ast_node *node);
+    bool ir_jump(ast_node * node);
 
     /// @brief 根据AST的节点运算符查找对应的翻译函数并执行翻译动作
     /// @param node AST节点

@@ -19,7 +19,7 @@
 #include "Common.h"
 #include "VoidType.h"
 
-Module::Module(const std::string &_name) : name(_name)
+Module::Module(const std::string & _name) : name(_name)
 {
     // 创建作用域栈
     scopeStack = new ScopeStack();
@@ -70,7 +70,10 @@ void Module::setCurrentFunction(Function * current)
 /// @param params 形参列表
 /// @param builtin 是否内置函数
 /// @return 新建的函数对象实例
-Function * Module::newFunction(const std::string &name, Type * returnType, const std::vector<FormalParam *> &params, bool builtin)
+Function * Module::newFunction(const std::string & name,
+                               Type * returnType,
+                               const std::vector<FormalParam *> & params,
+                               bool builtin)
 {
     // 先根据函数名查找函数，若找到则出错
     Function * tempFunc = findFunction(name);
@@ -103,7 +106,7 @@ Function * Module::newFunction(const std::string &name, Type * returnType, const
 /// @brief 根据函数名查找函数信息
 /// @param name 函数名
 /// @return 函数信息
-Function * Module::findFunction(const std::string &name)
+Function * Module::findFunction(const std::string & name)
 {
     // 根据名字查找
     auto pIter = funcMap.find(name);
@@ -160,6 +163,15 @@ ConstInt * Module::newConstInt(int32_t intVal)
     return val;
 }
 
+/// @brief 新建一个浮点数值的Value，并加入到符号表，用于后续释放空间
+/// @param floatVal 浮点值
+/// @return 常量Value
+ConstFloat * Module::newConstFloat(float floatVal)
+{
+    // 创建浮点常量Value
+    return new ConstFloat(floatVal);
+}
+
 /// @brief 根据整数值获取当前符号
 /// \param name 变量名
 /// \return 变量对应的值
@@ -181,7 +193,7 @@ ConstInt * Module::findConstInt(int32_t val)
 /// @param type 变量类型
 /// @param name 变量ID 局部变量时可以为空，目的为了SSA时创建临时的局部变量，
 /// @return nullptr则说明变量已存在，否则为新建的变量
-Value * Module::newVarValue(Type * type, const std::string &name)
+Value * Module::newVarValue(Type * type, const std::string & name)
 {
     Value * retVal;
 
@@ -227,7 +239,7 @@ Value * Module::newVarValue(Type * type, const std::string &name)
 ///
 /// @param name 变量ID
 /// @return 指针有效则找到，空指针未找到
-Value * Module::findVarValue(const std::string &name)
+Value * Module::findVarValue(const std::string & name)
 {
     // 逐层级作用域查找
     Value * tempValue = scopeStack->findAllScope(name);
@@ -241,7 +253,7 @@ Value * Module::findVarValue(const std::string &name)
 /// @param name 名字
 /// @return Value* 全局变量
 ///
-GlobalVariable * Module::newGlobalVariable(Type * type, const std::string &name)
+GlobalVariable * Module::newGlobalVariable(Type * type, const std::string & name)
 {
     GlobalVariable * val = new GlobalVariable(type, name);
 
@@ -254,7 +266,7 @@ GlobalVariable * Module::newGlobalVariable(Type * type, const std::string &name)
 /// @param name 变量名或者常量名
 /// @param create 变量查找不到时若为true则自动创建变量型Value，否则不创建
 /// @return 变量对应的值
-GlobalVariable * Module::findGlobalVariable(const std::string &name)
+GlobalVariable * Module::findGlobalVariable(const std::string & name)
 {
     GlobalVariable * temp = nullptr;
 
