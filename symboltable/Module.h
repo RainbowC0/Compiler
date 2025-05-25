@@ -124,6 +124,8 @@ public:
     /// @param type 变量类型
     Value * newVarValue(Type * type, const std::string & name = "");
 
+    Value * newFuncParam(Type * type, const std::string & name = "");
+
     /// @brief 查找变量（全局变量或局部变量），会根据作用域栈进行逐级查找。
     /// ! 该函数只有在AST遍历生成线性IR中使用，其它地方不能使用
     /// @param name 变量ID

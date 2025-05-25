@@ -87,6 +87,15 @@ protected:
     void translate_two_operator(Instruction * inst, string operator_name);
 
     void translate_bi_op(Instruction *);
+
+    void translate_fadd(Instruction *);
+    void translate_fsub(Instruction *);
+    void translate_fmul(Instruction *);
+    void translate_fdiv(Instruction *);
+    void translate_fmod(Instruction *);
+
+    void translate_cast(Instruction *);
+
     /// @brief 函数调用指令翻译成ARM32汇编
     /// @param inst IR指令
     void translate_call(Instruction * inst);

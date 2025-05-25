@@ -26,8 +26,10 @@
 GotoInstruction::GotoInstruction(Function * _func, Instruction * _target)
     : Instruction(_func, IRInstOperator::IRINST_OP_GOTO, VoidType::getType())
 {
+    cond = nullptr;
     // 真假目标一样，则无条件跳转
     iftrue = static_cast<LabelInstruction *>(_target);
+    iffalse = nullptr;
 }
 
 GotoInstruction::GotoInstruction(Function * func, Value * cond, Instruction * iftrue, Instruction * iffalse)

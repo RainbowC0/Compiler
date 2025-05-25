@@ -40,7 +40,7 @@ FuncCallInstruction::FuncCallInstruction(Function * _func,
 void FuncCallInstruction::toString(std::string & str)
 {
     int32_t argCount = func->getRealArgcount();
-    int32_t operandsNum = getOperandsNum();
+    int32_t operandsNum = calledFunction->getParams().size();
 
     if (operandsNum != argCount) {
         // 两者不一致 也可能没有ARG指令，正常

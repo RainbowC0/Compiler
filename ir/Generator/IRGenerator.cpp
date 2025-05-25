@@ -14,7 +14,7 @@
 /// <tr><td>2024-11-23 <td>1.1     <td>zenglj  <td>表达式版增强
 /// </table>
 ///
-//#include <algorithm>
+// #include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <unordered_map>
@@ -40,8 +40,10 @@
 
 #define CHECK_NODE(name, son)                                                                                          \
     name = ir_visit_ast_node(son);                                                                                     \
-    if (!name)                                                                                                         \
-    return (false)
+    if (!name) {                                                                                                       \
+        fprintf(stdout, "IR解析错误:%s:%d\n", __FUNCTION__, __LINE__);                                                 \
+        return (false);                                                                                                \
+    }
 
 extern "C" {
 static inline IRInstOperator irtype(ast_operator_type type);
@@ -113,6 +115,8 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_WHILE] = &IRGenerator::ir_loop;
     ast2ir_handlers[ASTOP(DOWHILE)] = &IRGenerator::ir_loop;
 
+    ast2ir_handlers[ASTOP(NULL_STMT)] = &IRGenerator::ir_default;
+
     SLIST_INIT(&labs);
 }
 
@@ -165,7 +169,8 @@ ast_node * IRGenerator::ir_visit_ast_node(ast_node * node)
 bool IRGenerator::ir_default(ast_node * node)
 {
     // 未知的节点
-    printf("Unkown node(%d)\n", (int) node->node_type);
+    if (node->node_type != ASTOP(NULL_STMT))
+        printf("Unkown node(%d)\n", (int) node->node_type);
     return true;
 }
 
@@ -215,6 +220,7 @@ bool IRGenerator::ir_function_define(ast_node * node)
     if (!newFunc) {
         // 新定义的函数已经存在，则失败返回。
         // TODO 自行追加语义错误处理
+        minic_log(LOG_ERROR, "函数重复定义：%s", name_node->name.c_str());
         return false;
     }
 
@@ -243,6 +249,7 @@ bool IRGenerator::ir_function_define(ast_node * node)
     if (!result) {
         // 形参解析失败
         // TODO 自行追加语义错误处理
+        fputs("形参解析失败\n", stderr);
         return false;
     }
     node->blockInsts.addInst(param_node->blockInsts);
@@ -301,6 +308,9 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
     // 而真实的形参则创建函数内的局部变量。
     // 然后产生赋值指令，用于把表达实参值的临时变量拷贝到形参局部变量上。
     // 请注意这些指令要放在Entry指令后面，因此处理的先后上要注意。
+    for (auto i: node->sons) {
+        module->newFuncParam(i->type, i->name);
+    }
 
     return true;
 }
@@ -319,7 +329,7 @@ bool IRGenerator::ir_function_call(ast_node * node)
     // 第一个节点：函数名节点
     // 第二个节点：实参列表节点
 
-    std::string funcName = node->sons[0]->name;
+    const std::string & funcName = node->sons[0]->name;
     int64_t lineno = node->sons[0]->line_no;
 
     // 根据函数名查找函数，看是否存在。若不存在则出错
@@ -361,7 +371,7 @@ bool IRGenerator::ir_function_call(ast_node * node)
     // TODO 这里请追加函数调用的语义错误检查，这里只进行了函数参数的个数检查等，其它请自行追加。
     if (realParams.size() != calledFunction->getParams().size()) {
         // 函数参数的个数不一致，语义错误
-        minic_log(LOG_ERROR, "第%lld行的被调用函数(%s)未定义或声明", (long long) lineno, funcName.c_str());
+        minic_log(LOG_ERROR, "第%lld的函数%s参数个数有误", (long long) lineno, funcName.c_str());
         return false;
     }
 
@@ -420,9 +430,13 @@ bool IRGenerator::ir_binary(ast_node * node)
     // 加法的右边操作数
     ast_node * CHECK_NODE(right, src2_node);
 
+    // 如果需要类型转换
+    Value * leftVal = left->val;
+    Value * rightVal = right->val;
+
     // 获取操作数类型，并确定结果类型和适合的操作符
-    Type * leftType = left->val->getType();
-    Type * rightType = right->val->getType();
+    Type * leftType = leftVal->getType();
+    Type * rightType = rightVal->getType();
 
     // 获取适当的操作符
     IRInstOperator op = TypeSystem::getAppropriateOp(irtype(node->node_type), leftType, rightType);
@@ -430,33 +444,26 @@ bool IRGenerator::ir_binary(ast_node * node)
     // 获取结果类型
     Type * resultType = TypeSystem::getBinaryResultType(op, leftType, rightType);
 
-    // 如果需要类型转换
-    Value * leftVal = left->val;
-    Value * rightVal = right->val;
+    Function * func = module->getCurrentFunction();
 
     // 如果操作数类型与结果类型不同，需要进行隐式类型转换
-    if (leftVal->getType() != resultType && resultType->isFloatType() && leftVal->getType()->isIntegerType()) {
-        // 整数转浮点 - 使用CastInstruction
-        CastInstruction * castInst = new CastInstruction(module->getCurrentFunction(),
-                                                         leftVal,
-                                                         FloatType::getTypeFloat(),
-                                                         CastInstruction::INT_TO_FLOAT);
-        node->blockInsts.addInst(castInst);
-        leftVal = castInst;
+    if (resultType->isFloatType()) {
+        if (!leftType->isFloatType()) {
+            // 整数转浮点 - 使用CastInstruction
+            CastInstruction * castInst =
+                new CastInstruction(func, leftVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
+            node->blockInsts.addInst(castInst);
+            leftVal = castInst;
+        } else if (!rightType->isFloatType()) {
+            // 整数转浮点 - 使用CastInstruction
+            CastInstruction * castInst =
+                new CastInstruction(func, rightVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
+            node->blockInsts.addInst(castInst);
+            rightVal = castInst;
+        }
     }
 
-    if (rightVal->getType() != resultType && resultType->isFloatType() && rightVal->getType()->isIntegerType()) {
-        // 整数转浮点 - 使用CastInstruction
-        CastInstruction * castInst = new CastInstruction(module->getCurrentFunction(),
-                                                         rightVal,
-                                                         FloatType::getTypeFloat(),
-                                                         CastInstruction::INT_TO_FLOAT);
-        node->blockInsts.addInst(castInst);
-        rightVal = castInst;
-    }
-
-    BinaryInstruction * addInst =
-        new BinaryInstruction(module->getCurrentFunction(), op, leftVal, rightVal, resultType);
+    Instruction * addInst = new BinaryInstruction(func, op, leftVal, rightVal, resultType);
 
     // 创建临时变量保存IR的值，以及线性IR指令
     node->blockInsts.addInst(left->blockInsts);
@@ -474,13 +481,25 @@ bool IRGenerator::ir_binary(ast_node * node)
 bool IRGenerator::ir_relop(ast_node * node)
 {
     bool ret = ir_binary(node);
+    if (!ret)
+        return false;
 
-    auto go = new GotoInstruction(module->getCurrentFunction(), node->val, nullptr, nullptr);
-    node->truelist = new std::vector<LabelInstruction **>{&go->iftrue};
-    node->falselist = new std::vector<LabelInstruction **>{&go->iffalse};
-    node->blockInsts.addInst(go);
+    ast_node * parent = node->parent;
+    ast_operator_type tp;
+    Function * func = module->getCurrentFunction();
+    if (parent && ((tp = parent->node_type) == ASTOP(LAND) || tp == ASTOP(LOR) || tp == ASTOP(IF) ||
+                   tp == ASTOP(WHILE) || tp == ASTOP(DOWHILE))) {
+        auto go = new GotoInstruction(func, node->val, nullptr, nullptr);
+        node->truelist = new std::vector<LabelInstruction **>{&go->iftrue};
+        node->falselist = new std::vector<LabelInstruction **>{&go->iffalse};
+        node->blockInsts.addInst(go);
+    } else {
+        auto cast = new CastInstruction(func, node->val, IntegerType::getTypeInt(), CastInstruction::BOOL_TO_INT);
+        node->blockInsts.addInst(cast);
+        node->val = cast;
+    }
 
-    return ret;
+    return true;
 }
 
 /// @brief 赋值AST节点翻译成线性中间IR
@@ -585,7 +604,6 @@ bool IRGenerator::ir_node_var_id(ast_node * node)
     // 变量，则需要在符号表中查找对应的值
 
     val = module->findVarValue(node->name);
-
     node->val = val;
 
     return true;
@@ -723,8 +741,7 @@ bool IRGenerator::ir_branch(ast_node * node)
     }
 
     node->blockInsts.addInst(cond->blockInsts);
-    Function * func = module->getCurrentFunction();
-
+    auto func = module->getCurrentFunction();
     auto lab1 = new LabelInstruction(func);
     auto lab0 = new LabelInstruction(func);
     backPatch(cond->truelist, lab1);
@@ -784,9 +801,9 @@ bool IRGenerator::ir_loop(ast_node * node)
     node->blockInsts.addInst(body->blockInsts);
     if (expr)
         node->blockInsts.addInst(expr);
-    node->blockInsts.addInst(cond->blockInsts);
     backPatch(cond->falselist, ext);
     cond->falselist->clear();
+    node->blockInsts.addInst(cond->blockInsts);
 
     node->blockInsts.addInst(ext);
     return true;
@@ -833,11 +850,14 @@ bool IRGenerator::ir_not(ast_node * node)
 
     // TODO float cmp
     auto func = module->getCurrentFunction();
-    auto inst = new BinaryInstruction(func, IROP(INE), kid->val, module->newConstInt(0), IntegerType::getTypeBool());
-    node->blockInsts.addInst(inst);
-    node->blockInsts.addInst(
-        inst = new BinaryInstruction(func, IROP(XOR), inst, module->newConstInt(1), IntegerType::getTypeBool()));
-    node->val = inst;
+    Value * v = kid->val;
+    if (v->getType() != IntegerType::getTypeBool()) {
+        v = new BinaryInstruction(func, IROP(INE), kid->val, module->newConstInt(0), IntegerType::getTypeBool());
+        node->blockInsts.addInst((Instruction *) v);
+    }
+    auto i = new BinaryInstruction(func, IROP(XOR), v, module->newConstInt(1), IntegerType::getTypeBool());
+    node->blockInsts.addInst(i);
+    node->val = i;
     return true;
 }
 

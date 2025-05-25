@@ -107,7 +107,7 @@ protected:
     typedef void (InstSelectorArm32::*translate_handler)(Instruction *);
 
     /// @brief IR动作处理函数清单
-    translate_handler translator_handlers[IRINST_OP_MAX] = {nullptr};
+    translate_handler translator_handlers[IRInstOperator::IRINST_OP_MAX] = {nullptr};
 
     ///
     /// @brief 简单的朴素寄存器分配方法
@@ -128,7 +128,7 @@ protected:
     bool showLinearIR = false;
 
     /// @brief 指令栈
-    IRInstOperator lstcmp = IRINST_OP_MAX;
+    IRInstOperator lstcmp = IRInstOperator::IRINST_OP_MAX;
 
 public:
     /// @brief 构造函数

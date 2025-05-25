@@ -89,7 +89,7 @@ void Function::toString(std::string & str)
         str += ", ";
     ENT:
         FormalParam * param = params[i];
-        str += param->getType()->toString() + param->getIRName();
+        str += param->getType()->toString() + " " + param->getIRName();
     }
 
     str += ") {\n";

@@ -18,6 +18,7 @@
 
 #include "Type.h"
 #include "StorageSet.h"
+#include <cstdint>
 
 ///
 /// @brief 数组类型

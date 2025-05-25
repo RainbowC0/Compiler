@@ -18,6 +18,7 @@
 #include "ScopeStack.h"
 #include "Common.h"
 #include "VoidType.h"
+#include "FloatType.h"
 
 Module::Module(const std::string & _name) : name(_name)
 {
@@ -32,18 +33,22 @@ Module::Module(const std::string & _name) : name(_name)
     (void) newFunction("getint", IntegerType::getTypeInt(), {}, true);
     (void) newFunction("getch", IntegerType::getTypeInt(), {}, true);
     (void) newFunction("putch", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}}, true);
+    (void) newFunction("getfloat", FloatType::getTypeFloat(), {}, true);
+    (void) newFunction("putfloat", VoidType::getType(), {new FormalParam{FloatType::getTypeFloat(), ""}}, true);
 }
 
 /// @brief 进入作用域，如进入函数体块、语句块等
 void Module::enterScope()
 {
     scopeStack->enterScope();
+    //fprintf(stderr, "enter %d\n", scopeStack->getCurrentScopeLevel());
 }
 
 /// @brief 退出作用域，如退出函数体块、语句块等
 void Module::leaveScope()
 {
     scopeStack->leaveScope();
+    //fprintf(stderr, "exit %d\n", scopeStack->getCurrentScopeLevel());
 }
 
 ///
@@ -234,6 +239,24 @@ Value * Module::newVarValue(Type * type, const std::string & name)
     return retVal;
 }
 
+Value * Module::newFuncParam(Type *type, const std::string &name) {
+    if (!name.empty()) {
+        Value * tempValue = scopeStack->findCurrentScope(name);
+        if (tempValue) {
+            // 变量存在，语义错误
+            minic_log(LOG_ERROR, "变量(%s)已经存在", name.c_str());
+            return nullptr;
+        }
+    } else if (!currentFunc) {
+        // 全局变量要求name不能为空串，必须有效
+        minic_log(LOG_ERROR, "变量名为空");
+        return nullptr;
+    }
+    FormalParam *param = new FormalParam(type, name);
+    currentFunc->getParams().push_back(param);
+    scopeStack->insertValue(param);
+    return param;
+}
 /// @brief 查找变量，会根据作用域栈进行逐级查找。
 /// ! 该函数只有在AST遍历生成线性IR中使用，其它地方不能使用
 ///

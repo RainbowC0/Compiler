@@ -32,7 +32,16 @@
 #include "MoveInstruction.h"
 #include "PlatformArm64.h"
 
-static int allocateStackSlot(Function *func);
+#define DEBUG 1
+#ifdef DEBUG
+#define PNT(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
+#else
+#define PNT(fmt, ...)
+#endif
+
+using std::remove;
+
+static int allocateStackSlot(Function * func);
 static void expireOldRanges(std::vector<LiveRange> &active, std::vector<int> &freeRegs, int pos);
 static int findLastUse(Value *val, const std::vector<Instruction*> &insts, int startPos);
 static void extendRangeIfExists(std::vector<LiveRange> &ranges, Value *value, int currentPos);
@@ -237,29 +246,48 @@ void CodeGeneratorArm64::registerAllocation(Function * func)
 
 /// @brief 寄存器分配前对函数内的指令进行调整，以便方便寄存器分配
 /// @param func 要处理的函数
+/// @param usedArgs 调用其余函数时最大实参数
 void CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
 {
-    // 函数形参的前四个实参值临时变量采用的是寄存器传值
-    // 前四个之后通过栈传递
-
     // 请注意这里所得的所有形参都是对应的实参的值关联的临时变量
     // 如果不是不能使用这里的代码
     auto & params = func->getParams();
 
     // 形参的前8个通过寄存器来传值R0-R7
-    for (int k = 0, j = std::min((int)params.size(), 8); k < j; k++) {
+    // 先排除需要函数调用的参数，这些参数需要重新分配寄存器
+    //int k = std::max((int)func->getExistFuncCall(), func->getMaxFuncCallArgCnt());
+    int pm = func->getExistFuncCall()?params.size():0;
+    int k;
+    std::vector<Instruction*> moves(std::min(8, pm));
+    for (k = 0; k < std::min(8, pm); k++) {
+        moves[k] = new MoveInstruction(func, params[k], PlatformArm64::intRegVal[k]);
+    }
+    auto &insts = func->getInterCode().getInsts();
+    insts.insert(insts.begin()+1, moves.begin(), moves.end());
 
-        // 前四个设置分配寄存器
+    auto &protects = func->getProtectedReg();
+    pm = params.size();
 
+    for (int j = std::min(pm, 8); k < j; k++) {
+
+        // 前8个设置分配寄存器
+        int32_t reg = params[k]->getRegId();
+        if (ARM64_CALLER_SAVE(reg)) {
+            std::remove(protects.begin(), protects.end(), reg);
+        }
         params[k]->setRegId(k);
     }
 
     // 根据ARM64版C语言的调用约定，除前8个外的实参进行值传递，逆序入栈
     int64_t fp_esp = func->getMaxDep() + (func->getProtectedReg().size() * 4);
-    for (int k = 8; k < (int) params.size(); k++) {
+    for (; k < pm; k++) {
 
         // 目前假定变量大小都是4字节。实际要根据类型来计算
-
+        int32_t reg = params[k]->getRegId();
+        if (ARM64_CALLER_SAVE(reg)) {
+            std::remove(protects.begin(), protects.end(), reg);
+            params[k]->setRegId(-1);
+        }
         params[k]->setMemoryAddr(ARM64_FP_REG_NO, fp_esp);
 
         // 增加4字节
@@ -283,12 +311,12 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
         if (Instanceof(callInst, FuncCallInstruction *, *pIter)) {
 
             // 实参前8个要寄存器传值，其它参数通过栈传递
-
             // 前8个的后面参数采用栈传递
             int esp = 0;
-            for (int32_t k = 8; k < callInst->getOperandsNum(); k++) {
+            for (int32_t k = 8, l = callInst->getOperandsNum(); k < l; k++) {
 
                 auto arg = callInst->getOperand(k);
+                if (arg == callInst) break;
 
                 // 新建一个内存变量，用于栈传值到形参变量中
                 LocalVariable * newVal = func->newLocalVarValue(IntegerType::getTypeInt());
@@ -304,12 +332,13 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
                 pIter++;
             }
 
-            for (int k = 0; k < callInst->getOperandsNum() && k < 8; k++) {
+            for (int k = 0, l = std::min(callInst->getOperandsNum(), 8); k < l; k++) {
 
                 // 检查实参的类型是否是临时变量。
                 // 如果是临时变量，该变量可更改为寄存器变量即可，或者设置寄存器号
                 // 如果不是，则必须开辟一个寄存器变量，然后赋值即可
                 auto arg = callInst->getOperand(k);
+                if (arg == callInst) break;
 
                 if (arg->getRegId() == k) {
                     // 则说明寄存器已经是实参传递的寄存器，不用创建赋值指令
@@ -452,7 +481,10 @@ const std::vector<LiveRange> &calculateLiveRanges(Function *func) {
         // 处理操作数（使用）
         for (int i = 0; i < inst->getOperandsNum(); ++i) {
             Value *operand = inst->getOperand(i);
-            if (dynamic_cast<Instruction*>(operand) || dynamic_cast<LocalVariable*>(operand)) {
+            if (operand==inst) continue;
+            if (dynamic_cast<Instruction*>(operand)
+             || dynamic_cast<LocalVariable*>(operand)
+             || dynamic_cast<FormalParam*>(operand)) {
                 extendRangeIfExists(*ranges, operand, pos);
             }
         }
@@ -465,6 +497,9 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(
 {
     // 使用被调用者保留寄存器
     std::vector<int32_t> freeRegs = {19, 20, 21, 22, 23, 24, 25, 26, 27, 28}; // x9-x15
+    if (!func->getExistFuncCall()) {
+        freeRegs.insert(freeRegs.end(), {9, 10, 11, 12, 13, 14, 15}); // x9-x15
+    }
     std::vector<LiveRange> active;
     auto &protects = func->getProtectedReg();
 
@@ -477,7 +512,7 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(
             range.reg = freeRegs.back();
             freeRegs.pop_back();
             active.push_back(range);
-            if (std::find(protects.begin(), protects.end(), range.reg)==protects.end())
+            if (ARM64_CALLER_SAVE(range.reg) && std::find(protects.begin(), protects.end(), range.reg)==protects.end())
                 protects.push_back(range.reg);
         } else {
             // 3. 溢出到栈
@@ -539,7 +574,7 @@ void extendRangeIfExists(std::vector<LiveRange> &ranges, Value *value, int curre
     if (!cz) {
         LiveRange lr;
         lr.value = value;
-        lr.start = currentPos;
+        lr.start = dynamic_cast<FormalParam*>(value)==nullptr?currentPos:0;
         lr.end = currentPos;
         ranges.push_back(lr);
     }

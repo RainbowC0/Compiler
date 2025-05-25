@@ -33,6 +33,8 @@
 
 #define ARM64_ZR_REG_NO 32
 
+#define ARM64_CALLER_SAVE(x) ((x)>=19 && (x)<=28)
+
 /// @brief ARM32平台信息
 class PlatformArm64 {
 

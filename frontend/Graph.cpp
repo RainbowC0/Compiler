@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "AST.h"
+#include "Graph.h"
 
 using namespace std;
 
@@ -28,13 +29,13 @@ using namespace std;
 /// @brief 转换运算符成字符串
 /// @param astnode AST节点
 /// @return 运算符对应的字符串
-string getNodeName(ast_node * astnode)
+static string getNodeName(ast_node * astnode)
 {
     string nodeName;
 
     switch (astnode->node_type) {
         case ast_operator_type::AST_OP_LEAF_LITERAL_INT:
-            nodeName = to_string((int32_t) astnode->integer_val);
+            nodeName = to_string(astnode->integer_val);
             break;
         case ast_operator_type::AST_OP_LEAF_LITERAL_FLOAT:
             nodeName = to_string(astnode->float_val);
@@ -108,6 +109,12 @@ string getNodeName(ast_node * astnode)
         case ASTOP(NOT):
             nodeName = "!";
             break;
+        case ASTOP(LAND):
+            nodeName = "&&";
+            break;
+        case ASTOP(LOR):
+            nodeName = "||";
+            break;
         case ast_operator_type::AST_OP_FUNC_CALL:
             nodeName = "func-call";
             break;
@@ -136,13 +143,13 @@ string getNodeName(ast_node * astnode)
 }
 
 /// @brief AST遍历的函数类型声明
-Agnode_t * graph_visit_ast_node(Agraph_t *, ast_node *);
+static Agnode_t * graph_visit_ast_node(Agraph_t *, ast_node *);
 
 /// @brief 叶子节点图形产生
 /// @param g graphviz的Agraph_t
 /// @param astnode 叶子节点
 /// @return 创建的图形节点
-Agnode_t * genLeafGraphNode(Agraph_t * g, ast_node * astnode)
+static Agnode_t * genLeafGraphNode(Agraph_t * g, ast_node * astnode)
 {
     // 新建结点，不指定名字
     // 第二个参数不指定名字则采用匿名，自动创建一个唯一的名字
@@ -175,7 +182,7 @@ Agnode_t * genLeafGraphNode(Agraph_t * g, ast_node * astnode)
 /// @param g graphviz的Agraph_t
 /// @param astnode 内部节点
 /// @return 创建的图形节点
-Agnode_t * genInternalGraphNode(Agraph_t * g, ast_node * astnode)
+static Agnode_t * genInternalGraphNode(Agraph_t * g, ast_node * astnode)
 {
     std::vector<Agnode_t *> son_nodes;
 

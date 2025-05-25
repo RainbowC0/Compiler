@@ -120,6 +120,9 @@ enum class ast_operator_type : int8_t {
     AST_OP_BREAK,
     AST_OP_CONTINUE,
 
+    // 空语句
+    AST_OP_NULL_STMT,
+
     /// @brief 最大标识符，表示非法运算符
     AST_OP_MAX,
 };

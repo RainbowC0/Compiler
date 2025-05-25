@@ -80,7 +80,7 @@ ast_node* adjustCond(ast_node * node);
 %type <node> Expr
 %type <node> LVal
 %type <node> VarDecl VarDeclExpr VarDef
-%type <node> CondExp RelExp MulExp AddExp UnaryExp PrimaryExp
+%type <node> CondExp AndExp EqExp RelExp MulExp AddExp UnaryExp PrimaryExp
 %type <node> RealParamList
 %type <type> BasicType
 //%type <type> FuncType
@@ -143,16 +143,20 @@ FuncDef : BasicType T_ID '(' ')' Block {
 		$$ = create_func_def(funcReturnType, funcId, blockNode, formalParamsNode);
 	}
 	| BasicType T_ID '(' FuncParams ')' Block  {
-        $$ = create_func_def($1, $2, $6, nullptr);
+        $$ = create_func_def($1, $2, $6, $4);
 	}
 	;
 
 FuncParams : FuncParam {
+        $$ = create_contain_node(ASTOP(FUNC_FORMAL_PARAMS), $1);
 	}
 	| FuncParams ',' FuncParam {
+        $$->insert_son_node($3);
 	};
 
 FuncParam : BasicType T_ID {
+        $$ = ast_node::New($2);
+        $$->type = typeAttr2Type($1);
 	};
 
 // 语句块的文法Block ： '{' BlockItemList? '}'
@@ -303,7 +307,7 @@ Statement : RETURN Expr ';' {
 		// 空语句
 
 		// 直接返回空指针，需要再把语句加入到语句块时要注意判断，空语句不要加入
-		$$ = nullptr;
+		$$ = new ast_node(ASTOP(NULL_STMT));
 	}
 	;
 
@@ -352,22 +356,30 @@ RelExp:
 	}
 	;
 
-RelOp: T_EQ { $$ = (int)ASTOP(EQ); }
-	| T_NE { $$ = (int)ASTOP(NE); }
-	| '>' { $$ = (int)ASTOP(GT); }
+RelOp: '>' { $$ = (int)ASTOP(GT); }
 	| T_GE { $$ = (int)ASTOP(GE); }
 	| '<' { $$ = (int)ASTOP(LT); }
 	| T_LE { $$ = (int)ASTOP(LE); }
 	;
 
+EqExp: RelExp { $$ = $1; }
+    | EqExp T_EQ RelExp { $$ = create_contain_node(ASTOP(EQ), $1, $3); }
+    | EqExp T_NE RelExp { $$ = create_contain_node(ASTOP(NE), $1, $3); }
+    ;
+
+AndExp: EqExp { $$ = adjustCond($1); }
+    | AndExp T_LAND EqExp {
+        $$ = create_contain_node(ASTOP(LAND), $1, adjustCond($3));
+    }
+    ;
+
+// OrExp
 CondExp:
-	RelExp { $$ = adjustCond($1); }
-	| CondExp T_LOR RelExp {
-		$$ = create_contain_node(ASTOP(LOR), $1, adjustCond($3));
+	AndExp { $$ = $1; }
+	| CondExp T_LOR AndExp {
+		$$ = create_contain_node(ASTOP(LOR), $1, $3);
 	}
-	| CondExp T_LAND RelExp {
-		$$ = create_contain_node(ASTOP(LAND), $1, adjustCond($3));
-	}
+    ;
 
 // 目前一元表达式可以为基本表达式、函数调用，其中函数调用的实参可有可无
 // 其文法为：unaryExp: primaryExp | T_ID '(' realParamList? ')'

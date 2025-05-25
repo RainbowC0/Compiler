@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "Instruction.h"
 #include "Type.h"
 #include "Types/IntegerType.h"
 #include "Types/FloatType.h"
