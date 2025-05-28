@@ -65,10 +65,19 @@ static string getNodeName(ast_node * astnode)
             nodeName = "var-decl";
             break;
         case ast_operator_type::AST_OP_ARRAY_DEF:
-            nodeName = "array-def";
+            nodeName = "ARRAY_DEF";
             break;
         case ast_operator_type::AST_OP_ARRAY_ACCESS:
-            nodeName = "array-access";
+            nodeName = "ARRAY_ACCESS";
+            break;
+        case ast_operator_type::AST_OP_ARRAY_DIMS:
+            nodeName = "ARRAY_DIMS";
+            break;
+        case ast_operator_type::AST_OP_ARRAY_INDICES:
+            nodeName = "ARRAY_INDICES";
+            break;
+        case ast_operator_type::AST_OP_ARRAY_INIT:
+            nodeName = "ARRAY_INIT";
             break;
         case ast_operator_type::AST_OP_ADD:
             nodeName = "+";

@@ -88,6 +88,11 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     /* 数组访问 */
     ast2ir_handlers[ASTOP(ARRAY_ACCESS)] = &IRGenerator::ir_array_access;
 
+    /* 多维数组相关 */
+    ast2ir_handlers[ASTOP(ARRAY_DIMS)] = &IRGenerator::ir_array_dims;
+    ast2ir_handlers[ASTOP(ARRAY_INDICES)] = &IRGenerator::ir_array_indices;
+    ast2ir_handlers[ASTOP(ARRAY_INIT)] = &IRGenerator::ir_array_init;
+
     ast2ir_handlers[ASTOP(BREAK)] = &IRGenerator::ir_jump;
     ast2ir_handlers[ASTOP(CONTINUE)] = &IRGenerator::ir_jump;
 
@@ -169,8 +174,13 @@ ast_node * IRGenerator::ir_visit_ast_node(ast_node * node)
 bool IRGenerator::ir_default(ast_node * node)
 {
     // 未知的节点
-    if (node->node_type != ASTOP(NULL_STMT))
-        printf("Unkown node(%d)\n", (int) node->node_type);
+    if (node->node_type != ASTOP(NULL_STMT)) {
+        printf("Unkown node(%d) at line %lld\n", (int) node->node_type, (long long)node->line_no);
+        if (!node->name.empty()) {
+            printf("Node name: %s\n", node->name.c_str());
+        }
+        printf("Node has %zu children\n", node->sons.size());
+    }
     return true;
 }
 
@@ -512,6 +522,18 @@ bool IRGenerator::ir_assign(ast_node * node)
 
     // 赋值节点，自右往左运算
 
+    // 检查左侧是否是数组定义节点
+    if (son1_node->node_type == ASTOP(ARRAY_DEF)) {
+        // 这是数组定义的初始化赋值，需要特殊处理
+        // 数组定义应该已经在变量声明中处理过了
+        // 这里我们需要处理初始化，但暂时跳过
+        
+        // TODO: 实现数组初始化的具体逻辑
+        // 目前先简单处理，不递归调用ir_visit_ast_node避免遇到ARRAY_DIMS节点
+        
+        return true;
+    }
+
     // 赋值运算符的左侧操作数
     ast_node * left = ir_visit_ast_node(son1_node);
     if (!left) {
@@ -614,7 +636,7 @@ bool IRGenerator::ir_node_var_id(ast_node * node)
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_array_access(ast_node * node)
 {
-    // 数组访问节点有两个子节点：第一个是数组变量名，第二个是下标表达式
+    // 数组访问节点有两个子节点：第一个是数组变量名，第二个是索引或索引列表
     ast_node * arrayNameNode = node->sons[0];
     ast_node * indexNode = node->sons[1];
 
@@ -623,7 +645,13 @@ bool IRGenerator::ir_array_access(ast_node * node)
         return false;
     }
 
-    // 解析下标表达式
+    // 检查是否是多维数组访问
+    if (indexNode->node_type == ASTOP(ARRAY_INDICES)) {
+        // 多维数组访问
+        return ir_multi_array_access(node);
+    }
+
+    // 原有的一维数组访问逻辑
     ast_node * CHECK_NODE(indexExpr, indexNode);
 
     // 获取数组变量
@@ -698,32 +726,84 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 
         // 检查是否是数组定义
         if (child->node_type == ASTOP(ARRAY_DEF)) {
-            // 数组变量定义 ID[n]
+            // 数组变量定义
             ast_node * arrayNameNode = child->sons[0];
-            ast_node * arraySizeNode = child->sons[1];
-
-            // 获取数组大小
-            int32_t arraySize = arraySizeNode->integer_val;
-
-            // 创建数组类型
-            ArrayType * arrayType = (ArrayType *) ArrayType::get(tp, arraySize);
-
-            // 创建数组变量
-            child->val = module->newVarValue(arrayType, arrayNameNode->name);
+            
+            if (child->sons.size() == 2 && child->sons[1]->node_type == ASTOP(ARRAY_DIMS)) {
+                // 多维数组定义 ID[n][m][k]...
+                ast_node * dimsNode = child->sons[1];
+                
+                // 收集所有维度大小
+                std::vector<uint32_t> dimensions;
+                for (auto dimNode : dimsNode->sons) {
+                    dimensions.push_back(dimNode->integer_val);
+                }
+                
+                // 创建多维数组类型
+                const ArrayType * arrayType = ArrayType::createMultiDimensional(tp, dimensions);
+                
+                // 创建数组变量
+                child->val = module->newVarValue(const_cast<ArrayType*>(arrayType), arrayNameNode->name);
+            } else if (child->sons.size() == 2) {
+                // 传统一维数组定义 ID[n]
+                ast_node * arraySizeNode = child->sons[1];
+                
+                // 获取数组大小
+                int32_t arraySize = arraySizeNode->integer_val;
+                
+                // 创建数组类型
+                ArrayType * arrayType = (ArrayType *) ArrayType::get(tp, arraySize);
+                
+                // 创建数组变量
+                child->val = module->newVarValue(arrayType, arrayNameNode->name);
+            }
         } else {
             // 普通变量定义
             child->val = module->newVarValue(tp, child->name);
         }
 
         if (!child->sons.empty() && child->node_type != ASTOP(ARRAY_DEF)) {
-            // 处理初始值赋值
-            ast_node * CHECK_NODE(s, child->sons[0]);
-            if (func) {
-                node->blockInsts.addInst(s->blockInsts);
-                node->blockInsts.addInst(new MoveInstruction(func, child->val, s->val));
-            } else if (Instanceof(cexp, ConstInt *, s->val)) {
-                Instanceof(gVal, GlobalVariable *, child->val);
-                gVal->intVal = cexp->getVal();
+            // 处理初始值赋值 - 只处理普通变量，不处理数组
+            if (child->node_type != ASTOP(ASSIGN)) {
+                ast_node * CHECK_NODE(s, child->sons[0]);
+                if (func) {
+                    node->blockInsts.addInst(s->blockInsts);
+                    node->blockInsts.addInst(new MoveInstruction(func, child->val, s->val));
+                } else if (Instanceof(cexp, ConstInt *, s->val)) {
+                    Instanceof(gVal, GlobalVariable *, child->val);
+                    gVal->intVal = cexp->getVal();
+                }
+            }
+        }
+
+        // 处理数组定义的初始化（如果是赋值节点）
+        if (child->node_type == ASTOP(ASSIGN)) {
+            // 这是带初始化的数组定义
+            ast_node * arrayDefNode = child->sons[0];
+            
+            if (arrayDefNode->node_type == ASTOP(ARRAY_DEF)) {
+                // 处理数组定义部分
+                ast_node * arrayNameNode = arrayDefNode->sons[0];
+                
+                if (arrayDefNode->sons.size() == 2 && arrayDefNode->sons[1]->node_type == ASTOP(ARRAY_DIMS)) {
+                    // 多维数组定义
+                    ast_node * dimsNode = arrayDefNode->sons[1];
+                    std::vector<uint32_t> dimensions;
+                    for (auto dimNode : dimsNode->sons) {
+                        dimensions.push_back(dimNode->integer_val);
+                    }
+                    const ArrayType * arrayType = ArrayType::createMultiDimensional(tp, dimensions);
+                    child->val = module->newVarValue(const_cast<ArrayType*>(arrayType), arrayNameNode->name);
+                } else if (arrayDefNode->sons.size() == 2) {
+                    // 一维数组定义
+                    ast_node * arraySizeNode = arrayDefNode->sons[1];
+                    int32_t arraySize = arraySizeNode->integer_val;
+                    ArrayType * arrayType = (ArrayType *) ArrayType::get(tp, arraySize);
+                    child->val = module->newVarValue(arrayType, arrayNameNode->name);
+                }
+                
+                // 暂时跳过初始化处理
+                // TODO: 实现数组初始化的具体赋值逻辑
             }
         }
     }
@@ -906,4 +986,145 @@ std::vector<LabelInstruction **> * merge(std::vector<LabelInstruction **> * a, s
     a->insert(a->end(), b->begin(), b->end());
     b->clear();
     return a;
+}
+
+/// @brief 多维数组访问节点翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_multi_array_access(ast_node * node)
+{
+    ast_node * arrayNameNode = node->sons[0];
+    ast_node * indicesNode = node->sons[1];
+
+    // 解析数组名
+    if (!ir_node_var_id(arrayNameNode)) {
+        return false;
+    }
+
+    // 获取数组变量
+    Value * arrayVal = arrayNameNode->val;
+    if (!arrayVal || !arrayVal->getType()->isArrayType()) {
+        return false;
+    }
+
+    ArrayType * arrayType = static_cast<ArrayType *>(arrayVal->getType());
+    std::vector<uint32_t> dimSizes = arrayType->getDimensionSizes();
+    
+    Function * currentFunc = module->getCurrentFunction();
+
+    // 解析所有索引表达式
+    std::vector<Value*> indexValues;
+    for (auto indexNode : indicesNode->sons) {
+        ast_node * CHECK_NODE(indexExpr, indexNode);
+        node->blockInsts.addInst(indexExpr->blockInsts);
+        indexValues.push_back(indexExpr->val);
+    }
+
+    // 检查索引维度是否匹配
+    if (indexValues.size() > dimSizes.size()) {
+        return false; // 索引维度过多
+    }
+
+    // 计算线性偏移：offset = i0 * (d1 * d2 * ... * dn-1) + i1 * (d2 * ... * dn-1) + ... + in-1
+    Value * totalOffset = module->newConstInt(0);
+    
+    for (size_t i = 0; i < indexValues.size(); ++i) {
+        // 计算当前维度的乘数
+        int32_t multiplier = 1;
+        for (size_t j = i + 1; j < dimSizes.size(); ++j) {
+            multiplier *= dimSizes[j];
+        }
+        
+        if (multiplier > 1) {
+            // 创建乘法指令：indexValues[i] * multiplier
+            Value * multiplierVal = module->newConstInt(multiplier);
+            BinaryInstruction * mulInst = new BinaryInstruction(
+                currentFunc, IROP(IMUL), indexValues[i], multiplierVal, IntegerType::getTypeInt()
+            );
+            node->blockInsts.addInst(mulInst);
+            
+            // 累加到总偏移
+            BinaryInstruction * addInst = new BinaryInstruction(
+                currentFunc, IROP(IADD), totalOffset, mulInst, IntegerType::getTypeInt()
+            );
+            node->blockInsts.addInst(addInst);
+            totalOffset = addInst;
+        } else {
+            // multiplier为1时直接累加
+            BinaryInstruction * addInst = new BinaryInstruction(
+                currentFunc, IROP(IADD), totalOffset, indexValues[i], IntegerType::getTypeInt()
+            );
+            node->blockInsts.addInst(addInst);
+            totalOffset = addInst;
+        }
+    }
+
+    // 确定结果类型
+    Type * resultType;
+    if (indexValues.size() == dimSizes.size()) {
+        // 完全索引，返回基础元素类型
+        resultType = const_cast<Type*>(arrayType->getBaseElementType());
+    } else {
+        // 部分索引，返回子数组类型
+        std::vector<uint32_t> remainingDims(dimSizes.begin() + indexValues.size(), dimSizes.end());
+        resultType = const_cast<ArrayType*>(ArrayType::createMultiDimensional(
+            const_cast<Type*>(arrayType->getBaseElementType()), remainingDims));
+    }
+
+    // 创建数组访问指令
+    BinaryInstruction * accessInst = new BinaryInstruction(
+        currentFunc, IROP(ARRAY_ACCESS), arrayVal, totalOffset, resultType
+    );
+    node->blockInsts.addInst(accessInst);
+
+    node->val = accessInst;
+    node->type = resultType;
+
+    return true;
+}
+
+/// @brief 数组维度列表节点翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_array_dims(ast_node * node)
+{
+    // 维度列表节点不需要生成IR，仅用于AST结构
+    return true;
+}
+
+/// @brief 数组索引列表节点翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_array_indices(ast_node * node)
+{
+    // 索引列表节点不需要生成IR，仅用于AST结构
+    return true;
+}
+
+/// @brief 数组初始化节点翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_array_init(ast_node * node)
+{
+    // TODO: 实现数组初始化的IR生成
+    // 这里需要根据初始化列表生成相应的赋值指令
+    
+    Function * currentFunc = module->getCurrentFunction();
+    
+    // 处理初始化列表中的每个元素
+    for (size_t i = 0; i < node->sons.size(); ++i) {
+        ast_node * element = node->sons[i];
+        
+        if (element->node_type == ASTOP(ARRAY_INIT)) {
+            // 嵌套的初始化列表，递归处理
+            ast_node * CHECK_NODE(initExpr, element);
+            node->blockInsts.addInst(initExpr->blockInsts);
+        } else {
+            // 单个初始化值
+            ast_node * CHECK_NODE(valueExpr, element);
+            node->blockInsts.addInst(valueExpr->blockInsts);
+        }
+    }
+    
+    return true;
 }

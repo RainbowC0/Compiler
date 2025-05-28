@@ -19,6 +19,7 @@
 #include "Type.h"
 #include "StorageSet.h"
 #include <cstdint>
+#include <vector>
 
 ///
 /// @brief 数组类型
@@ -98,6 +99,76 @@ public:
     [[nodiscard]] int32_t getSize() const override
     {
         return elementType->getSize() * numElements;
+    }
+
+    ///
+    /// @brief 检查是否是多维数组
+    /// @return true 是多维数组 false 不是
+    ///
+    [[nodiscard]] bool isMultiDimensional() const
+    {
+        return elementType->isArrayType();
+    }
+
+    ///
+    /// @brief 获取数组的维度数
+    /// @return 维度数
+    ///
+    [[nodiscard]] uint32_t getDimensions() const
+    {
+        if (elementType->isArrayType()) {
+            return 1 + static_cast<const ArrayType*>(elementType)->getDimensions();
+        }
+        return 1;
+    }
+
+    ///
+    /// @brief 获取多维数组各维度大小
+    /// @return 维度大小数组
+    ///
+    [[nodiscard]] std::vector<uint32_t> getDimensionSizes() const
+    {
+        std::vector<uint32_t> sizes;
+        sizes.push_back(numElements);
+        
+        if (elementType->isArrayType()) {
+            auto innerSizes = static_cast<const ArrayType*>(elementType)->getDimensionSizes();
+            sizes.insert(sizes.end(), innerSizes.begin(), innerSizes.end());
+        }
+        
+        return sizes;
+    }
+
+    ///
+    /// @brief 获取数组最内层元素类型（非数组类型）
+    /// @return 最内层元素类型
+    ///
+    [[nodiscard]] const Type* getBaseElementType() const
+    {
+        if (elementType->isArrayType()) {
+            return static_cast<const ArrayType*>(elementType)->getBaseElementType();
+        }
+        return elementType;
+    }
+
+    ///
+    /// @brief 从多维索引创建多维数组类型
+    /// @param baseType 基础元素类型
+    /// @param dimensions 各维度大小
+    /// @return 多维数组类型
+    ///
+    static const ArrayType* createMultiDimensional(Type* baseType, const std::vector<uint32_t>& dimensions)
+    {
+        if (dimensions.empty()) {
+            return nullptr;
+        }
+        
+        Type* currentType = baseType;
+        for (int i = dimensions.size() - 1; i >= 0; --i) {
+            currentType = const_cast<ArrayType*>(ArrayType::get(currentType, dimensions[i]));
+        }
+        
+        return static_cast<const ArrayType*>(currentType);
     }
 
 private:

@@ -89,6 +89,15 @@ enum class ast_operator_type : int8_t {
     /// @brief 数组访问
     AST_OP_ARRAY_ACCESS,
 
+    /// @brief 数组维度列表
+    AST_OP_ARRAY_DIMS,
+
+    /// @brief 数组索引列表  
+    AST_OP_ARRAY_INDICES,
+
+    /// @brief 数组初始化
+    AST_OP_ARRAY_INIT,
+
     /// @brief 二元运算符+
     AST_OP_ADD,
 

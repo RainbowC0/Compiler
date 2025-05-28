@@ -93,6 +93,7 @@ ast_node* adjustCond(ast_node * node);
 %type <op_type> AddOp
 %type <op_type> MulOp
 %type <op_type> RelOp
+%type <node> ArrayDimList ArrayIndexList ArrayInitList InitValueList InitValue
 %%
 
 // 编译单元可包含若干个函数与全局变量定义。要在语义分析时检查main函数存在
@@ -237,8 +238,17 @@ VarDef : T_ID {
 		// 对于字符型字面量的字符串空间需要释放
 		free($1.id);
 	}
+	| T_ID ArrayDimList {
+		// 多维数组变量定义ID[n][m]...
+
+		// 创建数组变量节点，arrayDimList包含所有维度
+		$$ = create_contain_node(ASTOP(ARRAY_DEF), ast_node::New($1), $2);
+
+		// 对于字符型字面量的字符串空间需要释放
+		free($1.id);
+	}
 	| T_ID '[' T_DIGIT ']' {
-		// 数组变量定义ID[n]
+		// 兼容原一维数组变量定义ID[n]
 
 		// 创建数组变量节点
 		$$ = create_contain_node(ASTOP(ARRAY_DEF), ast_node::New($1), ast_node::New($3));
@@ -251,6 +261,59 @@ VarDef : T_ID {
         $$->insert_son_node($3);
         free($1.id);
     }
+	| T_ID ArrayDimList '=' ArrayInitList {
+		// 多维数组带初始化定义
+		ast_node * varNode = ast_node::New($1);
+		ast_node * arrayDefNode = create_contain_node(ASTOP(ARRAY_DEF), varNode, $2);
+		$$ = create_contain_node(ASTOP(ASSIGN), arrayDefNode, $4);
+		free($1.id);
+	}
+	| T_ID '[' T_DIGIT ']' '=' ArrayInitList {
+		// 一维数组带初始化定义
+		ast_node * varNode = ast_node::New($1);
+		ast_node * arrayDefNode = create_contain_node(ASTOP(ARRAY_DEF), varNode, ast_node::New($3));
+		$$ = create_contain_node(ASTOP(ASSIGN), arrayDefNode, $6);
+		free($1.id);
+	}
+	;
+
+// 数组维度列表：[n][m][k]...
+ArrayDimList : '[' T_DIGIT ']' {
+		// 创建数组维度列表节点，包含第一个维度
+		$$ = create_contain_node(ASTOP(ARRAY_DIMS), ast_node::New($2));
+	}
+	| ArrayDimList '[' T_DIGIT ']' {
+		// 向数组维度列表添加新维度
+		$$ = $1->insert_son_node(ast_node::New($3));
+	}
+	;
+
+// 数组初始化列表：{1, 2, 3} 或 {{1, 2}, {3, 4}}
+ArrayInitList : '{' InitValueList '}' {
+		$$ = $2;
+	}
+	| '{' '}' {
+		// 空初始化列表
+		$$ = create_contain_node(ASTOP(ARRAY_INIT), nullptr);
+	}
+	;
+
+// 初始化值列表
+InitValueList : InitValue {
+		$$ = create_contain_node(ASTOP(ARRAY_INIT), $1);
+	}
+	| InitValueList ',' InitValue {
+		$$ = $1->insert_son_node($3);
+	}
+	;
+
+// 初始化值：可以是表达式或者嵌套的初始化列表
+InitValue : Expr {
+		$$ = $1;
+	}
+	| ArrayInitList {
+		$$ = $1;
+	}
 	;
 
 // 基本类型，目前只支持整型
@@ -484,14 +547,34 @@ LVal : T_ID {
 		// 对于字符型字面量的字符串空间需要释放，因词法用到了strdup进行了字符串复制
 		free($1.id);
 	}
+	| T_ID ArrayIndexList {
+		// 多维数组访问 ID[expr1][expr2]...
+		
+		// 创建多维数组访问节点
+		$$ = create_contain_node(ASTOP(ARRAY_ACCESS), ast_node::New($1), $2);
+		
+		// 对于字符型字面量的字符串空间需要释放
+		free($1.id);
+	}
 	| T_ID '[' Expr ']' {
-		// 数组访问 ID[expr]
+		// 兼容原一维数组访问 ID[expr]
 		
 		// 创建数组访问节点
 		$$ = create_contain_node(ASTOP(ARRAY_ACCESS), ast_node::New($1), $3);
 		
 		// 对于字符型字面量的字符串空间需要释放
 		free($1.id);
+	}
+	;
+
+// 数组索引列表：[expr1][expr2][expr3]...
+ArrayIndexList : '[' Expr ']' {
+		// 创建数组索引列表节点，包含第一个索引
+		$$ = create_contain_node(ASTOP(ARRAY_INDICES), $2);
+	}
+	| ArrayIndexList '[' Expr ']' {
+		// 向数组索引列表添加新索引
+		$$ = $1->insert_son_node($3);
 	}
 	;
 
