@@ -460,15 +460,15 @@ bool IRGenerator::ir_binary(ast_node * node)
     if (resultType->isFloatType()) {
         if (!leftType->isFloatType()) {
             // 整数转浮点 - 使用CastInstruction
-            CastInstruction * castInst =
+            Instruction * castInst =
                 new CastInstruction(func, leftVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
-            node->blockInsts.addInst(castInst);
+            left->blockInsts.addInst(castInst);
             leftVal = castInst;
         } else if (!rightType->isFloatType()) {
             // 整数转浮点 - 使用CastInstruction
-            CastInstruction * castInst =
+            Instruction * castInst =
                 new CastInstruction(func, rightVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
-            node->blockInsts.addInst(castInst);
+            right->blockInsts.addInst(castInst);
             rightVal = castInst;
         }
     }
@@ -717,93 +717,29 @@ bool IRGenerator::ir_leaf_node_float(ast_node * node)
 bool IRGenerator::ir_variable_declare(ast_node * node)
 {
     Function * func = module->getCurrentFunction();
-    Type * tp = node->sons[0]->type;
 
     // 函数内定义
-    for (int i = 1, j = node->sons.size(); i < j; i++) {
-        // 遍历每个变量声明
-        ast_node * child = node->sons[i];
-
-        // 检查是否是数组定义
-        if (child->node_type == ASTOP(ARRAY_DEF)) {
-            // 数组变量定义
-            ast_node * arrayNameNode = child->sons[0];
-            
-            if (child->sons.size() == 2 && child->sons[1]->node_type == ASTOP(ARRAY_DIMS)) {
-                // 多维数组定义 ID[n][m][k]...
-                ast_node * dimsNode = child->sons[1];
-                
-                // 收集所有维度大小
-                std::vector<uint32_t> dimensions;
-                for (auto dimNode : dimsNode->sons) {
-                    dimensions.push_back(dimNode->integer_val);
-                }
-                
-                // 创建多维数组类型
-                const ArrayType * arrayType = ArrayType::createMultiDimensional(tp, dimensions);
-                
-                // 创建数组变量
-                child->val = module->newVarValue(const_cast<ArrayType*>(arrayType), arrayNameNode->name);
-            } else if (child->sons.size() == 2) {
-                // 传统一维数组定义 ID[n]
-                ast_node * arraySizeNode = child->sons[1];
-                
-                // 获取数组大小
-                int32_t arraySize = arraySizeNode->integer_val;
-                
-                // 创建数组类型
-                ArrayType * arrayType = (ArrayType *) ArrayType::get(tp, arraySize);
-                
-                // 创建数组变量
-                child->val = module->newVarValue(arrayType, arrayNameNode->name);
-            }
-        } else {
-            // 普通变量定义
-            child->val = module->newVarValue(tp, child->name);
-        }
-
-        if (!child->sons.empty() && child->node_type != ASTOP(ARRAY_DEF)) {
-            // 处理初始值赋值 - 只处理普通变量，不处理数组
-            if (child->node_type != ASTOP(ASSIGN)) {
+    if (func) {
+        for (auto child:node->sons) {
+            child->val = module->newVarValue(child->type, child->name);
+            if (!child->sons.empty()) {
+                // 处理初始值赋值
                 ast_node * CHECK_NODE(s, child->sons[0]);
-                if (func) {
+                if (s->node_type == ASTOP(ARRAY_INIT)) {
+                    //node->blockInsts.addInst(new 
+                } else {
                     node->blockInsts.addInst(s->blockInsts);
                     node->blockInsts.addInst(new MoveInstruction(func, child->val, s->val));
-                } else if (Instanceof(cexp, ConstInt *, s->val)) {
-                    Instanceof(gVal, GlobalVariable *, child->val);
-                    gVal->intVal = cexp->getVal();
                 }
             }
         }
-
-        // 处理数组定义的初始化（如果是赋值节点）
-        if (child->node_type == ASTOP(ASSIGN)) {
-            // 这是带初始化的数组定义
-            ast_node * arrayDefNode = child->sons[0];
-            
-            if (arrayDefNode->node_type == ASTOP(ARRAY_DEF)) {
-                // 处理数组定义部分
-                ast_node * arrayNameNode = arrayDefNode->sons[0];
-                
-                if (arrayDefNode->sons.size() == 2 && arrayDefNode->sons[1]->node_type == ASTOP(ARRAY_DIMS)) {
-                    // 多维数组定义
-                    ast_node * dimsNode = arrayDefNode->sons[1];
-                    std::vector<uint32_t> dimensions;
-                    for (auto dimNode : dimsNode->sons) {
-                        dimensions.push_back(dimNode->integer_val);
-                    }
-                    const ArrayType * arrayType = ArrayType::createMultiDimensional(tp, dimensions);
-                    child->val = module->newVarValue(const_cast<ArrayType*>(arrayType), arrayNameNode->name);
-                } else if (arrayDefNode->sons.size() == 2) {
-                    // 一维数组定义
-                    ast_node * arraySizeNode = arrayDefNode->sons[1];
-                    int32_t arraySize = arraySizeNode->integer_val;
-                    ArrayType * arrayType = (ArrayType *) ArrayType::get(tp, arraySize);
-                    child->val = module->newVarValue(arrayType, arrayNameNode->name);
-                }
-                
-                // 暂时跳过初始化处理
-                // TODO: 实现数组初始化的具体赋值逻辑
+    } else for (auto child:node->sons) {
+        child->val = module->newVarValue(child->type, child->name);
+        if (!child->sons.empty()) {
+            ast_node *CHECK_NODE(s, child->sons[0]);
+            if (Instanceof(cexp, ConstInt *, s->val)) {
+                Instanceof(gVal, GlobalVariable*, child->val);
+                gVal->intVal = cexp->getVal();
             }
         }
     }
@@ -1115,15 +1051,15 @@ bool IRGenerator::ir_array_init(ast_node * node)
     for (size_t i = 0; i < node->sons.size(); ++i) {
         ast_node * element = node->sons[i];
         
-        if (element->node_type == ASTOP(ARRAY_INIT)) {
+        /*if (element->node_type == ASTOP(ARRAY_INIT)) {
             // 嵌套的初始化列表，递归处理
             ast_node * CHECK_NODE(initExpr, element);
             node->blockInsts.addInst(initExpr->blockInsts);
-        } else {
+        } else {*/
             // 单个初始化值
             ast_node * CHECK_NODE(valueExpr, element);
             node->blockInsts.addInst(valueExpr->blockInsts);
-        }
+        //}
     }
     
     return true;

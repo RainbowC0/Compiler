@@ -42,6 +42,8 @@ static string getNodeName(ast_node * astnode)
             break;
         case ast_operator_type::AST_OP_VAR_ID:
             nodeName = astnode->name;
+            if (astnode->type && !astnode->type->isVoidType())
+                nodeName += ":"+astnode->type->toString();
             break;
         case ast_operator_type::AST_OP_LEAF_TYPE:
             nodeName = astnode->type->toString();
@@ -65,19 +67,19 @@ static string getNodeName(ast_node * astnode)
             nodeName = "var-decl";
             break;
         case ast_operator_type::AST_OP_ARRAY_DEF:
-            nodeName = "ARRAY_DEF";
+            nodeName = "arr-def";
             break;
         case ast_operator_type::AST_OP_ARRAY_ACCESS:
-            nodeName = "ARRAY_ACCESS";
+            nodeName = "arr-access";
             break;
         case ast_operator_type::AST_OP_ARRAY_DIMS:
-            nodeName = "ARRAY_DIMS";
+            nodeName = "arr-dims";
             break;
         case ast_operator_type::AST_OP_ARRAY_INDICES:
-            nodeName = "ARRAY_INDICES";
+            nodeName = "arr-indices";
             break;
         case ast_operator_type::AST_OP_ARRAY_INIT:
-            nodeName = "ARRAY_INIT";
+            nodeName = "arr-init";
             break;
         case ast_operator_type::AST_OP_ADD:
             nodeName = "+";

@@ -31,5 +31,5 @@ int yyparse(void);
 int yyparse();
 #endif
 #endif /* ! YYPARSE_PARAM */
-
+#include <vector>
 #include "MiniCBison.h"

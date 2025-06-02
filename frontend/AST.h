@@ -148,7 +148,7 @@ public:
     int64_t line_no;
 
     /// @brief 节点值的类型，可用于函数返回值类型
-    Type * type;
+    Type * type = nullptr;
 
     /// @brief 无符号整数字面量值
     union {

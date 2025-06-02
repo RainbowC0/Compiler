@@ -13,12 +13,18 @@
 
 #include "IntegerType.h"
 
+#include "ArrayType.h"
+
+#include <vector>
+
 // LR分析失败时所调用函数的原型声明
 void yyerror(char * msg);
 ast_node* adjustCond(ast_node * node);
+void adjustInit(const ArrayType *type, ast_node *node);
 %}
 
 // 联合体声明，用于后续终结符和非终结符号属性指定使用
+
 %union {
     class ast_node * node;
     struct digit_int_attr integer_num;
@@ -26,6 +32,7 @@ ast_node* adjustCond(ast_node * node);
     struct var_id_attr var_id;
     struct type_attr type;
     int op_type;
+    std::vector<uint32_t> * dims;
 };
 
 // 文法的开始符号
@@ -93,7 +100,8 @@ ast_node* adjustCond(ast_node * node);
 %type <op_type> AddOp
 %type <op_type> MulOp
 %type <op_type> RelOp
-%type <node> ArrayDimList ArrayIndexList ArrayInitList InitValueList InitValue
+%type <dims> ArrayDimList
+%type <node> ArrayIndexList ArrayInitList InitValueList InitValue
 %%
 
 // 编译单元可包含若干个函数与全局变量定义。要在语义分析时检查main函数存在
@@ -216,14 +224,29 @@ VarDecl : VarDeclExpr ';' {
 
 // 变量声明表达式，可支持逗号分隔定义多个
 VarDeclExpr: BasicType VarDef {
-        ast_node * tp = create_type_node($1);
+        Type *tp = typeAttr2Type($1);
+        auto x = $2->type;
+        if (x)
+            x = dynamic_cast<ArrayType*>(x);
+        if (x) {
+            ((ArrayType*)x)->setBaseElementType(tp);
+        } else {
+            $2->type = tp;
+        }
 
 		// 创建变量声明语句，并加入第一个变量
-		$$ = create_contain_node(ASTOP(VAR_DECL), tp, $2);
+		$$ = create_contain_node(ASTOP(VAR_DECL), $2);
 	}
 	| VarDeclExpr ',' VarDef {
-
 		// 插入到变量声明语句
+        Type *x = $1->sons[0]->type;
+        if (x->isArrayType())
+            x = (ArrayType*)((ArrayType*)x)->getBaseElementType();
+        if ($3->type && $3->type->isArrayType()) {
+            ((ArrayType*)$3->type)->setBaseElementType(x);
+        } else {
+            $3->type = x;
+        }
 		$$ = $1->insert_son_node($3);
 	}
 	;
@@ -240,18 +263,14 @@ VarDef : T_ID {
 	}
 	| T_ID ArrayDimList {
 		// 多维数组变量定义ID[n][m]...
+        $$ = ast_node::New(var_id_attr{$1.id, $1.lineno});
+
+        const std::vector<uint32_t> &lst = *$2;
+
+        $$->type = (Type*)ArrayType::createMultiDimensional(nullptr, lst);
 
 		// 创建数组变量节点，arrayDimList包含所有维度
-		$$ = create_contain_node(ASTOP(ARRAY_DEF), ast_node::New($1), $2);
-
-		// 对于字符型字面量的字符串空间需要释放
-		free($1.id);
-	}
-	| T_ID '[' T_DIGIT ']' {
-		// 兼容原一维数组变量定义ID[n]
-
-		// 创建数组变量节点
-		$$ = create_contain_node(ASTOP(ARRAY_DEF), ast_node::New($1), ast_node::New($3));
+		//$$ = create_contain_node(ASTOP(ARRAY_DEF), ast_node::New($1), $2);
 
 		// 对于字符型字面量的字符串空间需要释放
 		free($1.id);
@@ -263,28 +282,29 @@ VarDef : T_ID {
     }
 	| T_ID ArrayDimList '=' ArrayInitList {
 		// 多维数组带初始化定义
-		ast_node * varNode = ast_node::New($1);
-		ast_node * arrayDefNode = create_contain_node(ASTOP(ARRAY_DEF), varNode, $2);
-		$$ = create_contain_node(ASTOP(ASSIGN), arrayDefNode, $4);
-		free($1.id);
-	}
-	| T_ID '[' T_DIGIT ']' '=' ArrayInitList {
-		// 一维数组带初始化定义
-		ast_node * varNode = ast_node::New($1);
-		ast_node * arrayDefNode = create_contain_node(ASTOP(ARRAY_DEF), varNode, ast_node::New($3));
-		$$ = create_contain_node(ASTOP(ASSIGN), arrayDefNode, $6);
+		$$ = ast_node::New(var_id_attr{$1.id, $1.lineno});
+        const auto &lst = *$2;
+        const ArrayType *arrtype = ArrayType::createMultiDimensional(nullptr, lst);
+        $$->type = (Type*)arrtype;
+        adjustInit(arrtype, $4);
+        $$->insert_son_node($4);
 		free($1.id);
 	}
 	;
 
 // 数组维度列表：[n][m][k]...
-ArrayDimList : '[' T_DIGIT ']' {
+ArrayDimList : '[' ']' {
+        // 第一维可省
+        $$ = new std::vector<uint32_t>{0};
+    }
+    | '[' T_DIGIT ']' {
 		// 创建数组维度列表节点，包含第一个维度
-		$$ = create_contain_node(ASTOP(ARRAY_DIMS), ast_node::New($2));
+		$$ = new std::vector<uint32_t>{(uint32_t)$2.val};
 	}
 	| ArrayDimList '[' T_DIGIT ']' {
 		// 向数组维度列表添加新维度
-		$$ = $1->insert_son_node(ast_node::New($3));
+        $1->push_back($3.val);
+		$$ = $1;
 	}
 	;
 
@@ -556,15 +576,6 @@ LVal : T_ID {
 		// 对于字符型字面量的字符串空间需要释放
 		free($1.id);
 	}
-	| T_ID '[' Expr ']' {
-		// 兼容原一维数组访问 ID[expr]
-		
-		// 创建数组访问节点
-		$$ = create_contain_node(ASTOP(ARRAY_ACCESS), ast_node::New($1), $3);
-		
-		// 对于字符型字面量的字符串空间需要释放
-		free($1.id);
-	}
 	;
 
 // 数组索引列表：[expr1][expr2][expr3]...
@@ -620,4 +631,9 @@ ast_node* adjustCond(ast_node *node) {
         node = node->sons[0];
     }
     return create_contain_node(ast_operator_type(tp), node, v);
+}
+
+// init-list标准化调整
+void adjustInit(const ArrayType *type, ast_node *node) {
+    
 }
