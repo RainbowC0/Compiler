@@ -31,7 +31,7 @@ public:
         INT_TO_FLOAT, ///< 整数转浮点数
         FLOAT_TO_INT, ///< 浮点数转整数
         BOOL_TO_INT,  ///< 布尔值转整数
-        INT_TO_BOOL   ///< 整数转布尔值
+        INT_TO_BOOL,   ///< 整数转布尔值
     };
 
     ///

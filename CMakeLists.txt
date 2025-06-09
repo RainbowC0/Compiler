@@ -118,12 +118,13 @@ set(IR_SRCS
 	ir/Instructions/GotoInstruction.cpp
 	ir/Instructions/LabelInstruction.cpp
 	ir/Instructions/MoveInstruction.cpp
+	ir/Instructions/StoreInstruction.cpp
+	ir/Instructions/LoadInstruction.cpp
 	ir/Types/VoidType.cpp
 	ir/Types/LabelType.cpp
 	ir/Types/IntegerType.cpp
 	ir/Types/FloatType.cpp
 	ir/Types/ArrayType.cpp
-	ir/TypeSystem.h
 	ir/CFG.cpp
 	ir/IRCode.cpp
 	ir/Function.cpp

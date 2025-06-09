@@ -8,7 +8,7 @@
 class Function;
 
 ///
-/// @brief 复制指令
+/// @brief 存储指令
 ///
 class StoreInstruction : public Instruction {
 
@@ -19,7 +19,7 @@ public:
     /// @param result 目的地址
     /// @param srcVal1 源操作数
     ///
-    StoreInstruction(Function * _func, PointerType * ptr, Value * srcVal1);
+    StoreInstruction(Function * _func, Value * ptr, Value * srcVal1);
 
     /// @brief 转换成字符串
     void toString(std::string & str) override;

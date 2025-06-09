@@ -19,6 +19,7 @@
 #include "Common.h"
 #include "VoidType.h"
 #include "FloatType.h"
+#include "ArrayType.h"
 
 Module::Module(const std::string & _name) : name(_name)
 {
@@ -35,6 +36,11 @@ Module::Module(const std::string & _name) : name(_name)
     (void) newFunction("putch", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}}, true);
     (void) newFunction("getfloat", FloatType::getTypeFloat(), {}, true);
     (void) newFunction("putfloat", VoidType::getType(), {new FormalParam{FloatType::getTypeFloat(), ""}}, true);
+    // TODO 使用 ArrayType
+    (void) newFunction("getarray", IntegerType::getTypeInt(), {new FormalParam{IntegerType::getTypeInt(), ""}}, true);
+    (void) newFunction("getfarray", FloatType::getTypeFloat(), {new FormalParam{FloatType::getTypeFloat(), ""}}, true);
+    (void) newFunction("putarray", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{FloatType::getTypeFloat(), ""}}, true);
+    (void) newFunction("putfarray", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{FloatType::getTypeFloat(), ""}}, true);
 }
 
 /// @brief 进入作用域，如进入函数体块、语句块等

@@ -60,6 +60,9 @@ asm.s
 # Visual Studio
 .vs/
 
+# VS Code
+.vscode/
+
 # VSCodeCounters
 .VSCodeCounter/
 

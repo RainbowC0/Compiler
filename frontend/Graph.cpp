@@ -66,14 +66,8 @@ static string getNodeName(ast_node * astnode)
         case ast_operator_type::AST_OP_VAR_DECL:
             nodeName = "var-decl";
             break;
-        case ast_operator_type::AST_OP_ARRAY_DEF:
-            nodeName = "arr-def";
-            break;
         case ast_operator_type::AST_OP_ARRAY_ACCESS:
             nodeName = "arr-access";
-            break;
-        case ast_operator_type::AST_OP_ARRAY_DIMS:
-            nodeName = "arr-dims";
             break;
         case ast_operator_type::AST_OP_ARRAY_INDICES:
             nodeName = "arr-indices";
@@ -98,6 +92,9 @@ static string getNodeName(ast_node * astnode)
             break;
         case ast_operator_type::AST_OP_ASSIGN:
             nodeName = "=";
+            break;
+        case ASTOP(L2R):
+            nodeName = "lval2rval";
             break;
         case ASTOP(GT):
             nodeName = ">";

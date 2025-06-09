@@ -16,8 +16,8 @@
 ///
 #pragma once
 
-#include "../Value.h"
-#include "../Types/FloatType.h"
+#include "Value.h"
+#include "FloatType.h"
 
 ///
 /// @brief 浮点常量类

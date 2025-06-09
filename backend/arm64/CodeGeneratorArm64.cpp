@@ -31,6 +31,7 @@
 #include "ArgInstruction.h"
 #include "MoveInstruction.h"
 #include "PlatformArm64.h"
+#include "ArrayType.h"
 
 #define DEBUG 1
 #ifdef DEBUG
@@ -39,9 +40,7 @@
 #define PNT(fmt, ...)
 #endif
 
-using std::remove;
-
-static int allocateStackSlot(Function * func);
+static int allocateStackSlot(Function *, Type *);
 static void expireOldRanges(std::vector<LiveRange> &active, std::vector<int> &freeRegs, int pos);
 static int findLastUse(Value *val, const std::vector<Instruction*> &insts, int startPos);
 static void extendRangeIfExists(std::vector<LiveRange> &ranges, Value *value, int currentPos);
@@ -232,7 +231,9 @@ void CodeGeneratorArm64::registerAllocation(Function * func)
     // 4. 处理剩余逻辑（如保护寄存器）
     adjustFuncCallInsts(func);
 
-    stackAlloc(func);
+    // 5. 对齐sp
+    int dep = func->getMaxDep();
+    func->setMaxDep((dep + 15) & ~15);
 
     adjustFormalParamInsts(func);
 
@@ -508,15 +509,13 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(
         expireOldRanges(active, freeRegs, range.start);
 
         // 2. 分配寄存器
-        if (!freeRegs.empty()) {
+        if (!(range.value->getType()->isArrayType() || freeRegs.empty())) {
             range.reg = freeRegs.back();
             freeRegs.pop_back();
             active.push_back(range);
-            if (ARM64_CALLER_SAVE(range.reg) && std::find(protects.begin(), protects.end(), range.reg)==protects.end())
-                protects.push_back(range.reg);
         } else {
             // 3. 溢出到栈
-            range.stackOffset = allocateStackSlot(func);
+            range.stackOffset = allocateStackSlot(func, range.value->getType());
         }
     }
 
@@ -524,6 +523,8 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(
     for (const auto &range : ranges) {
         if (range.reg != -1) {
             range.value->setRegId(range.reg);
+            if (ARM64_CALLER_SAVE(range.reg) && std::find(protects.begin(), protects.end(), range.reg)==protects.end())
+                protects.push_back(range.reg);
         } else {
             range.value->setMemoryAddr(ARM64_FP_REG_NO, range.stackOffset);
         }
@@ -555,9 +556,9 @@ void expireOldRanges(std::vector<LiveRange> &active, std::vector<int> &freeRegs,
 }
 
 // 分配栈槽
-int allocateStackSlot(Function *func) {
+int allocateStackSlot(Function *func, Type *type) {
     int offset = func->getMaxDep();
-    func->setMaxDep(offset + 4); // 假设4字节对齐
+    func->setMaxDep(offset + type->getSize()); // 假设4字节对齐
     return offset;
 }
 
@@ -570,8 +571,8 @@ void extendRangeIfExists(std::vector<LiveRange> &ranges, Value *value, int curre
         }
     }
     // 如果未找到匹配的LiveRange，新的定义
-    Instanceof(cz, ConstInt*, value);
-    if (!cz) {
+    //Instanceof(cz, ConstInt*, value);
+    if (!dynamic_cast<ConstInt*>(value)) {
         LiveRange lr;
         lr.value = value;
         lr.start = dynamic_cast<FormalParam*>(value)==nullptr?currentPos:0;

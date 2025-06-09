@@ -122,6 +122,8 @@ public:
     [[nodiscard]] const Type* getBaseElementType() const;
 
     void setBaseElementType(const Type*);
+
+    uint32_t getDimensionSize();
     ///
     /// @brief 从多维索引创建多维数组类型
     /// @param baseType 基础元素类型

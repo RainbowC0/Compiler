@@ -94,6 +94,11 @@ protected:
     void translate_fdiv(Instruction *);
     void translate_fmod(Instruction *);
 
+    void translate_gep(Instruction *);
+
+    void translate_store(Instruction *);
+    void translate_load(Instruction *);
+
     void translate_cast(Instruction *);
 
     /// @brief 函数调用指令翻译成ARM32汇编

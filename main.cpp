@@ -113,7 +113,10 @@ lb_check:
                 gShowHelp = true;
                 break;
             case 'o':
-                gOutputFile = optarg;
+                if (!strcmp(optarg, "-"))
+                    gOutputFile = "/dev/stdout";
+                else
+                    gOutputFile = optarg;
                 break;
             case 'S':
                 gShowSymbol = true;

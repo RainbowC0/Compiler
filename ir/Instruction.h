@@ -99,10 +99,13 @@ typedef enum IRInstOperator {
     IRINST_OP_ARG,
 
     /// @brief 数组元素访问指令
-    IRINST_OP_ARRAY_ACCESS,
+    IRINST_OP_GEP,
 
-    /// @brief 存储指令（用于数组）
-    IRINST_OP_ARRAY_ACCESS,
+    /// @brief 存储指令
+    IRINST_OP_STORE,
+
+    /// @brief 载入指令
+    IRINST_OP_LOAD,
 
     /* 后续可追加其他的IR指令 */
 

@@ -1,0 +1,11 @@
+int main()
+{
+    int a[5][9] = {1}, k=0;
+    float b = 1.1;
+    int l[2];
+    l[0] = 1;
+    l[1] = 3;
+    b = b + a[0][1];
+    b = b - l[0];
+    return 0;
+}

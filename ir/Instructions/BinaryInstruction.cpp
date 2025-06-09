@@ -110,8 +110,7 @@ void BinaryInstruction::toString(std::string & str)
         case IROP(FLE):
             opstr = " = fcmp ole ";
             break;
-
-        case IROP(ARRAY_ACCESS):
+        case IROP(GEP):
             opstr = " = getelementptr ";
             break;
 
@@ -119,10 +118,9 @@ void BinaryInstruction::toString(std::string & str)
             opstr = NULL;
     }
     if (opstr) {
-        if (op == IROP(ARRAY_ACCESS)) {
+        if (op == IROP(GEP)) {
             // 数组访问的特殊格式 - 修正格式
-            str =
-                getIRName() + opstr + src1->getType()->toString() + ", " + src1->getIRName() + ", " + src2->getIRName();
+            str = getIRName() + opstr + getType()->toString() + ", " + src1->getIRName() + ", 0, " + src2->getIRName();
         } else {
             str = getIRName() + opstr + src1->getIRName() + "," + src2->getIRName();
         }

@@ -83,14 +83,8 @@ enum class ast_operator_type : int8_t {
     /// @brief 变量声明
     AST_OP_VAR_DECL,
 
-    /// @brief 数组定义
-    AST_OP_ARRAY_DEF,
-
     /// @brief 数组访问
     AST_OP_ARRAY_ACCESS,
-
-    /// @brief 数组维度列表
-    AST_OP_ARRAY_DIMS,
 
     /// @brief 数组索引列表  
     AST_OP_ARRAY_INDICES,
@@ -128,6 +122,8 @@ enum class ast_operator_type : int8_t {
 
     AST_OP_BREAK,
     AST_OP_CONTINUE,
+
+    AST_OP_L2R,
 
     // 空语句
     AST_OP_NULL_STMT,

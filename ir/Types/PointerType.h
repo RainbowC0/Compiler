@@ -23,6 +23,7 @@
 ///
 class PointerType : public Type {
 
+    static int32_t size;
     ///
     /// @brief Hash用结构体，提供Hash函数
     ///

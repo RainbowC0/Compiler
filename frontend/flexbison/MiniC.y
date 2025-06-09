@@ -166,7 +166,13 @@ FuncParams : FuncParam {
 FuncParam : BasicType T_ID {
         $$ = ast_node::New($2);
         $$->type = typeAttr2Type($1);
-	};
+	}
+    | BasicType T_ID ArrayDimList {
+        $$ = ast_node::New($2);
+        Type *tp = typeAttr2Type($1);
+        tp = (Type*)ArrayType::createMultiDimensional(tp, *$3);
+        $$->type = tp;
+    };
 
 // 语句块的文法Block ： '{' BlockItemList? '}'
 // 其中?代表可有可无，在bison中不支持，需要拆分成两个产生式
@@ -538,8 +544,8 @@ PrimaryExp :  '(' Expr ')' {
 	| LVal  {
 		// 具有左值的表达式
 
-		// 直接传递到归约后的非终结符号PrimaryExp
-		$$ = $1;
+		// 左转右，部分需要特殊处理
+		$$ = create_contain_node(ASTOP(L2R), $1);
 	}
 	;
 

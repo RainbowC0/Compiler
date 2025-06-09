@@ -32,11 +32,13 @@
 #include "FuncCallInstruction.h"
 #include "BinaryInstruction.h"
 #include "MoveInstruction.h"
+#include "StoreInstruction.h"
+#include "LoadInstruction.h"
 #include "GotoInstruction.h"
 #include "TypeSystem.h"
-#include "../Instructions/CastInstruction.h"
-#include "../Values/ConstFloat.h"
-#include "../Types/FloatType.h"
+#include "CastInstruction.h"
+#include "ConstFloat.h"
+#include "FloatType.h"
 
 #define CHECK_NODE(name, son)                                                                                          \
     name = ir_visit_ast_node(son);                                                                                     \
@@ -89,9 +91,9 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ASTOP(ARRAY_ACCESS)] = &IRGenerator::ir_array_access;
 
     /* 多维数组相关 */
-    ast2ir_handlers[ASTOP(ARRAY_DIMS)] = &IRGenerator::ir_array_dims;
-    ast2ir_handlers[ASTOP(ARRAY_INDICES)] = &IRGenerator::ir_array_indices;
     ast2ir_handlers[ASTOP(ARRAY_INIT)] = &IRGenerator::ir_array_init;
+
+    ast2ir_handlers[ASTOP(L2R)] = &IRGenerator::ir_lval_to_r;
 
     ast2ir_handlers[ASTOP(BREAK)] = &IRGenerator::ir_jump;
     ast2ir_handlers[ASTOP(CONTINUE)] = &IRGenerator::ir_jump;
@@ -522,18 +524,6 @@ bool IRGenerator::ir_assign(ast_node * node)
 
     // 赋值节点，自右往左运算
 
-    // 检查左侧是否是数组定义节点
-    if (son1_node->node_type == ASTOP(ARRAY_DEF)) {
-        // 这是数组定义的初始化赋值，需要特殊处理
-        // 数组定义应该已经在变量声明中处理过了
-        // 这里我们需要处理初始化，但暂时跳过
-        
-        // TODO: 实现数组初始化的具体逻辑
-        // 目前先简单处理，不递归调用ir_visit_ast_node避免遇到ARRAY_DIMS节点
-        
-        return true;
-    }
-
     // 赋值运算符的左侧操作数
     ast_node * left = ir_visit_ast_node(son1_node);
     if (!left) {
@@ -552,7 +542,13 @@ bool IRGenerator::ir_assign(ast_node * node)
     // 这里只处理整型的数据，如需支持实数，则需要针对类型进行处理
     // TODO real number add
 
-    MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(), left->val, right->val);
+    Instruction * movInst;
+    Function * func = module->getCurrentFunction();
+    if (left->node_type == ASTOP(ARRAY_ACCESS)) {
+        movInst = new StoreInstruction(func, left->val, right->val);
+    } else {
+        movInst = new MoveInstruction(func, left->val, right->val);
+    }
 
     // 创建临时变量保存IR的值，以及线性IR指令
     node->blockInsts.addInst(right->blockInsts);
@@ -580,7 +576,6 @@ bool IRGenerator::ir_return(ast_node * node)
         // 返回的表达式的指令保存在right节点中
         right = ir_visit_ast_node(son_node);
         if (!right) {
-
             // 某个变量没有定值
             return false;
         }
@@ -631,58 +626,6 @@ bool IRGenerator::ir_node_var_id(ast_node * node)
     return true;
 }
 
-/// @brief 数组访问节点翻译成线性中间IR
-/// @param node AST节点
-/// @return 翻译是否成功，true：成功，false：失败
-bool IRGenerator::ir_array_access(ast_node * node)
-{
-    // 数组访问节点有两个子节点：第一个是数组变量名，第二个是索引或索引列表
-    ast_node * arrayNameNode = node->sons[0];
-    ast_node * indexNode = node->sons[1];
-
-    // 解析数组名
-    if (!ir_node_var_id(arrayNameNode)) {
-        return false;
-    }
-
-    // 检查是否是多维数组访问
-    if (indexNode->node_type == ASTOP(ARRAY_INDICES)) {
-        // 多维数组访问
-        return ir_multi_array_access(node);
-    }
-
-    // 原有的一维数组访问逻辑
-    ast_node * CHECK_NODE(indexExpr, indexNode);
-
-    // 获取数组变量
-    Value * arrayVal = arrayNameNode->val;
-    if (!arrayVal || !arrayVal->getType()->isArrayType()) {
-        // 不是数组类型
-        return false;
-    }
-
-    // 获取数组元素类型
-    ArrayType * arrayType = static_cast<ArrayType *>(arrayVal->getType());
-    Type * elementType = const_cast<Type *>(arrayType->getElementType());
-
-    Function * currentFunc = module->getCurrentFunction();
-
-    // 将下标表达式指令添加到当前节点的指令块中
-    node->blockInsts.addInst(indexExpr->blockInsts);
-
-    // 创建数组元素访问指令
-    BinaryInstruction * accessInst =
-        new BinaryInstruction(currentFunc, IROP(ARRAY_ACCESS), arrayVal, indexExpr->val, elementType);
-
-    node->blockInsts.addInst(accessInst);
-
-    // 设置当前节点的值为数组元素访问指令的结果
-    node->val = accessInst;
-    node->type = elementType;
-
-    return true;
-}
-
 /// @brief 无符号整数字面量叶子节点翻译成线性中间IR
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
@@ -711,9 +654,11 @@ bool IRGenerator::ir_leaf_node_float(ast_node * node)
     return true;
 }
 
-/// @brief 变量声明语句节点翻译成线性中间IR
-/// @param node AST节点
-/// @return 翻译是否成功，true：成功，false：失败
+/**
+ * @brief 变量声明语句节点翻译成线性中间IR
+ * @param node AST节点
+ * @return 翻译是否成功，true：成功，false：失败
+ */
 bool IRGenerator::ir_variable_declare(ast_node * node)
 {
     Function * func = module->getCurrentFunction();
@@ -721,12 +666,22 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
     // 函数内定义
     if (func) {
         for (auto child:node->sons) {
-            child->val = module->newVarValue(child->type, child->name);
+            Value *val = module->newVarValue(child->type, child->name);
+            child->val = val;
             if (!child->sons.empty()) {
                 // 处理初始值赋值
                 ast_node * CHECK_NODE(s, child->sons[0]);
                 if (s->node_type == ASTOP(ARRAY_INIT)) {
-                    //node->blockInsts.addInst(new 
+                    Type *baseType = child->type;
+                    for (size_t i=0, l=s->sons.size(); i<l; i++) {
+                        ast_node *CHECK_NODE(item, s->sons[i]);
+                        node->blockInsts.addInst(item->blockInsts);
+                        Instruction *ptr = new BinaryInstruction(
+                            func, IRINST_OP_GEP, val, module->newConstInt(i), baseType
+                        );
+                        node->blockInsts.addInst(ptr);
+                        node->blockInsts.addInst(new StoreInstruction(func, ptr, item->val));
+                    }
                 } else {
                     node->blockInsts.addInst(s->blockInsts);
                     node->blockInsts.addInst(new MoveInstruction(func, child->val, s->val));
@@ -924,10 +879,10 @@ std::vector<LabelInstruction **> * merge(std::vector<LabelInstruction **> * a, s
     return a;
 }
 
-/// @brief 多维数组访问节点翻译成线性中间IR
+/// @brief 数组访问节点翻译成线性中间IR
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
-bool IRGenerator::ir_multi_array_access(ast_node * node)
+bool IRGenerator::ir_array_access(ast_node * node)
 {
     ast_node * arrayNameNode = node->sons[0];
     ast_node * indicesNode = node->sons[1];
@@ -943,97 +898,48 @@ bool IRGenerator::ir_multi_array_access(ast_node * node)
         return false;
     }
 
-    ArrayType * arrayType = static_cast<ArrayType *>(arrayVal->getType());
-    std::vector<uint32_t> dimSizes = arrayType->getDimensionSizes();
+    const Type * tp = arrayVal->getType();
     
-    Function * currentFunc = module->getCurrentFunction();
+    Function * func = module->getCurrentFunction();
 
-    // 解析所有索引表达式
-    std::vector<Value*> indexValues;
     for (auto indexNode : indicesNode->sons) {
-        ast_node * CHECK_NODE(indexExpr, indexNode);
+        if (!tp->isArrayType()) {
+            // 维度过多
+            return false;
+        }
+
+        ast_node *CHECK_NODE(indexExpr, indexNode);
+        // TODO 数组越界检查
         node->blockInsts.addInst(indexExpr->blockInsts);
-        indexValues.push_back(indexExpr->val);
+        Instruction *getptr = new BinaryInstruction(
+            func, IRINST_OP_GEP, arrayVal, indexExpr->val, (Type*)tp
+        );
+        arrayVal = getptr;
+        node->blockInsts.addInst(getptr);
+
+        tp = ((ArrayType*)tp)->getElementType();
     }
-
-    // 检查索引维度是否匹配
-    if (indexValues.size() > dimSizes.size()) {
-        return false; // 索引维度过多
-    }
-
-    // 计算线性偏移：offset = i0 * (d1 * d2 * ... * dn-1) + i1 * (d2 * ... * dn-1) + ... + in-1
-    Value * totalOffset = module->newConstInt(0);
-    
-    for (size_t i = 0; i < indexValues.size(); ++i) {
-        // 计算当前维度的乘数
-        int32_t multiplier = 1;
-        for (size_t j = i + 1; j < dimSizes.size(); ++j) {
-            multiplier *= dimSizes[j];
-        }
-        
-        if (multiplier > 1) {
-            // 创建乘法指令：indexValues[i] * multiplier
-            Value * multiplierVal = module->newConstInt(multiplier);
-            BinaryInstruction * mulInst = new BinaryInstruction(
-                currentFunc, IROP(IMUL), indexValues[i], multiplierVal, IntegerType::getTypeInt()
-            );
-            node->blockInsts.addInst(mulInst);
-            
-            // 累加到总偏移
-            BinaryInstruction * addInst = new BinaryInstruction(
-                currentFunc, IROP(IADD), totalOffset, mulInst, IntegerType::getTypeInt()
-            );
-            node->blockInsts.addInst(addInst);
-            totalOffset = addInst;
-        } else {
-            // multiplier为1时直接累加
-            BinaryInstruction * addInst = new BinaryInstruction(
-                currentFunc, IROP(IADD), totalOffset, indexValues[i], IntegerType::getTypeInt()
-            );
-            node->blockInsts.addInst(addInst);
-            totalOffset = addInst;
-        }
-    }
-
-    // 确定结果类型
-    Type * resultType;
-    if (indexValues.size() == dimSizes.size()) {
-        // 完全索引，返回基础元素类型
-        resultType = const_cast<Type*>(arrayType->getBaseElementType());
-    } else {
-        // 部分索引，返回子数组类型
-        std::vector<uint32_t> remainingDims(dimSizes.begin() + indexValues.size(), dimSizes.end());
-        resultType = const_cast<ArrayType*>(ArrayType::createMultiDimensional(
-            const_cast<Type*>(arrayType->getBaseElementType()), remainingDims));
-    }
-
-    // 创建数组访问指令
-    BinaryInstruction * accessInst = new BinaryInstruction(
-        currentFunc, IROP(ARRAY_ACCESS), arrayVal, totalOffset, resultType
-    );
-    node->blockInsts.addInst(accessInst);
-
-    node->val = accessInst;
-    node->type = resultType;
+    node->val = arrayVal;
+    node->type = (Type*)tp;
 
     return true;
 }
 
-/// @brief 数组维度列表节点翻译成线性中间IR
-/// @param node AST节点
-/// @return 翻译是否成功，true：成功，false：失败
-bool IRGenerator::ir_array_dims(ast_node * node)
+bool IRGenerator::ir_lval_to_r(ast_node * node)
 {
-    // 维度列表节点不需要生成IR，仅用于AST结构
-    return true;
-}
+    ast_node *CHECK_NODE(s, node->sons[0]);
 
-/// @brief 数组索引列表节点翻译成线性中间IR
-/// @param node AST节点
-/// @return 翻译是否成功，true：成功，false：失败
-bool IRGenerator::ir_array_indices(ast_node * node)
-{
-    // 索引列表节点不需要生成IR，仅用于AST结构
+    node->blockInsts.addInst(s->blockInsts);
+    Type *tp = s->type;
+    Value *v = s->val;
+    if (s->node_type == ASTOP(ARRAY_ACCESS)) {
+        auto func = module->getCurrentFunction();
+        auto ldr = new LoadInstruction(func, v, tp);
+        node->blockInsts.addInst(ldr);
+        v = ldr;
+    }
+    node->type = tp;
+    node->val = v;
     return true;
 }
 
@@ -1045,21 +951,15 @@ bool IRGenerator::ir_array_init(ast_node * node)
     // TODO: 实现数组初始化的IR生成
     // 这里需要根据初始化列表生成相应的赋值指令
     
-    Function * currentFunc = module->getCurrentFunction();
-    
-    // 处理初始化列表中的每个元素
-    for (size_t i = 0; i < node->sons.size(); ++i) {
-        ast_node * element = node->sons[i];
-        
-        /*if (element->node_type == ASTOP(ARRAY_INIT)) {
-            // 嵌套的初始化列表，递归处理
-            ast_node * CHECK_NODE(initExpr, element);
-            node->blockInsts.addInst(initExpr->blockInsts);
-        } else {*/
-            // 单个初始化值
-            ast_node * CHECK_NODE(valueExpr, element);
-            node->blockInsts.addInst(valueExpr->blockInsts);
-        //}
+    //Function * currentFunc = module->getCurrentFunction();
+    for (size_t i=0; i<node->sons.size(); i++) {
+        ast_node *el = node->sons[i];
+        if (el->node_type == ASTOP(ARRAY_INIT)) {
+            ir_array_init(el);
+            auto x = node->sons.begin()+i;
+            node->sons.erase(x);
+            node->sons.insert(x, el->sons.begin(), el->sons.end());
+        }
     }
     
     return true;

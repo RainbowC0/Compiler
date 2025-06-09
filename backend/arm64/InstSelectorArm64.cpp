@@ -29,12 +29,14 @@
 #include "GotoInstruction.h"
 #include "FuncCallInstruction.h"
 #include "MoveInstruction.h"
+#include "ArrayType.h"
 // #include "BinaryInstruction.h"
 
 static char * cmpmap[] = {"eq", "ne", "gt", "le", "ge", "lt"};
 #define CSTRJ(C) cmpmap[(C - IRINST_OP_IEQ) ^ 1]
 #define CSTR(C) cmpmap[(C - IRINST_OP_IEQ)]
 
+using std::to_string;
 // static GotoInstruction *lastBranch;
 /// @brief 构造函数
 /// @param _irCode 指令
@@ -75,6 +77,10 @@ InstSelectorArm64::InstSelectorArm64(vector<Instruction *> & _irCode,
     translator_handlers[IRINST_OP_FMUL] = &InstSelectorArm64::translate_fmul;
     translator_handlers[IRINST_OP_FDIV] = &InstSelectorArm64::translate_fdiv;
     translator_handlers[IRINST_OP_FMOD] = &InstSelectorArm64::translate_fmod;
+
+    translator_handlers[IRINST_OP_GEP] = &InstSelectorArm64::translate_gep;
+    translator_handlers[IRINST_OP_STORE] = &InstSelectorArm64::translate_store;
+    translator_handlers[IRINST_OP_LOAD] = &InstSelectorArm64::translate_load;
 
     translator_handlers[IRINST_OP_CAST] = &InstSelectorArm64::translate_cast;
 
@@ -394,6 +400,78 @@ void InstSelectorArm64::translate_rem_int32(Instruction * inst)
     translate_two_operator(inst, "rem");
     arg1->setRegId(reg1);
     arg2->setRegId(reg2);
+}
+
+void InstSelectorArm64::translate_gep(Instruction *inst) {
+    Value *arg1 = inst->getOperand(0);
+    Value *arg2 = inst->getOperand(1);
+
+    int32_t baseReg = -1;
+    int64_t baseOff;
+    arg1->getMemoryAddr(&baseReg, &baseOff);
+
+    Instanceof(off, ConstInt*, arg2);
+    uint32_t l = ((ArrayType*)(inst->getType()))->getElementType()->getSize();
+    if (off) {
+        // if (baseReg == null) store baseReg;
+        inst->setMemoryAddr(baseReg, baseOff + off->getVal() * l);
+    } else {
+        // TODO
+        // %t1 = getelemptr [3xi32] %l0, %l1
+        // // mul l1, l1, lx
+        if (baseReg == -1) {
+            baseReg = ARM64_TMP_REG_NO;
+            iloc.load_var(baseReg, arg1);
+        }
+        int32_t reg2 = arg2->getRegId();
+        if (reg2 == -1) {
+            reg2 = ARM64_TMP_REG_NO2;
+            iloc.load_var(reg2, arg2);
+        }
+        if (__builtin_popcount(l) == 1) {
+            iloc.inst("add", "x"+to_string(ARM64_TMP_REG_NO2), "x"+to_string(baseReg), "x"+to_string(reg2)+",lsl "+to_string(__builtin_ctz(l)));
+        } else {
+            iloc.inst("mov", "x"+to_string(ARM64_TMP_REG_NO), "#"+to_string(l));
+            iloc.inst("madd", "x"+to_string(ARM64_TMP_REG_NO2),
+                        "x"+to_string(reg2),
+                        "x"+to_string(ARM64_TMP_REG_NO)
+                        +",x"+to_string(baseReg));
+        }
+        inst->setMemoryAddr(ARM64_TMP_REG_NO2, baseOff);
+        // add t1, l0, l1, lsl 2
+    }
+}
+
+void InstSelectorArm64::translate_store(Instruction *inst) {
+    int64_t off = 0;
+    Value *ptr = inst->getOperand(0),
+          *src = inst->getOperand(1);
+    int32_t basereg = ptr->getRegId(),
+            loadreg = src->getRegId();
+    if (loadreg == -1) {
+        loadreg = ARM64_TMP_REG_NO;
+        iloc.load_var(loadreg, src);
+    }
+    if (basereg == -1) {
+        ptr->getMemoryAddr(&basereg, &off);
+    }
+    
+    iloc.store_base(loadreg, basereg, off, ARM64_TMP_REG_NO);
+}
+
+void InstSelectorArm64::translate_load(Instruction *inst) {
+    int64_t off = 0;
+    Value *addr = inst->getOperand(0);
+    int32_t basereg = addr->getRegId(),
+            loadreg = inst->getRegId();
+    if (loadreg == -1) {
+        loadreg = ARM64_TMP_REG_NO;
+        iloc.load_var(loadreg, addr);
+    }
+    if (basereg == -1) {
+        addr->getMemoryAddr(&basereg, &off);
+    }
+    iloc.load_base(loadreg, basereg, off);
 }
 
 void InstSelectorArm64::translate_bi_op(Instruction * inst)

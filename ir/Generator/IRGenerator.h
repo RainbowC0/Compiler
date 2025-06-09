@@ -90,25 +90,12 @@ protected:
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_array_access(ast_node * node);
 
-    /// @brief 多维数组访问节点翻译成线性中间IR
-    /// @param node AST节点
-    /// @return 翻译是否成功，true：成功，false：失败
-    bool ir_multi_array_access(ast_node * node);
-
-    /// @brief 数组维度列表节点翻译成线性中间IR
-    /// @param node AST节点
-    /// @return 翻译是否成功，true：成功，false：失败
-    bool ir_array_dims(ast_node * node);
-
-    /// @brief 数组索引列表节点翻译成线性中间IR
-    /// @param node AST节点
-    /// @return 翻译是否成功，true：成功，false：失败
-    bool ir_array_indices(ast_node * node);
-
     /// @brief 数组初始化节点翻译成线性中间IR
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_array_init(ast_node * node);
+
+    bool ir_lval_to_r(ast_node * node);
 
     /// @brief 类型叶子节点翻译成线性中间IR
     /// @param node AST节点
