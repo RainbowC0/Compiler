@@ -100,7 +100,6 @@ void adjustInit(const ArrayType *type, ast_node *node);
 %type <op_type> AddOp
 %type <op_type> MulOp
 %type <op_type> RelOp
-%type <dims> ArrayDimList
 %type <node> ArrayIndexList ArrayInitList InitValueList InitValue
 %%
 
@@ -167,10 +166,16 @@ FuncParam : BasicType T_ID {
         $$ = ast_node::New($2);
         $$->type = typeAttr2Type($1);
 	}
-    | BasicType T_ID ArrayDimList {
+    | BasicType T_ID ArrayIndexList {
         $$ = ast_node::New($2);
         Type *tp = typeAttr2Type($1);
-        tp = (Type*)ArrayType::createMultiDimensional(tp, *$3);
+        
+        // 计算数组维度，类似VarDef的处理
+        std::vector<uint32_t> dimensions;
+        for (auto dimExpr : $3->sons) {
+            dimensions.push_back(1); // 对于函数参数，使用默认维度
+        }
+        tp = (Type*)ArrayType::createMultiDimensional(tp, dimensions);
         $$->type = tp;
     };
 
@@ -267,16 +272,15 @@ VarDef : T_ID {
 		// 对于字符型字面量的字符串空间需要释放
 		free($1.id);
 	}
-	| T_ID ArrayDimList {
-		// 多维数组变量定义ID[n][m]...
+	| T_ID ArrayIndexList {
+		// 多维数组变量定义ID[expr1][expr2]...，支持常量表达式
         $$ = ast_node::New(var_id_attr{$1.id, $1.lineno});
 
-        const std::vector<uint32_t> &lst = *$2;
-
-        $$->type = (Type*)ArrayType::createMultiDimensional(nullptr, lst);
-
-		// 创建数组变量节点，arrayDimList包含所有维度
-		//$$ = create_contain_node(ASTOP(ARRAY_DEF), ast_node::New($1), $2);
+		// 创建空的数组类型，具体维度将在IRGenerator中计算
+        $$->type = ArrayType::empty();
+        
+        // 将ArrayIndexList作为子节点保存，用于后续计算维度
+        $$->insert_son_node($2);
 
 		// 对于字符型字面量的字符串空间需要释放
 		free($1.id);
@@ -286,31 +290,17 @@ VarDef : T_ID {
         $$->insert_son_node($3);
         free($1.id);
     }
-	| T_ID ArrayDimList '=' ArrayInitList {
-		// 多维数组带初始化定义
+	| T_ID ArrayIndexList '=' ArrayInitList {
+		// 多维数组带初始化定义，支持常量表达式
 		$$ = ast_node::New(var_id_attr{$1.id, $1.lineno});
-        const auto &lst = *$2;
-        const ArrayType *arrtype = ArrayType::createMultiDimensional(nullptr, lst);
-        $$->type = (Type*)arrtype;
-        adjustInit(arrtype, $4);
+		
+		// 创建空的数组类型，具体维度将在IRGenerator中计算
+        $$->type = ArrayType::empty();
+        
+        // 将ArrayIndexList和初始化列表作为子节点保存
+        $$->insert_son_node($2);
         $$->insert_son_node($4);
 		free($1.id);
-	}
-	;
-
-// 数组维度列表：[n][m][k]...
-ArrayDimList : '[' ']' {
-        // 第一维可省
-        $$ = new std::vector<uint32_t>{0};
-    }
-    | '[' T_DIGIT ']' {
-		// 创建数组维度列表节点，包含第一个维度
-		$$ = new std::vector<uint32_t>{(uint32_t)$2.val};
-	}
-	| ArrayDimList '[' T_DIGIT ']' {
-		// 向数组维度列表添加新维度
-        $1->push_back($3.val);
-		$$ = $1;
 	}
 	;
 

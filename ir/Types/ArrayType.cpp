@@ -69,7 +69,7 @@ const ArrayType * ArrayType::get(Type * elementType, uint32_t numElements)
     return storageSet.get(elementType, numElements);
 }
 
-const ArrayType* ArrayType::createMultiDimensional(Type* baseType, const std::vector<uint32_t>& dimensions)
+ArrayType* ArrayType::createMultiDimensional(Type* baseType, const std::vector<uint32_t>& dimensions)
 {
     if (dimensions.empty()) {
         return nullptr;
@@ -80,9 +80,17 @@ const ArrayType* ArrayType::createMultiDimensional(Type* baseType, const std::ve
         currentType = new ArrayType(currentType, dimensions[i]);
     }
     
-    return static_cast<const ArrayType*>(currentType);
+    return static_cast<ArrayType*>(currentType);
 }
 
 uint32_t ArrayType::getDimensionSize() {
     return numElements;
+}
+
+ArrayType* ArrayType::empty()
+{
+    // 返回一个空的数组类型，用于表示维度待定的数组
+    // 元素类型为nullptr，大小为0，后续在IRGenerator中填充具体信息
+    static ArrayType* emptyArrayType = new ArrayType(nullptr, 0);
+    return emptyArrayType;
 }

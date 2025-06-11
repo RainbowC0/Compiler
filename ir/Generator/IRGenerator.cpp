@@ -666,35 +666,101 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
     // 函数内定义
     if (func) {
         for (auto child:node->sons) {
+            // 检查是否是数组类型且需要计算维度
+            if (child->type && child->type->isArrayType() && 
+                static_cast<const ArrayType*>(child->type)->getElementType() == nullptr) {
+                
+                // 这是一个空的数组类型，需要计算维度
+                if (child->sons.size() >= 1 && child->sons[0]->node_type == ASTOP(ARRAY_INDICES)) {
+                    // 计算数组各维度的值
+                    ast_node* arrayIndicesNode = child->sons[0];
+                    std::vector<uint32_t> dimensions;
+                    
+                    for (auto dimExpr : arrayIndicesNode->sons) {
+                        if (dimExpr == nullptr) {
+                            // 空维度，使用0
+                            dimensions.push_back(0);
+                        } else {
+                            // 计算常量表达式
+                            ast_node* CHECK_NODE(dimResult, dimExpr);
+                            if (auto constInt = dynamic_cast<ConstInt*>(dimResult->val)) {
+                                dimensions.push_back(constInt->getVal());
+                            } else if (auto constFloat = dynamic_cast<ConstFloat*>(dimResult->val)) {
+                                dimensions.push_back((uint32_t)constFloat->getVal());
+                            } else {
+                                dimensions.push_back(1); // 默认值
+                            }
+                        }
+                    }
+                    
+                    // 使用计算出的维度创建新的数组类型
+                    child->type = ArrayType::createMultiDimensional(nullptr, dimensions);
+                }
+            }
+            
             Value *val = module->newVarValue(child->type, child->name);
             child->val = val;
+            
             if (!child->sons.empty()) {
                 // 处理初始值赋值
-                ast_node * CHECK_NODE(s, child->sons[0]);
-                if (s->node_type == ASTOP(ARRAY_INIT)) {
-                    Type *baseType = child->type;
-                    for (size_t i=0, l=s->sons.size(); i<l; i++) {
-                        ast_node *CHECK_NODE(item, s->sons[i]);
-                        node->blockInsts.addInst(item->blockInsts);
-                        Instruction *ptr = new BinaryInstruction(
-                            func, IRINST_OP_GEP, val, module->newConstInt(i), baseType
-                        );
-                        node->blockInsts.addInst(ptr);
-                        node->blockInsts.addInst(new StoreInstruction(func, ptr, item->val));
+                int initNodeIndex = child->type && child->type->isArrayType() ? 1 : 0;
+                if (child->sons.size() > initNodeIndex) {
+                    ast_node * CHECK_NODE(s, child->sons[initNodeIndex]);
+                    if (s->node_type == ASTOP(ARRAY_INIT)) {
+                        Type *baseType = child->type;
+                        for (size_t i=0, l=s->sons.size(); i<l; i++) {
+                            ast_node *CHECK_NODE(item, s->sons[i]);
+                            node->blockInsts.addInst(item->blockInsts);
+                            Instruction *ptr = new BinaryInstruction(
+                                func, IRINST_OP_GEP, val, module->newConstInt(i), baseType
+                            );
+                            node->blockInsts.addInst(ptr);
+                            node->blockInsts.addInst(new StoreInstruction(func, ptr, item->val));
+                        }
+                    } else {
+                        node->blockInsts.addInst(s->blockInsts);
+                        node->blockInsts.addInst(new MoveInstruction(func, child->val, s->val));
                     }
-                } else {
-                    node->blockInsts.addInst(s->blockInsts);
-                    node->blockInsts.addInst(new MoveInstruction(func, child->val, s->val));
                 }
             }
         }
     } else for (auto child:node->sons) {
+        // 全局变量定义，类似处理
+        if (child->type && child->type->isArrayType() && 
+            static_cast<const ArrayType*>(child->type)->getElementType() == nullptr) {
+            
+            if (child->sons.size() >= 1 && child->sons[0]->node_type == ASTOP(ARRAY_INDICES)) {
+                ast_node* arrayIndicesNode = child->sons[0];
+                std::vector<uint32_t> dimensions;
+                
+                for (auto dimExpr : arrayIndicesNode->sons) {
+                    if (dimExpr == nullptr) {
+                        dimensions.push_back(0);
+                    } else {
+                        ast_node* CHECK_NODE(dimResult, dimExpr);
+                        if (auto constInt = dynamic_cast<ConstInt*>(dimResult->val)) {
+                            dimensions.push_back(constInt->getVal());
+                        } else if (auto constFloat = dynamic_cast<ConstFloat*>(dimResult->val)) {
+                            dimensions.push_back((uint32_t)constFloat->getVal());
+                        } else {
+                            dimensions.push_back(1);
+                        }
+                    }
+                }
+                
+                child->type = ArrayType::createMultiDimensional(nullptr, dimensions);
+            }
+        }
+        
         child->val = module->newVarValue(child->type, child->name);
         if (!child->sons.empty()) {
-            ast_node *CHECK_NODE(s, child->sons[0]);
-            if (Instanceof(cexp, ConstInt *, s->val)) {
-                Instanceof(gVal, GlobalVariable*, child->val);
-                gVal->intVal = cexp->getVal();
+            int initNodeIndex = child->type && child->type->isArrayType() ? 1 : 0;
+            if (child->sons.size() > initNodeIndex) {
+                ast_node *CHECK_NODE(s, child->sons[initNodeIndex]);
+                if (Instanceof(cexp, ConstInt *, s->val)) {
+                    Instanceof(gVal, GlobalVariable*, child->val);
+                    gVal->intVal = cexp->getVal();
+                }
             }
         }
     }

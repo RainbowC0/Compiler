@@ -130,7 +130,13 @@ public:
     /// @param dimensions 各维度大小
     /// @return 多维数组类型
     ///
-    static const ArrayType* createMultiDimensional(Type* baseType, const std::vector<uint32_t>& dimensions);
+    static ArrayType* createMultiDimensional(Type* baseType, const std::vector<uint32_t>& dimensions);
+
+    ///
+    /// @brief 创建空的多维数组类型（维度待定）
+    /// @return 空的多维数组类型
+    ///
+    static ArrayType* empty();
 
 private:
     ///
