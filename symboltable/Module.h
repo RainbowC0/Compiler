@@ -132,6 +132,10 @@ public:
     /// @return 指针有效则找到，空指针未找到
     Value * findVarValue(const std::string & name);
 
+    void setVal(Value *, Constant *);
+
+    Constant * getVal(Value * val);
+
     /// @brief 清理Module中管理的所有信息资源
     void Delete();
 

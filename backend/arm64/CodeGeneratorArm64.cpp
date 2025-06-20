@@ -40,7 +40,7 @@
 #define PNT(fmt, ...)
 #endif
 
-static int allocateStackSlot(Function *, Type *);
+static int allocateStackSlot(Function *, Value *);
 static void expireOldRanges(std::vector<LiveRange> &active, std::vector<int> &freeRegs, int pos);
 static int findLastUse(Value *val, const std::vector<Instruction*> &insts, int startPos);
 static void extendRangeIfExists(std::vector<LiveRange> &ranges, Value *value, int currentPos);
@@ -93,7 +93,21 @@ void CodeGeneratorArm64::genDataSection()
             fprintf(fp, ".globl %s\n", var->getName().c_str());
             fprintf(fp, ".align 2\n");
             fprintf(fp, "%s:\n", var->getName().c_str());
-            fprintf(fp, ".word 0x%x\n", var->intVal);
+            if (var->getType()->isArrayType()) {
+                int len = var->getType()->getSize()/4;
+                int rlen = var->intVal ? *var->intVal : 0;
+                for (int i=1; i<=rlen; i++) {
+                    fprintf(fp, ".word 0x%x\n", var->intVal[i]);
+                }
+                if ((len-=rlen)>0) {
+                    fprintf(fp, ".zero %d\n", len<<2);
+                }
+                delete var->intVal;
+            } else {
+                int32_t i = var->intVal ? *var->intVal : 0;
+                fprintf(fp, ".word 0x%x\n", i);
+                delete var->intVal;
+            }
             // TODO 数组初值
         }
     }
@@ -262,6 +276,8 @@ void CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
     std::vector<Instruction*> moves(std::min(8, pm));
     for (k = 0; k < std::min(8, pm); k++) {
         moves[k] = new MoveInstruction(func, params[k], PlatformArm64::intRegVal[k]);
+        if (params[k]->getType()->isArrayType())
+            params[k]->setMemoryAddr(params[k]->getRegId(), 0);
     }
     auto &insts = func->getInterCode().getInsts();
     insts.insert(insts.begin()+1, moves.begin(), moves.end());
@@ -508,14 +524,14 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(
         // 1. 过期已结束的区间
         expireOldRanges(active, freeRegs, range.start);
 
-        // 2. 分配寄存器
-        if (!(range.value->getType()->isArrayType() || freeRegs.empty())) {
+        // 2. 溢出到栈
+        if ((range.value->getType()->isArrayType() && !dynamic_cast<FormalParam*>(range.value)) || freeRegs.empty()) {
+            range.stackOffset = allocateStackSlot(func, range.value);
+        } else {
+            // 3. 分配寄存器
             range.reg = freeRegs.back();
             freeRegs.pop_back();
             active.push_back(range);
-        } else {
-            // 3. 溢出到栈
-            range.stackOffset = allocateStackSlot(func, range.value->getType());
         }
     }
 
@@ -556,9 +572,15 @@ void expireOldRanges(std::vector<LiveRange> &active, std::vector<int> &freeRegs,
 }
 
 // 分配栈槽
-int allocateStackSlot(Function *func, Type *type) {
+int allocateStackSlot(Function *func, Value *value) {
     int offset = func->getMaxDep();
-    func->setMaxDep(offset + type->getSize()); // 假设4字节对齐
+    Type *tp = value->getType();
+    int sz;
+    if (tp->isArrayType() && dynamic_cast<Instruction*>(value)) {
+        sz = 0;
+    } else
+        sz = tp->getSize();
+    func->setMaxDep(offset + sz); // 假设4字节对齐
     return offset;
 }
 

@@ -10,3 +10,7 @@ int32_t ConstInt::getVal()
 {
     return intVal;
 }
+
+void ConstInt::setVal(int32_t i) {
+    intVal = i;
+}

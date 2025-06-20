@@ -122,13 +122,13 @@ public:
     /// @brief 加载变量地址到寄存器
     /// @param rs_reg_no 结果寄存器
     /// @param var 变量
-    //void lea_var(int rs_reg_no, Value * var);
+    void lea_var(int rs_reg_no, Value * var);
 
     /// @brief 保存寄存器到变量
     /// @param src_reg_no 源寄存器号
     /// @param var 变量
     /// @param addr_reg_no 地址寄存器号
-    void store_var(int src_reg_no, Value * var, int addr_reg_no);
+    void store_var(int src_reg_no, Value * var, int addr_reg_no, bool wide = false);
 
     /// @brief 寄存器Mov操作
     /// @param rs_reg_no 结果寄存器

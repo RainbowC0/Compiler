@@ -21,6 +21,8 @@
 #include "FloatType.h"
 #include "ArrayType.h"
 
+#include <unordered_map>
+
 Module::Module(const std::string & _name) : name(_name)
 {
     // 创建作用域栈
@@ -41,6 +43,8 @@ Module::Module(const std::string & _name) : name(_name)
     (void) newFunction("getfarray", FloatType::getTypeFloat(), {new FormalParam{FloatType::getTypeFloat(), ""}}, true);
     (void) newFunction("putarray", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{FloatType::getTypeFloat(), ""}}, true);
     (void) newFunction("putfarray", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{FloatType::getTypeFloat(), ""}}, true);
+    // TODO 使用 ArrayType
+    (void) newFunction("memset", VoidType::getType(), {new FormalParam{ArrayType::empty(), ""}, new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{IntegerType::getTypeInt(), ""}}, true);
 }
 
 /// @brief 进入作用域，如进入函数体块、语句块等
@@ -372,4 +376,17 @@ void Module::outputIR(const std::string & filePath)
     }
 
     fclose(fp);
+}
+
+// TODO 作用域
+static std::unordered_map<std::string, Constant*> map;
+
+void Module::setVal(Value *val, Constant * cot) {
+    map.emplace(val->getName(), cot);
+}
+
+Constant * Module::getVal(Value * val) {
+    auto c = map.find(val->getName());
+    if (c==map.end()) return nullptr;
+    return c->second;
 }

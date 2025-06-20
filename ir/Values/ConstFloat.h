@@ -49,6 +49,11 @@ public:
         return std::to_string(val);
     }
 
+    void setVal(float f)
+    {
+        val = f;
+    }
+
 private:
     ///
     /// @brief 常量值

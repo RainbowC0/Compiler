@@ -23,7 +23,7 @@
 /// @param result 保存返回值的Value
 FuncCallInstruction::FuncCallInstruction(Function * _func,
                                          Function * calledFunc,
-                                         std::vector<Value *> & _srcVal,
+                                         const std::vector<Value *> & _srcVal,
                                          Type * _type)
     : Instruction(_func, IRInstOperator::IRINST_OP_FUNC_CALL, _type), calledFunction(calledFunc)
 {

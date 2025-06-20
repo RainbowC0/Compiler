@@ -38,7 +38,7 @@ public:
     /// @brief 含有参数的函数调用
     /// @param srcVal 函数的实参Value
     /// @param result 保存返回值的Value
-    FuncCallInstruction(Function * _func, Function * calledFunc, std::vector<Value *> & _srcVal, Type * _type);
+    FuncCallInstruction(Function * _func, Function * calledFunc, const std::vector<Value *> & _srcVal, Type * _type);
 
     ///
     /// @brief 转换成IR指令文本

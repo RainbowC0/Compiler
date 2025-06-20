@@ -144,6 +144,12 @@ protected:
     /// @return 成功返回node节点，否则返回nullptr
     ast_node * ir_visit_ast_node(ast_node * node);
 
+    bool calcConstExpr(ast_node * node, void * ret);
+
+    /// @brief 计算维度
+    /// @return 值节点下标，-1无值节点
+    int calcDims(ast_node * node);
+
     /// @brief AST的节点操作函数
     typedef bool (IRGenerator::*ast2ir_handler_t)(ast_node *);
 

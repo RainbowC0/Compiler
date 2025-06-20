@@ -1091,6 +1091,7 @@ YY_RULE_SETUP
 #line 95 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 {
                 // int类型关键字 关键字的识别要在标识符识别的前边，这是因为关键字也是标识符，不过是保留的
+                yylval.type.isConst = false;
                 yylval.type.type = BasicType::TYPE_INT;
                 yylval.type.lineno = yylineno;
                 return T_INT;
@@ -1098,7 +1099,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 101 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 102 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 {
                 yylval.float_num.val = strtof(yytext, NULL);
                 yylval.float_num.lineno = yylineno;
@@ -1107,8 +1108,9 @@ YY_RULE_SETUP
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 106 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 107 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 {
+                yylval.type.isConst = false;
                 yylval.type.type = BasicType::TYPE_FLOAT;
                 yylval.type.lineno = yylineno;
                 return T_FLOAT;
@@ -1116,8 +1118,9 @@ YY_RULE_SETUP
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 111 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 113 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 {
+                yylval.type.isConst = false;
                 yylval.type.type = BasicType::TYPE_VOID;
                 yylval.type.lineno = yylineno;
                 return T_VOID;
@@ -1125,12 +1128,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 116 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{}
+#line 119 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+{ }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 117 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 120 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 {
                 // return关键字 关键字的识别要在标识符识别的前边，，这是因为关键字也是标识符，不过是保留的
                 return RETURN;
@@ -1138,62 +1141,62 @@ YY_RULE_SETUP
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 121 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 124 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return CASE; }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 122 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 125 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return DEFAULT; }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 123 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 126 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return IF; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 124 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 127 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return ELSE; }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 125 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 128 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return SWITCH; }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 126 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 129 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return WHILE; }
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 127 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 130 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return DO; }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 128 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 131 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return FOR; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 129 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 132 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return GOTO; }
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 130 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 133 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return CONTINUE; }
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 131 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 134 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return BREAK; }
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 133 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 136 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 {
                 // strdup 分配的空间需要在使用完毕后使用free手动释放，否则会造成内存泄漏
                 yylval.var_id.id = strdup(yytext);
@@ -1203,13 +1206,13 @@ YY_RULE_SETUP
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 140 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 143 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { return STRING_LITERAL; }
 	YY_BREAK
 case 55:
 /* rule 55 can match eol */
 YY_RULE_SETUP
-#line 142 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 145 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 {
                 // 空白符忽略
                 ;
@@ -1218,12 +1221,12 @@ YY_RULE_SETUP
 case 56:
 /* rule 56 can match eol */
 YY_RULE_SETUP
-#line 146 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 149 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 { /* comment */ }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 148 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 151 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 {
                 printf("Line %d: Invalid char %s\n", yylineno, yytext);
                 // 词法识别错误
@@ -1232,10 +1235,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 153 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 156 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 1239 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCFlex.cpp"
+#line 1242 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCFlex.cpp"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2253,6 +2256,6 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 153 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
+#line 156 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
 
 

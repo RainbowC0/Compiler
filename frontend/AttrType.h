@@ -56,6 +56,7 @@ typedef struct var_id_attr {
 /// @brief 类型属性
 ///
 typedef struct type_attr {
+    bool isConst;
     BasicType type; // 类型
     int64_t lineno; // 行号
 } type_attr;

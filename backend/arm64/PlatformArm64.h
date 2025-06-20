@@ -47,11 +47,17 @@ class PlatformArm64 {
     /// @return
     static bool __constExpr(int num);
 
+
 public:
     /// @brief 同时处理正数和负数
     /// @param num
     /// @return
     static bool constExpr(int num);
+
+    static bool test(int num);
+
+    /// @brief add/sub等判断是否为imm12立即数
+    static bool imm12sh(int num);
 
     /// @brief 判定是否是合法的偏移
     /// @param num

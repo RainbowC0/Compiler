@@ -127,7 +127,18 @@ bool PlatformArm64::__constExpr(int num)
 /// @return
 bool PlatformArm64::constExpr(int num)
 {
-    return __constExpr(num) || __constExpr(-num);
+    return imm12sh(num) || imm12sh(-num);
+}
+
+bool PlatformArm64::test(int num)
+{
+    return false;
+}
+
+/// @brief add/sub等imm12判断
+bool PlatformArm64::imm12sh(int num)
+{
+    return num >= 0 && (num < 4096 || ((num & 4095) == 0 && num < 4095*4096));
 }
 
 /// @brief 判定是否是合法的偏移

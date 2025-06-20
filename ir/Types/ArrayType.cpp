@@ -83,8 +83,8 @@ ArrayType* ArrayType::createMultiDimensional(Type* baseType, const std::vector<u
     return static_cast<ArrayType*>(currentType);
 }
 
-uint32_t ArrayType::getDimensionSize() {
-    return numElements;
+void ArrayType::setNumElements(uint32_t size) {
+    numElements = size;
 }
 
 ArrayType* ArrayType::empty()

@@ -91,13 +91,13 @@ public:
     {
         str = getIRName()
             +" dso_local global "+getType()->toString()
-            +" "+std::to_string(intVal)
+            +" "+std::to_string(intVal?*intVal:0)
             +", align "+std::to_string(alignment);
     }
 
     union {
-        int32_t intVal;
-        float floatVal;
+        int32_t *intVal = nullptr;
+        float *floatVal;
     };
 private:
     ///

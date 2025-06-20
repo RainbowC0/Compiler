@@ -50,6 +50,7 @@ void adjustInit(const ArrayType *type, ast_node *node);
 %token <type> T_FLOAT
 %token <type> T_VOID
 %token STRING_LITERAL
+%token CONST
 
 // 关键或保留字 一词一类 不需要赋予语义属性
 %token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
@@ -170,13 +171,9 @@ FuncParam : BasicType T_ID {
         $$ = ast_node::New($2);
         Type *tp = typeAttr2Type($1);
         
-        // 计算数组维度，类似VarDef的处理
-        std::vector<uint32_t> dimensions;
-        for (auto dimExpr : $3->sons) {
-            dimensions.push_back(1); // 对于函数参数，使用默认维度
-        }
-        tp = (Type*)ArrayType::createMultiDimensional(tp, dimensions);
+        // 计算数组维度，
         $$->type = tp;
+        $$->insert_son_node($3);
     };
 
 // 语句块的文法Block ： '{' BlockItemList? '}'
@@ -236,28 +233,17 @@ VarDecl : VarDeclExpr ';' {
 // 变量声明表达式，可支持逗号分隔定义多个
 VarDeclExpr: BasicType VarDef {
         Type *tp = typeAttr2Type($1);
-        auto x = $2->type;
-        if (x)
-            x = dynamic_cast<ArrayType*>(x);
-        if (x) {
-            ((ArrayType*)x)->setBaseElementType(tp);
-        } else {
-            $2->type = tp;
-        }
+        tp->isConst = $1.isConst;
+
+        $2->type = tp;
 
 		// 创建变量声明语句，并加入第一个变量
 		$$ = create_contain_node(ASTOP(VAR_DECL), $2);
 	}
 	| VarDeclExpr ',' VarDef {
 		// 插入到变量声明语句
-        Type *x = $1->sons[0]->type;
-        if (x->isArrayType())
-            x = (ArrayType*)((ArrayType*)x)->getBaseElementType();
-        if ($3->type && $3->type->isArrayType()) {
-            ((ArrayType*)$3->type)->setBaseElementType(x);
-        } else {
-            $3->type = x;
-        }
+        $3->type = $1->sons[0]->type;
+
 		$$ = $1->insert_son_node($3);
 	}
 	;
@@ -275,9 +261,6 @@ VarDef : T_ID {
 	| T_ID ArrayIndexList {
 		// 多维数组变量定义ID[expr1][expr2]...，支持常量表达式
         $$ = ast_node::New(var_id_attr{$1.id, $1.lineno});
-
-		// 创建空的数组类型，具体维度将在IRGenerator中计算
-        $$->type = ArrayType::empty();
         
         // 将ArrayIndexList作为子节点保存，用于后续计算维度
         $$->insert_son_node($2);
@@ -293,9 +276,6 @@ VarDef : T_ID {
 	| T_ID ArrayIndexList '=' ArrayInitList {
 		// 多维数组带初始化定义，支持常量表达式
 		$$ = ast_node::New(var_id_attr{$1.id, $1.lineno});
-		
-		// 创建空的数组类型，具体维度将在IRGenerator中计算
-        $$->type = ArrayType::empty();
         
         // 将ArrayIndexList和初始化列表作为子节点保存
         $$->insert_son_node($2);
@@ -336,6 +316,10 @@ InitValue : Expr {
 BasicType: T_INT { $$ = $1; }
 	| T_FLOAT { $$ = $1; }
 	| T_VOID { $$ = $1; }
+    | CONST BasicType {
+        $$ = $2;
+        $$.isConst = true;
+    }
 	;
 
 // 语句文法：statement:RETURN expr ';' | lVal '=' expr ';'
@@ -348,6 +332,9 @@ Statement : RETURN Expr ';' {
 		// 创建返回节点AST_OP_RETURN，其孩子为Expr，即$2
 		$$ = create_contain_node(ASTOP(RETURN), $2);
 	}
+    | RETURN ';' {
+        $$ = ast_node::New(ASTOP(RETURN));
+    }
 	| LVal '=' Expr ';' {
 		// 赋值语句
 
@@ -409,7 +396,16 @@ AddExp : MulExp {
 	}
     | AddExp AddOp MulExp { // TODO 隐式转换
 		// 创建加减运算节点，孩子为AddExp($1)和UnaryExp($3)
-		$$ = create_contain_node(ast_operator_type($2), $1, $3);
+        if ($1->node_type == ASTOP(LEAF_LITERAL_INT) && $3->node_type == ASTOP(LEAF_LITERAL_INT)) {
+            if ($2 == (int)ASTOP(ADD))
+                $1->integer_val += $3->integer_val;
+            else
+                $1->integer_val -= $3->integer_val;
+            $$ = $1;
+            delete $3;
+        } else {
+		    $$ = create_contain_node(ast_operator_type($2), $1, $3);
+        }
 	}
 	;
 
@@ -418,7 +414,19 @@ AddOp: '+' { $$ = (int)ASTOP(ADD); }
     ;
 
 MulExp: UnaryExp { $$ = $1; }
-    | MulExp MulOp UnaryExp { $$ = create_contain_node(ast_operator_type($2), $1, $3); }
+    | MulExp MulOp UnaryExp {
+        if ($1->node_type == ASTOP(LEAF_LITERAL_INT) && $3->node_type == ASTOP(LEAF_LITERAL_INT)) {
+            switch (ast_operator_type($2)) {
+                case ASTOP(MUL): $1->integer_val *= $3->integer_val; break;
+                case ASTOP(DIV): $1->integer_val /= $3->integer_val; break;
+                default: $1->integer_val %= $3->integer_val; break;
+            }
+            $$ = $1;
+            delete $3;
+        } else {
+            $$ = create_contain_node(ast_operator_type($2), $1, $3);
+        }
+    }
     ;
 
 MulOp: '*' { $$ = (int)ASTOP(MUL); }
@@ -579,6 +587,9 @@ ArrayIndexList : '[' Expr ']' {
 		// 创建数组索引列表节点，包含第一个索引
 		$$ = create_contain_node(ASTOP(ARRAY_INDICES), $2);
 	}
+    | '[' ']' {
+        $$ = create_contain_node(ASTOP(ARRAY_INDICES), ast_node::New(digit_int_attr{0, yylineno}));
+    }
 	| ArrayIndexList '[' Expr ']' {
 		// 向数组索引列表添加新索引
 		$$ = $1->insert_son_node($3);

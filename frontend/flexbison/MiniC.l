@@ -94,6 +94,7 @@ CMT         {SCMT}|{TCMT}
 
 "int"       {
                 // int类型关键字 关键字的识别要在标识符识别的前边，这是因为关键字也是标识符，不过是保留的
+                yylval.type.isConst = false;
                 yylval.type.type = BasicType::TYPE_INT;
                 yylval.type.lineno = yylineno;
                 return T_INT;
@@ -104,16 +105,18 @@ CMT         {SCMT}|{TCMT}
                 return T_FLOAT_LITERAL;
             }
 "float"     {
+                yylval.type.isConst = false;
                 yylval.type.type = BasicType::TYPE_FLOAT;
                 yylval.type.lineno = yylineno;
                 return T_FLOAT;
             }
 "void"      {
+                yylval.type.isConst = false;
                 yylval.type.type = BasicType::TYPE_VOID;
                 yylval.type.lineno = yylineno;
                 return T_VOID;
             }
-"const"     {}
+"const"     { }
 "return"    {
                 // return关键字 关键字的识别要在标识符识别的前边，，这是因为关键字也是标识符，不过是保留的
                 return RETURN;

@@ -62,6 +62,10 @@ public:
         return elementType;
     }
 
+    void setElementType(const Type * tp) {
+        elementType = tp;
+    }
+
     ///
     /// @brief 返回数组元素数量
     /// @return uint32_t
@@ -123,7 +127,7 @@ public:
 
     void setBaseElementType(const Type*);
 
-    uint32_t getDimensionSize();
+    void setNumElements(uint32_t size);
     ///
     /// @brief 从多维索引创建多维数组类型
     /// @param baseType 基础元素类型

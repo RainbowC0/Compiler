@@ -24,6 +24,7 @@
 
 #define emit(...) code.push_back(new ArmInst(__VA_ARGS__))
 
+#define ARRTYPE(v) ({Type *_tp = v->getType(); _tp && _tp->isArrayType();})
 /// @brief 构造函数
 /// @param _module 符号表
 ILocArm64::ILocArm64(Module * _module)
@@ -235,7 +236,7 @@ void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset)
         load_imm(rs_reg_no, offset);
 
         // fp,r8
-        base += "," + rsReg;
+        base += "," + rsReg + ",sxtw";
     }
 
     // 内存寻址
@@ -271,7 +272,7 @@ void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_re
         load_imm(tmp_reg_no, disp);
 
         // fp,r9
-        base += "," + PlatformArm64::regName[tmp_reg_no];
+        base += "," + PlatformArm64::regName[tmp_reg_no] + ",sxtw";
     }
 
     // 内存间接寻址
@@ -347,7 +348,7 @@ void ILocArm64::load_var(int rs_reg_no, Value * src_var)
 /// @brief 加载变量地址到寄存器
 /// @param rs_reg_no
 /// @param var
-/*
+
 void ILocArm64::lea_var(int rs_reg_no, Value * var)
 {
     // 被加载的变量肯定不是常量！
@@ -359,20 +360,25 @@ void ILocArm64::lea_var(int rs_reg_no, Value * var)
     int32_t var_baseRegId = -1;
     int64_t var_offset = -1;
 
-    bool result = var->getMemoryAddr(&var_baseRegId, &var_offset);
-    if (!result) {
-        minic_log(LOG_ERROR, "BUG");
+    if (dynamic_cast<GlobalVariable*>(var)) {
+        cstr xreg = xregs(rs_reg_no);
+        emit("adrp", xreg, var->getName());
+        emit("add", xreg, xreg, ":lo12:"+var->getName());
+    } else {
+        bool result = var->getMemoryAddr(&var_baseRegId, &var_offset);
+        if (!result) {
+            minic_log(LOG_ERROR, "BUG");
+        }
+        // lea r8, [fp,#-16]
+        leaStack(rs_reg_no, var_baseRegId, var_offset);
     }
-
-    // lea r8, [fp,#-16]
-    leaStack(rs_reg_no, var_baseRegId, var_offset);
 }
-*/
+
 /// @brief 保存寄存器到变量，保证将计算结果（r8）保存到变量
 /// @param src_reg_no 源寄存器
 /// @param dest_var  变量
 /// @param tmp_reg_no 第三方寄存器
-void ILocArm64::store_var(int src_reg_no, Value * dest_var, int tmp_reg_no)
+void ILocArm64::store_var(int src_reg_no, Value * dest_var, int tmp_reg_no, bool wide)
 {
     // 被保存目标变量肯定不是常量
 
@@ -385,6 +391,9 @@ void ILocArm64::store_var(int src_reg_no, Value * dest_var, int tmp_reg_no)
 
         // 寄存器不一样才需要mov操作
         if (src_reg_no != dest_reg_id) {
+            if (wide || ARRTYPE(dest_var))
+                emit("mov", xregs(dest_reg_id), xregs(src_reg_no));
+            else
 
             // mov r2,r8 | 这里有优化空间——消除r8
             emit("mov", PlatformArm64::regName[dest_reg_id], PlatformArm64::regName[src_reg_no]);
@@ -470,7 +479,7 @@ void ILocArm64::allocStack(Function * func, int tmp_reg_no)
         load_imm(tmp_reg_no, off);
 
         // sub sp,sp,r8
-        emit("sub", "sp", "sp", PlatformArm64::regName[tmp_reg_no]);
+        emit("sub", "sp", "sp", "x"+std::to_string(tmp_reg_no));
     }
 
     // 函数调用通过栈传递的基址寄存器设置

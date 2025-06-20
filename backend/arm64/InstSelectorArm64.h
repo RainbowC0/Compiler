@@ -21,8 +21,7 @@
 #include "ILocArm64.h"
 #include "Instruction.h"
 #include "SimpleRegisterAllocator.h"
-
-using namespace std;
+#include "PlatformArm64.h"
 
 /// @brief 指令选择器-ARM32
 class InstSelectorArm64 {
@@ -84,7 +83,7 @@ protected:
     /// @brief 二元操作指令翻译成ARM32汇编
     /// @param inst IR指令
     /// @param operator_name 操作码
-    void translate_two_operator(Instruction * inst, string operator_name);
+    void translate_two_operator(Instruction * inst, cstr operator_name, bool (*test)(int) = PlatformArm64::test);
 
     void translate_bi_op(Instruction *);
 

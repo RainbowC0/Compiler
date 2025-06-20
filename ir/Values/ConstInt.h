@@ -75,13 +75,15 @@ public:
         return intVal==0?zeroReg:-1;
     }
 
+    void setVal(int32_t i);
+
     static void setZeroReg(int32_t reg);
 
 private:
     ///
     /// @brief 整数值
     ///
-    int32_t intVal;
+    int32_t intVal = 0;
 
     ///
     /// @brief 变量加载到寄存器中时对应的寄存器编号

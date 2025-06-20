@@ -177,7 +177,7 @@ bool IRGenerator::ir_default(ast_node * node)
 {
     // 未知的节点
     if (node->node_type != ASTOP(NULL_STMT)) {
-        printf("Unkown node(%d) at line %lld\n", (int) node->node_type, (long long)node->line_no);
+        printf("Unkown node(%d) at line %lld\n", (int) node->node_type, (long long) node->line_no);
         if (!node->name.empty()) {
             printf("Node name: %s\n", node->name.c_str());
         }
@@ -321,6 +321,7 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
     // 然后产生赋值指令，用于把表达实参值的临时变量拷贝到形参局部变量上。
     // 请注意这些指令要放在Entry指令后面，因此处理的先后上要注意。
     for (auto i: node->sons) {
+        calcDims(i);
         module->newFuncParam(i->type, i->name);
     }
 
@@ -568,21 +569,23 @@ bool IRGenerator::ir_return(ast_node * node)
 {
     ast_node * right = nullptr;
 
-    // return语句可能没有没有表达式，也可能有，因此这里必须进行区分判断
-    if (!node->sons.empty()) {
-
-        ast_node * son_node = node->sons[0];
-
-        // 返回的表达式的指令保存在right节点中
-        right = ir_visit_ast_node(son_node);
-        if (!right) {
-            // 某个变量没有定值
-            return false;
-        }
-    }
-
     // 这里只处理整型的数据，如需支持实数，则需要针对类型进行处理
     Function * currentFunc = module->getCurrentFunction();
+
+    // return语句可能没有没有表达式，也可能有，因此这里必须进行区分判断
+    if (node->sons.empty()) {
+        node->blockInsts.addInst(new GotoInstruction(currentFunc, currentFunc->getExitLabel()));
+        return true;
+    }
+
+    ast_node * son_node = node->sons[0];
+
+    // 返回的表达式的指令保存在right节点中
+    right = ir_visit_ast_node(son_node);
+    if (!right) {
+        // 某个变量没有定值
+        return false;
+    }
 
     // 创建临时变量保存IR的值，以及线性IR指令
     node->blockInsts.addInst(right->blockInsts);
@@ -665,105 +668,89 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 
     // 函数内定义
     if (func) {
-        for (auto child:node->sons) {
-            // 检查是否是数组类型且需要计算维度
-            if (child->type && child->type->isArrayType() && 
-                static_cast<const ArrayType*>(child->type)->getElementType() == nullptr) {
-                
-                // 这是一个空的数组类型，需要计算维度
-                if (child->sons.size() >= 1 && child->sons[0]->node_type == ASTOP(ARRAY_INDICES)) {
-                    // 计算数组各维度的值
-                    ast_node* arrayIndicesNode = child->sons[0];
-                    std::vector<uint32_t> dimensions;
-                    
-                    for (auto dimExpr : arrayIndicesNode->sons) {
-                        if (dimExpr == nullptr) {
-                            // 空维度，使用0
-                            dimensions.push_back(0);
-                        } else {
-                            // 计算常量表达式
-                            ast_node* CHECK_NODE(dimResult, dimExpr);
-                            if (auto constInt = dynamic_cast<ConstInt*>(dimResult->val)) {
-                                dimensions.push_back(constInt->getVal());
-                            } else if (auto constFloat = dynamic_cast<ConstFloat*>(dimResult->val)) {
-                                dimensions.push_back((uint32_t)constFloat->getVal());
-                            } else {
-                                dimensions.push_back(1); // 默认值
-                            }
-                        }
-                    }
-                    
-                    // 使用计算出的维度创建新的数组类型
-                    child->type = ArrayType::createMultiDimensional(nullptr, dimensions);
-                }
-            }
-            
-            Value *val = module->newVarValue(child->type, child->name);
+        for (auto child: node->sons) {
+            // 检查是否要计算维度
+            int c = calcDims(child);
+
+            Value * val = module->newVarValue(child->type, child->name);
             child->val = val;
-            
-            if (!child->sons.empty()) {
-                // 处理初始值赋值
-                int initNodeIndex = child->type && child->type->isArrayType() ? 1 : 0;
-                if (child->sons.size() > initNodeIndex) {
-                    ast_node * CHECK_NODE(s, child->sons[initNodeIndex]);
-                    if (s->node_type == ASTOP(ARRAY_INIT)) {
-                        Type *baseType = child->type;
-                        for (size_t i=0, l=s->sons.size(); i<l; i++) {
-                            ast_node *CHECK_NODE(item, s->sons[i]);
-                            node->blockInsts.addInst(item->blockInsts);
-                            Instruction *ptr = new BinaryInstruction(
-                                func, IRINST_OP_GEP, val, module->newConstInt(i), baseType
-                            );
-                            node->blockInsts.addInst(ptr);
-                            node->blockInsts.addInst(new StoreInstruction(func, ptr, item->val));
-                        }
-                    } else {
-                        node->blockInsts.addInst(s->blockInsts);
-                        node->blockInsts.addInst(new MoveInstruction(func, child->val, s->val));
-                    }
+
+            if (c == -1)
+                continue;
+            ast_node * s = child->sons[c];
+            if (s->node_type == ASTOP(ARRAY_INIT)) {
+                // 数组初始化
+                ArrayType * type = (ArrayType *) child->type;
+                ArrayType * baseType = type;
+                uint32_t msize = baseType->getNumElements();
+                if (msize == 0) {
+                    // 第一维缺失
+                    msize = s->sons.size();
+                    baseType->setNumElements(msize);
                 }
-            }
-        }
-    } else for (auto child:node->sons) {
-        // 全局变量定义，类似处理
-        if (child->type && child->type->isArrayType() && 
-            static_cast<const ArrayType*>(child->type)->getElementType() == nullptr) {
-            
-            if (child->sons.size() >= 1 && child->sons[0]->node_type == ASTOP(ARRAY_INDICES)) {
-                ast_node* arrayIndicesNode = child->sons[0];
-                std::vector<uint32_t> dimensions;
-                
-                for (auto dimExpr : arrayIndicesNode->sons) {
-                    if (dimExpr == nullptr) {
-                        dimensions.push_back(0);
-                    } else {
-                        ast_node* CHECK_NODE(dimResult, dimExpr);
-                        if (auto constInt = dynamic_cast<ConstInt*>(dimResult->val)) {
-                            dimensions.push_back(constInt->getVal());
-                        } else if (auto constFloat = dynamic_cast<ConstFloat*>(dimResult->val)) {
-                            dimensions.push_back((uint32_t)constFloat->getVal());
-                        } else {
-                            dimensions.push_back(1);
-                        }
-                    }
+                while (baseType->getElementType()->isArrayType()) {
+                    baseType = (ArrayType *) baseType->getElementType();
+                    msize *= baseType->getNumElements();
+                }
+                ir_array_init(s);
+                if (s->sons.size() < msize) {
+                    Instruction * setz = new FuncCallInstruction(
+                        func,
+                        module->findFunction("memset"),
+                        {val, module->newConstInt(0), module->newConstInt(msize * IntegerType::getTypeInt()->getSize())},
+                        VoidType::getType()
+                    );
+                    node->blockInsts.addInst(setz);
                 }
                 
-                child->type = ArrayType::createMultiDimensional(nullptr, dimensions);
-            }
-        }
-        
-        child->val = module->newVarValue(child->type, child->name);
-        if (!child->sons.empty()) {
-            int initNodeIndex = child->type && child->type->isArrayType() ? 1 : 0;
-            if (child->sons.size() > initNodeIndex) {
-                ast_node *CHECK_NODE(s, child->sons[initNodeIndex]);
-                if (Instanceof(cexp, ConstInt *, s->val)) {
-                    Instanceof(gVal, GlobalVariable*, child->val);
-                    gVal->intVal = cexp->getVal();
+                for (size_t i = 0, l = s->sons.size(); i < l; i++) {
+                    ast_node * CHECK_NODE(item, s->sons[i]);
+                    node->blockInsts.addInst(item->blockInsts);
+                    Instruction * ptr =
+                        new BinaryInstruction(func, IRINST_OP_GEP, val, module->newConstInt(i), baseType);
+                    node->blockInsts.addInst(ptr);
+                    node->blockInsts.addInst(new StoreInstruction(func, ptr, item->val));
                 }
+            } else {
+                // 非数组初始化
+                int v;
+                if (calcConstExpr(s, &v)) {
+                    // TODO 浮点数
+                    ConstInt * cint = module->newConstInt(v);
+                    module->setVal(val, cint);
+                    s->val = cint;
+                }
+                CHECK_NODE(s, s);
+                node->blockInsts.addInst(s->blockInsts);
+                node->blockInsts.addInst(new MoveInstruction(func, val, s->val));
             }
         }
-    }
+    } else
+        for (auto child: node->sons) {
+            // 全局变量定义，类似处理
+            int c = calcDims(child);
+
+            child->val = module->newVarValue(child->type, child->name);
+
+            if (c == -1)
+                continue;
+            ast_node * CHECK_NODE(s, child->sons[c]);
+            if (Instanceof(cexp, ConstInt *, s->val)) {
+                Instanceof(gVal, GlobalVariable *, child->val);
+                gVal->intVal = new int(cexp->getVal());
+            } else if (Instanceof(cexp, ConstFloat *, s->val)) {
+                Instanceof(gVal, GlobalVariable *, child->val);
+                gVal->floatVal = new float(cexp->getVal());
+            } else if (child->type->isArrayType()) {
+                int l = std::min((int32_t) s->sons.size(), child->type->getSize() / 4);
+                int32_t * arr = (int32_t *) malloc(sizeof(int32_t) * (1 + l));
+                *arr = l;
+                for (int i = 0; i < l; i++) {
+                    arr[i + 1] = s->sons[i]->integer_val;
+                }
+                ((GlobalVariable *) child->val)->intVal = arr;
+            }
+        }
     return true;
 }
 
@@ -965,39 +952,37 @@ bool IRGenerator::ir_array_access(ast_node * node)
     }
 
     const Type * tp = arrayVal->getType();
-    
+
     Function * func = module->getCurrentFunction();
 
-    for (auto indexNode : indicesNode->sons) {
+    for (auto indexNode: indicesNode->sons) {
         if (!tp->isArrayType()) {
             // 维度过多
             return false;
         }
 
-        ast_node *CHECK_NODE(indexExpr, indexNode);
+        ast_node * CHECK_NODE(indexExpr, indexNode);
         // TODO 数组越界检查
         node->blockInsts.addInst(indexExpr->blockInsts);
-        Instruction *getptr = new BinaryInstruction(
-            func, IRINST_OP_GEP, arrayVal, indexExpr->val, (Type*)tp
-        );
+        Instruction * getptr = new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, indexExpr->val, (Type *) tp);
         arrayVal = getptr;
         node->blockInsts.addInst(getptr);
 
-        tp = ((ArrayType*)tp)->getElementType();
+        tp = ((ArrayType *) tp)->getElementType();
     }
     node->val = arrayVal;
-    node->type = (Type*)tp;
+    node->type = (Type *) tp;
 
     return true;
 }
 
 bool IRGenerator::ir_lval_to_r(ast_node * node)
 {
-    ast_node *CHECK_NODE(s, node->sons[0]);
+    ast_node * CHECK_NODE(s, node->sons[0]);
 
     node->blockInsts.addInst(s->blockInsts);
-    Type *tp = s->type;
-    Value *v = s->val;
+    Type * tp = s->type;
+    Value * v = s->val;
     if (s->node_type == ASTOP(ARRAY_ACCESS)) {
         auto func = module->getCurrentFunction();
         auto ldr = new LoadInstruction(func, v, tp);
@@ -1016,17 +1001,98 @@ bool IRGenerator::ir_array_init(ast_node * node)
 {
     // TODO: 实现数组初始化的IR生成
     // 这里需要根据初始化列表生成相应的赋值指令
-    
-    //Function * currentFunc = module->getCurrentFunction();
-    for (size_t i=0; i<node->sons.size(); i++) {
-        ast_node *el = node->sons[i];
+
+    // Function * currentFunc = module->getCurrentFunction();
+    for (size_t i = 0; i < node->sons.size(); i++) {
+        ast_node * el = node->sons[i];
         if (el->node_type == ASTOP(ARRAY_INIT)) {
             ir_array_init(el);
-            auto x = node->sons.begin()+i;
+            auto x = node->sons.begin() + i;
             node->sons.erase(x);
             node->sons.insert(x, el->sons.begin(), el->sons.end());
         }
     }
-    
+
     return true;
+}
+
+/// @brief 计算常量表达式（只包含常量符号、字面量）
+bool IRGenerator::calcConstExpr(ast_node * node, void * ret)
+{
+    switch (node->node_type) {
+        case ASTOP(LEAF_LITERAL_INT):
+            *(int *) ret = node->integer_val;
+            return true;
+        case ASTOP(LEAF_LITERAL_FLOAT):
+            *(float *) ret = node->float_val;
+            return true;
+        case ASTOP(VAR_ID): {
+            Value * v = module->findVarValue(node->name);
+            if (Instanceof(cint, ConstInt *, module->getVal(v))) {
+                *(int *) ret = cint->getVal();
+                return true;
+            } else {
+                Instanceof(glb, GlobalVariable *, v);
+                if (glb && nullptr != glb->intVal) {
+                    *(int *) ret = *glb->intVal;
+                    return true;
+                }
+            }
+            return false;
+        }
+        case ASTOP(ADD):
+            int a, b;
+            calcConstExpr(node->sons[0], &a);
+            calcConstExpr(node->sons[1], &b);
+            *(int *) ret = a + b;
+            return true;
+        case ASTOP(SUB):
+            calcConstExpr(node->sons[0], &a);
+            calcConstExpr(node->sons[1], &b);
+            *(int *) ret = a - b;
+            return true;
+        case ASTOP(MUL):
+            calcConstExpr(node->sons[0], &a);
+            calcConstExpr(node->sons[1], &b);
+            *(int *) ret = a * b;
+            return true;
+        case ASTOP(DIV):
+            calcConstExpr(node->sons[0], &a);
+            calcConstExpr(node->sons[1], &b);
+            *(int *) ret = a / b;
+            return true;
+        case ASTOP(MOD):
+            calcConstExpr(node->sons[0], &a);
+            calcConstExpr(node->sons[1], &b);
+            *(int *) ret = a % b;
+            return true;
+        case ASTOP(L2R):
+            return calcConstExpr(node->sons[0], ret);
+        default:
+            return false;
+    }
+}
+
+/// @brief 计算维度
+/// @return 值节点下标，-1无值节点
+int IRGenerator::calcDims(ast_node * child)
+{
+    if (child->sons.empty())
+        return -1;
+    ast_node * firstNode = child->sons[0];
+    if (firstNode->node_type == ASTOP(ARRAY_INDICES)) {
+        // 计算数组各维度的值
+        Type * btype = child->type;
+        ArrayType * atype = (ArrayType *) btype;
+        auto & x = firstNode->sons;
+        for (auto dimExp = x.rbegin(); dimExp != x.rend(); ++dimExp) {
+            int dim = 0;
+            calcConstExpr(*dimExp, &dim);
+            ArrayType * arr = new ArrayType(atype, dim);
+            atype = arr;
+        }
+        child->type = atype;
+        return child->sons.size() > 1 ? 1 : -1;
+    }
+    return 0;
 }

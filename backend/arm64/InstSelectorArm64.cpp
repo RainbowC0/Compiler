@@ -36,13 +36,15 @@ static char * cmpmap[] = {"eq", "ne", "gt", "le", "ge", "lt"};
 #define CSTRJ(C) cmpmap[(C - IRINST_OP_IEQ) ^ 1]
 #define CSTR(C) cmpmap[(C - IRINST_OP_IEQ)]
 
+#define ARRTYPE(v) (v->getType() && v->getType()->isArrayType())
+
 using std::to_string;
 // static GotoInstruction *lastBranch;
 /// @brief 构造函数
 /// @param _irCode 指令
 /// @param _iloc ILoc
 /// @param _func 函数
-InstSelectorArm64::InstSelectorArm64(vector<Instruction *> & _irCode,
+InstSelectorArm64::InstSelectorArm64(std::vector<Instruction *> & _irCode,
                                      ILocArm64 & _iloc,
                                      Function * _func,
                                      SimpleRegisterAllocator & allocator)
@@ -215,8 +217,16 @@ void InstSelectorArm64::translate_exit(Instruction * inst)
 
     // 恢复栈空间
     int32_t dp = func->getMaxDep();
-    if (dp)
-        iloc.inst("add", "sp", "sp", iloc.toStr(dp));
+    if (dp) {
+        cstr sp = PlatformArm64::regName[ARM64_SP_REG_NO];
+        cstr tp = "x"+to_string(ARM64_TMP_REG_NO);
+        if (PlatformArm64::constExpr(dp))
+            iloc.inst("add", sp, sp, "#"+to_string(dp));
+        else {
+            iloc.load_var(ARM64_TMP_REG_NO, new ConstInt(dp));
+            iloc.inst("add", sp, sp, tp);
+        }
+    }
 
     auto & protectedReg = func->getProtectedReg();
     if (!protectedReg.empty()) {
@@ -248,12 +258,15 @@ void InstSelectorArm64::translate_assign(Instruction * inst)
         // 寄存器 => 内存
         // 寄存器 => 寄存器
 
-        // r8 -> rs 可能用到r9
-        iloc.store_var(arg1_regId, result, ARM64_TMP_REG_NO);
+        iloc.store_var(arg1_regId, result, ARM64_TMP_REG_NO, ARRTYPE(arg1));
     } else if (result_regId != -1) {
         // 内存变量 => 寄存器
-
-        iloc.load_var(result_regId, arg1);
+        // 地址 => 寄存器
+        if (arg1->getType()->isArrayType()) {
+            iloc.lea_var(result_regId, arg1);
+        } else {
+            iloc.load_var(result_regId, arg1);
+        }
     } else {
         // 内存变量 => 内存变量
 
@@ -263,7 +276,7 @@ void InstSelectorArm64::translate_assign(Instruction * inst)
         iloc.load_var(temp_regno, arg1);
 
         // r8 -> rs 可能用到r9
-        iloc.store_var(temp_regno, result, ARM64_TMP_REG_NO);
+        iloc.store_var(temp_regno, result, ARM64_TMP_REG_NO, ARRTYPE(arg1));
 
         simpleRegisterAllocator.free(temp_regno);
     }
@@ -275,7 +288,7 @@ void InstSelectorArm64::translate_assign(Instruction * inst)
 /// @param rs_reg_no 结果寄存器号
 /// @param op1_reg_no 源操作数1寄存器号
 /// @param op2_reg_no 源操作数2寄存器号
-void InstSelectorArm64::translate_two_operator(Instruction * inst, string operator_name)
+void InstSelectorArm64::translate_two_operator(Instruction * inst, cstr operator_name, bool (*test)(int))
 {
     Value * result = inst;
     Value * arg1 = inst->getOperand(0);
@@ -298,16 +311,25 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, string operat
         load_arg1_reg_no = arg1_reg_no;
     }
 
+    const std::string *sarg2;
     // 看arg2是否是寄存器，若是则寄存器寻址，否则要load变量到寄存器中
     if (arg2_reg_no == -1) {
+        Instanceof(cint, ConstInt*, arg2);
+        if (cint && test(cint->getVal())) {
+            std::string s("#"+to_string(cint->getVal()));
+            sarg2 = &s;
+        } else {
+            // 分配一个寄存器r9
+            load_arg2_reg_no = ARM64_TMP_REG_NO2;
 
-        // 分配一个寄存器r9
-        load_arg2_reg_no = ARM64_TMP_REG_NO2;
-
-        // arg2 -> r9
-        iloc.load_var(load_arg2_reg_no, arg2);
+            // arg2 -> r9
+            iloc.load_var(load_arg2_reg_no, arg2);
+            goto BR;
+        }
     } else {
         load_arg2_reg_no = arg2_reg_no;
+BR:
+        sarg2 = &PlatformArm64::regName[load_arg2_reg_no];
     }
 
     // 看结果变量是否是寄存器，若不是则需要分配一个新的寄存器来保存运算的结果
@@ -322,7 +344,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, string operat
     iloc.inst(operator_name,
               PlatformArm64::regName[load_result_reg_no],
               PlatformArm64::regName[load_arg1_reg_no],
-              PlatformArm64::regName[load_arg2_reg_no]);
+              *sarg2);
 
     // 结果不是寄存器，则需要把rs_reg_name保存到结果变量中
     if (result_reg_no == -1) {
@@ -338,14 +360,14 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, string operat
 /// @param inst IR指令
 void InstSelectorArm64::translate_add_int32(Instruction * inst)
 {
-    translate_two_operator(inst, "add");
+    translate_two_operator(inst, "add", PlatformArm64::imm12sh);
 }
 
 /// @brief 整数减法指令翻译成ARM64汇编
 /// @param inst IR指令
 void InstSelectorArm64::translate_sub_int32(Instruction * inst)
 {
-    translate_two_operator(inst, "sub");
+    translate_two_operator(inst, "sub", PlatformArm64::imm12sh);
 }
 
 void InstSelectorArm64::translate_mul_int32(Instruction * inst)
@@ -408,12 +430,18 @@ void InstSelectorArm64::translate_gep(Instruction *inst) {
 
     int32_t baseReg = -1;
     int64_t baseOff;
-    arg1->getMemoryAddr(&baseReg, &baseOff);
+    if (!arg1->getMemoryAddr(&baseReg, &baseOff)) {
+        baseReg = arg1->getRegId();
+        baseOff = 0;
+    }
 
     Instanceof(off, ConstInt*, arg2);
     uint32_t l = ((ArrayType*)(inst->getType()))->getElementType()->getSize();
     if (off) {
-        // if (baseReg == null) store baseReg;
+        if (dynamic_cast<GlobalVariable*>(arg1)) {
+            iloc.lea_var(ARM64_TMP_REG_NO, arg1);
+            baseReg = ARM64_TMP_REG_NO;
+        }
         inst->setMemoryAddr(baseReg, baseOff + off->getVal() * l);
     } else {
         // TODO
@@ -421,7 +449,11 @@ void InstSelectorArm64::translate_gep(Instruction *inst) {
         // // mul l1, l1, lx
         if (baseReg == -1) {
             baseReg = ARM64_TMP_REG_NO;
-            iloc.load_var(baseReg, arg1);
+            if (dynamic_cast<GlobalVariable*>(arg1)) {
+                iloc.lea_var(baseReg, arg1);
+            } else {
+                iloc.load_var(baseReg, arg1);
+            }
         }
         int32_t reg2 = arg2->getRegId();
         if (reg2 == -1) {
@@ -497,7 +529,7 @@ void InstSelectorArm64::translate_bi_op(Instruction * inst)
             }
             int32_t x = inst->getRegId();
             inst->setRegId(ARM64_ZR_REG_NO);
-            translate_two_operator(inst, "subs");
+            translate_two_operator(inst, "subs", PlatformArm64::imm12sh);
             inst->setRegId(x);
         }
         default:
