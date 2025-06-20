@@ -22,6 +22,10 @@
 #include "Module.h"
 #include <sys/queue.h>
 
+// 前向声明
+class ArrayType;
+class InterCode;
+
 struct db {
     LabelInstruction *a, *b;
     SLIST_ENTRY(db) entries;
@@ -149,6 +153,62 @@ protected:
     /// @brief 计算维度
     /// @return 值节点下标，-1无值节点
     int calcDims(ast_node * node);
+
+    /// @brief 展开嵌套的初始化列表，处理缺省值
+    /// @param node 初始化列表节点
+    void expandNestedInitList(ast_node * node);
+
+    /// @brief 扁平化初始化列表
+    /// @param node 初始化列表节点
+    /// @param flatList 扁平化后的列表
+    void flattenInitList(ast_node * node, std::vector<ast_node*> & flatList);
+
+    /// @brief 填充数组的缺省值
+    void fillArrayDefaults(Value * arrayVal, ArrayType * arrayType, Function * func, InterCode & blockInsts);
+
+    /// @brief 将扁平化索引转换为多维索引并生成GEP指令
+    /// @param arrayVal 数组变量
+    /// @param arrayType 数组类型
+    /// @param flatIndex 扁平化索引
+    /// @param func 当前函数
+    /// @return GEP指令
+    Instruction * generateMultiDimGEP(Value * arrayVal, ArrayType * arrayType, 
+                                     uint32_t flatIndex, Function * func);
+
+    /// @brief 计算数组总元素个数
+    uint32_t getTotalArrayElements(ArrayType * arrayType);
+
+    /// @brief 生成数组初始化指令
+    /// @param arrayVal 数组变量
+    /// @param arrayType 数组类型
+    /// @param initList 初始化列表节点
+    /// @param func 当前函数
+    /// @param blockInsts 指令块
+    /// @param baseOffset 基础偏移量
+    void generateArrayInitInstructions(Value * arrayVal, ArrayType * arrayType, 
+                                      ast_node * initList, Function * func, 
+                                      InterCode & blockInsts, uint32_t baseOffset);
+
+    /// @brief 生成简单的数组初始化指令
+    /// @param arrayVal 数组变量
+    /// @param arrayType 数组类型
+    /// @param initList 初始化列表节点
+    /// @param func 当前函数
+    /// @param blockInsts 指令块
+    void generateSimpleArrayInit(Value * arrayVal, ArrayType * arrayType, 
+                                ast_node * initList, Function * func, 
+                                InterCode & blockInsts);
+
+    /// @brief 生成简单的数组初始化指令（带偏移量）
+    /// @param arrayVal 数组变量
+    /// @param arrayType 数组类型
+    /// @param initList 初始化列表节点
+    /// @param func 当前函数
+    /// @param blockInsts 指令块
+    /// @param baseOffset 基础偏移量
+    void generateSimpleArrayInitWithOffset(Value * arrayVal, ArrayType * arrayType, 
+                                          ast_node * initList, Function * func, 
+                                          InterCode & blockInsts, uint32_t baseOffset);
 
     /// @brief AST的节点操作函数
     typedef bool (IRGenerator::*ast2ir_handler_t)(ast_node *);

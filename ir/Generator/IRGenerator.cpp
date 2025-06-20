@@ -39,6 +39,7 @@
 #include "CastInstruction.h"
 #include "ConstFloat.h"
 #include "FloatType.h"
+#include "ArrayType.h"
 
 #define CHECK_NODE(name, son)                                                                                          \
     name = ir_visit_ast_node(son);                                                                                     \
@@ -681,36 +682,12 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
             if (s->node_type == ASTOP(ARRAY_INIT)) {
                 // 数组初始化
                 ArrayType * type = (ArrayType *) child->type;
-                ArrayType * baseType = type;
-                uint32_t msize = baseType->getNumElements();
-                if (msize == 0) {
-                    // 第一维缺失
-                    msize = s->sons.size();
-                    baseType->setNumElements(msize);
-                }
-                while (baseType->getElementType()->isArrayType()) {
-                    baseType = (ArrayType *) baseType->getElementType();
-                    msize *= baseType->getNumElements();
-                }
-                ir_array_init(s);
-                if (s->sons.size() < msize) {
-                    Instruction * setz = new FuncCallInstruction(
-                        func,
-                        module->findFunction("memset"),
-                        {val, module->newConstInt(0), module->newConstInt(msize * IntegerType::getTypeInt()->getSize())},
-                        VoidType::getType()
-                    );
-                    node->blockInsts.addInst(setz);
-                }
                 
-                for (size_t i = 0, l = s->sons.size(); i < l; i++) {
-                    ast_node * CHECK_NODE(item, s->sons[i]);
-                    node->blockInsts.addInst(item->blockInsts);
-                    Instruction * ptr =
-                        new BinaryInstruction(func, IRINST_OP_GEP, val, module->newConstInt(i), baseType);
-                    node->blockInsts.addInst(ptr);
-                    node->blockInsts.addInst(new StoreInstruction(func, ptr, item->val));
-                }
+                // 填充缺省值（根据SysY2022标准）
+                fillArrayDefaults(val, type, func, node->blockInsts);
+                
+                // 使用新的数组初始化方法
+                generateSimpleArrayInit(val, type, s, func, node->blockInsts);
             } else {
                 // 非数组初始化
                 int v;
@@ -999,21 +976,77 @@ bool IRGenerator::ir_lval_to_r(ast_node * node)
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_array_init(ast_node * node)
 {
-    // TODO: 实现数组初始化的IR生成
-    // 这里需要根据初始化列表生成相应的赋值指令
-
-    // Function * currentFunc = module->getCurrentFunction();
-    for (size_t i = 0; i < node->sons.size(); i++) {
-        ast_node * el = node->sons[i];
-        if (el->node_type == ASTOP(ARRAY_INIT)) {
-            ir_array_init(el);
-            auto x = node->sons.begin() + i;
-            node->sons.erase(x);
-            node->sons.insert(x, el->sons.begin(), el->sons.end());
+    // 递归处理嵌套的初始化列表
+    for (auto child : node->sons) {
+        if (child->node_type == ASTOP(ARRAY_INIT)) {
+            ir_array_init(child);
         }
     }
-
+    
     return true;
+}
+
+/// @brief 填充数组的缺省值（根据SysY2022标准）
+/// @param arrayVal 数组变量
+/// @param arrayType 数组类型
+/// @param initList 初始化列表节点
+/// @param func 当前函数
+/// @param blockInsts 指令块
+void IRGenerator::fillArrayDefaults(Value * arrayVal, ArrayType * arrayType,
+                                    Function * func, InterCode & blockInsts)
+{
+    // 计算数组总元素个数
+    uint32_t totalElements = getTotalArrayElements(arrayType);
+    
+    // 使用简单的store指令将数组清零
+    Value * zeroVal = module->newConstInt(0);
+    
+    for (uint32_t i = 0; i < totalElements; i++) {
+        if (arrayType->getElementType()->isArrayType()) {
+            // 多维数组，需要两个GEP指令
+            ArrayType * subArrayType = (ArrayType *) arrayType->getElementType();
+            uint32_t subArraySize = subArrayType->getNumElements();
+            
+            uint32_t outerIndex = i / subArraySize;
+            uint32_t innerIndex = i % subArraySize;
+            
+            // 首先获取子数组的地址
+            Instruction * subArrayPtr = new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, 
+                                                             module->newConstInt(outerIndex), arrayType);
+            blockInsts.addInst(subArrayPtr);
+            
+            // 然后获取元素的地址
+            Instruction * elemPtr = new BinaryInstruction(func, IRINST_OP_GEP, subArrayPtr, 
+                                                         module->newConstInt(innerIndex), subArrayType);
+            blockInsts.addInst(elemPtr);
+            
+            blockInsts.addInst(new StoreInstruction(func, elemPtr, zeroVal));
+        } else {
+            // 一维数组
+            Instruction * ptr = new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, 
+                                                     module->newConstInt(i), arrayType);
+            blockInsts.addInst(ptr);
+            blockInsts.addInst(new StoreInstruction(func, ptr, zeroVal));
+        }
+    }
+}
+
+/// @brief 计算数组总元素个数
+/// @param arrayType 数组类型
+/// @return 总元素个数
+uint32_t IRGenerator::getTotalArrayElements(ArrayType * arrayType)
+{
+    uint32_t totalElements = arrayType->getNumElements();
+    const Type * elementType = arrayType->getElementType();
+    
+    // 递归计算多维数组的总元素个数
+    while (elementType && elementType->isArrayType()) {
+        ArrayType * subArrayType = (ArrayType *) elementType;
+        totalElements *= subArrayType->getNumElements();
+        elementType = subArrayType->getElementType();
+    }
+    
+    return totalElements;
 }
 
 /// @brief 计算常量表达式（只包含常量符号、字面量）
@@ -1095,4 +1128,127 @@ int IRGenerator::calcDims(ast_node * child)
         return child->sons.size() > 1 ? 1 : -1;
     }
     return 0;
+}
+
+/// @brief 将扁平化索引转换为多维索引并生成GEP指令
+/// @param arrayVal 数组变量
+/// @param arrayType 数组类型
+/// @param flatIndex 扁平化索引
+/// @param func 当前函数
+/// @return GEP指令
+Instruction * IRGenerator::generateMultiDimGEP(Value * arrayVal, ArrayType * arrayType, 
+                                               uint32_t flatIndex, Function * func)
+{
+    // 对于二维数组 int a[2][2]，扁平化索引转换为多维索引：
+    // flatIndex=0 -> (0,0)
+    // flatIndex=1 -> (0,1) 
+    // flatIndex=2 -> (1,0)
+    // flatIndex=3 -> (1,1)
+    
+    if (arrayType->getElementType()->isArrayType()) {
+        // 多维数组
+        ArrayType * subArrayType = (ArrayType *) arrayType->getElementType();
+        uint32_t subArraySize = subArrayType->getNumElements(); // 对于[2][2]，这是2
+        
+        uint32_t outerIndex = flatIndex / subArraySize;  // 第一维索引
+        uint32_t innerIndex = flatIndex % subArraySize;  // 第二维索引
+        
+        // 首先获取子数组的地址
+        Instruction * subArrayPtr = new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, 
+                                                         module->newConstInt(outerIndex), arrayType);
+        
+        // 然后获取元素的地址
+        return new BinaryInstruction(func, IRINST_OP_GEP, subArrayPtr, 
+                                    module->newConstInt(innerIndex), subArrayType);
+    } else {
+        // 一维数组
+        return new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, 
+                                    module->newConstInt(flatIndex), arrayType);
+    }
+}
+
+/// @brief 生成简单的数组初始化指令
+/// @param arrayVal 数组变量
+/// @param arrayType 数组类型
+/// @param initList 初始化列表节点
+/// @param func 当前函数
+/// @param blockInsts 指令块
+void IRGenerator::generateSimpleArrayInit(Value * arrayVal, ArrayType * arrayType, 
+                                          ast_node * initList, Function * func, 
+                                          InterCode & blockInsts)
+{
+    generateSimpleArrayInitWithOffset(arrayVal, arrayType, initList, func, blockInsts, 0);
+}
+
+/// @brief 生成简单的数组初始化指令（带偏移量）
+/// @param arrayVal 数组变量
+/// @param arrayType 数组类型
+/// @param initList 初始化列表节点
+/// @param func 当前函数
+/// @param blockInsts 指令块
+/// @param baseOffset 基础偏移量
+void IRGenerator::generateSimpleArrayInitWithOffset(Value * arrayVal, ArrayType * arrayType, 
+                                                    ast_node * initList, Function * func, 
+                                                    InterCode & blockInsts, uint32_t baseOffset)
+{
+    if (!initList || initList->sons.empty()) {
+        return;
+    }
+    
+    const Type * elementType = arrayType->getElementType();
+    uint32_t currentOffset = baseOffset;
+    
+    for (size_t i = 0; i < initList->sons.size(); i++) {
+        ast_node * item = initList->sons[i];
+        
+        if (item->node_type == ASTOP(ARRAY_INIT)) {
+            // 嵌套的初始化列表，递归处理
+            if (elementType->isArrayType()) {
+                ArrayType * subArrayType = (ArrayType *) elementType;
+                generateSimpleArrayInitWithOffset(arrayVal, subArrayType, item, func, blockInsts, currentOffset);
+                // 更新偏移量，跳过这个子数组的所有元素
+                currentOffset += getTotalArrayElements(subArrayType);
+            }
+        } else {
+            // 叶子节点，生成赋值指令
+            if (!ir_visit_ast_node(item)) {
+                return;
+            }
+            blockInsts.addInst(item->blockInsts);
+            
+            // 生成多维数组元素的地址
+            if (arrayType->getElementType()->isArrayType()) {
+                // 多维数组，需要两个GEP指令
+                ArrayType * subArrayType = (ArrayType *) arrayType->getElementType();
+                uint32_t subArraySize = subArrayType->getNumElements();
+                
+                uint32_t outerIndex = currentOffset / subArraySize;
+                uint32_t innerIndex = currentOffset % subArraySize;
+                
+                // 首先获取子数组的地址
+                Instruction * subArrayPtr = new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, 
+                                                                 module->newConstInt(outerIndex), arrayType);
+                blockInsts.addInst(subArrayPtr);
+                
+                // 然后获取元素的地址
+                Instruction * elemPtr = new BinaryInstruction(func, IRINST_OP_GEP, subArrayPtr, 
+                                                             module->newConstInt(innerIndex), subArrayType);
+                blockInsts.addInst(elemPtr);
+                
+                // 存储初始化值
+                blockInsts.addInst(new StoreInstruction(func, elemPtr, item->val));
+            } else {
+                // 一维数组
+                Instruction * ptr = new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, 
+                                                         module->newConstInt(currentOffset), arrayType);
+                blockInsts.addInst(ptr);
+                
+                // 存储初始化值
+                blockInsts.addInst(new StoreInstruction(func, ptr, item->val));
+            }
+            
+            // 更新偏移量
+            currentOffset++;
+        }
+    }
 }
