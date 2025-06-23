@@ -1,0 +1,60 @@
+# .gitlab-ci.yml
+#
+#
+# 使用一个包含基本构建工具的 Docker 镜像。
+# Ubuntu 22.04 是一个不错的选择，因为它通常包含较新的 g++ 和 cmake。
+image: ubuntu:22.04
+
+# 定义流水线的各个阶段
+stages:
+  - build
+  - test
+
+# 构建任务：编译你的编译器
+build-compiler:
+  stage: build
+  tags:
+    - test_build
+  script:
+    # 创建一个构建目录并进入
+    - mkdir build
+    - cd build
+    # 运行 CMake 来配置项目
+    - cmake ..
+    # 使用 make 进行编译。-j$(nproc) 可以利用多核处理器加快编译速度。
+    - make -j$(nproc)
+
+  only:
+    - pushes
+
+  artifacts:
+    # 将整个 build 目录作为产物传递给后续阶段。
+    # 这样测试阶段就可以使用编译好的编译器了。
+    paths:
+      - build/
+    expire_in: 1 week # 产物保留一周，之后会自动删除以节省空间
+
+# 自动评测任务：运行测试脚本
+run-tests:
+  stage: test
+  needs:
+    # 明确依赖于 build-compiler 任务，确保编译器已经构建完毕
+    - job: build-compiler
+      artifacts: true
+  tags:
+    - test_case
+  script:
+    # 克隆测试用例仓库
+    # 克隆仓库到testcases目录下
+    - git clone https://gitlab.eduxiji.net/Lzzzq/compiler_test.git testcases
+    # 进入 testcases 目录，运行 tst 下的测试
+    - cd testcases/tst
+    - sh test.sh 2>/dev/null
+    # 回到 testcases 目录，运行 test_25 下的测试
+    - cd ../test_25
+    - sh test.sh 2>/dev/null
+  only:
+    - pushes
+  after_script:
+    # (可选) 可以在这里添加一些清理或报告生成的命令
+    - echo "Testing finished." 
