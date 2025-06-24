@@ -16,13 +16,17 @@
 ///
 #pragma once
 
+#include <vector>
 #include <unordered_map>
 
+#include "Type.h"
 #include "AST.h"
 #include "Module.h"
 #include <sys/queue.h>
 
 // 前向声明
+class Module;
+class ast_node;
 class ArrayType;
 class InterCode;
 
@@ -154,61 +158,65 @@ protected:
     /// @return 值节点下标，-1无值节点
     int calcDims(ast_node * node);
 
-    /// @brief 展开嵌套的初始化列表，处理缺省值
-    /// @param node 初始化列表节点
-    void expandNestedInitList(ast_node * node);
-
-    /// @brief 扁平化初始化列表
-    /// @param node 初始化列表节点
-    /// @param flatList 扁平化后的列表
-    void flattenInitList(ast_node * node, std::vector<ast_node*> & flatList);
-
-    /// @brief 填充数组的缺省值
-    void fillArrayDefaults(Value * arrayVal, ArrayType * arrayType, Function * func, InterCode & blockInsts);
-
-    /// @brief 将扁平化索引转换为多维索引并生成GEP指令
-    /// @param arrayVal 数组变量
+    /// @brief 计算多维数组索引的一维偏移
     /// @param arrayType 数组类型
-    /// @param flatIndex 扁平化索引
-    /// @param func 当前函数
-    /// @return GEP指令
-    Instruction * generateMultiDimGEP(Value * arrayVal, ArrayType * arrayType, 
-                                     uint32_t flatIndex, Function * func);
+    /// @param indices 多维索引值列表
+    /// @return 一维偏移
+    uint32_t calculateMultiDimOffset(ArrayType * arrayType, const std::vector<uint32_t> & indices);
+
+    /// @brief 获取多维数组的底层数组类型（一维表示）
+    /// @param arrayType 多维数组类型
+    /// @return 底层一维数组类型
+    ArrayType * getBaseArrayType(ArrayType * arrayType);
 
     /// @brief 计算数组总元素个数
-    uint32_t getTotalArrayElements(ArrayType * arrayType);
+    /// @param arrayType 数组类型
+    /// @return 总元素个数
+    uint32_t getTotalElements(ArrayType * arrayType);
 
-    /// @brief 生成数组初始化指令
+    /// @brief 处理数组初始化，计算每个元素的一维偏移
     /// @param arrayVal 数组变量
     /// @param arrayType 数组类型
     /// @param initList 初始化列表节点
     /// @param func 当前函数
     /// @param blockInsts 指令块
-    /// @param baseOffset 基础偏移量
-    void generateArrayInitInstructions(Value * arrayVal, ArrayType * arrayType, 
-                                      ast_node * initList, Function * func, 
-                                      InterCode & blockInsts, uint32_t baseOffset);
+    /// @param currentOffset 当前偏移（引用，会被修改）
+    void processArrayInitialization(Value * arrayVal, ArrayType * arrayType, ast_node * initList, 
+                                   Function * func, InterCode & blockInsts, uint32_t & currentOffset);
 
-    /// @brief 生成简单的数组初始化指令
-    /// @param arrayVal 数组变量
+    /// @brief 计算数组维度信息
     /// @param arrayType 数组类型
-    /// @param initList 初始化列表节点
+    /// @return 维度列表
+    std::vector<uint32_t> getDimensions(ArrayType * arrayType);
+
+    /// @brief 计算维度累积信息
+    /// @param dimensions 维度列表
+    /// @return 累积信息列表
+    std::vector<uint32_t> calculateDimensionsCnt(const std::vector<uint32_t> & dimensions);
+
+    /// @brief 统计初始化列表中的非零元素数量
+    /// @param initList 初始化列表
+    /// @return 非零元素数量
+    uint32_t countNonZeroElements(ast_node * initList);
+
+    /// @brief 检查是否为零值
+    /// @param node AST节点
+    /// @return 是否为零值
+    bool isZeroValue(ast_node * node);
+
+    /// @brief 处理初始化列表的一维偏移
+    /// @param initList 初始化列表
+    /// @param dimensions 维度信息
+    /// @param dimensionsCnt 累积维度信息
+    /// @param currentOffset 当前偏移
+    /// @param arrayVal 数组变量
     /// @param func 当前函数
     /// @param blockInsts 指令块
-    void generateSimpleArrayInit(Value * arrayVal, ArrayType * arrayType, 
-                                ast_node * initList, Function * func, 
-                                InterCode & blockInsts);
-
-    /// @brief 生成简单的数组初始化指令（带偏移量）
-    /// @param arrayVal 数组变量
-    /// @param arrayType 数组类型
-    /// @param initList 初始化列表节点
-    /// @param func 当前函数
-    /// @param blockInsts 指令块
-    /// @param baseOffset 基础偏移量
-    void generateSimpleArrayInitWithOffset(Value * arrayVal, ArrayType * arrayType, 
-                                          ast_node * initList, Function * func, 
-                                          InterCode & blockInsts, uint32_t baseOffset);
+    /// @param usedMemset 是否已经使用memset清零
+    /// @param dimLevel 当前维度级别
+    void processInitListWithOffset(ast_node * initList, const std::vector<uint32_t> & dimensions,
+                                  const std::vector<uint32_t> & dimensionsCnt, uint32_t & currentOffset,
+                                  Value * arrayVal, Function * func, InterCode & blockInsts, bool usedMemset, int dimLevel = 0);
 
     /// @brief AST的节点操作函数
     typedef bool (IRGenerator::*ast2ir_handler_t)(ast_node *);
