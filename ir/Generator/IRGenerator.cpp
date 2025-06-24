@@ -1217,10 +1217,6 @@ void IRGenerator::processArrayInitialization(Value * arrayVal, ArrayType * array
         return;
     }
     
-<<<<<<< HEAD
-    const Type * elementType = arrayType->getElementType();
-    uint32_t currentOffset = baseOffset;
-=======
     // 1. 计算维度信息
     std::vector<uint32_t> dimensions = getDimensions(arrayType);
     std::vector<uint32_t> dimensionsCnt = calculateDimensionsCnt(dimensions);
@@ -1358,7 +1354,6 @@ void IRGenerator::processInitListWithOffset(ast_node * initList, const std::vect
     // 计算当前维度的步长
     uint32_t currentDimSize = (dimLevel < dimensions.size()) ? dimensions[dimLevel] : 1;
     uint32_t elementSize = (dimLevel < dimensionsCnt.size()) ? dimensionsCnt[dimLevel] : 1;
->>>>>>> 803bc05 (优化多维数组初始化：实现一维偏移访问和稀疏数组memset优化)
     
     for (size_t i = 0; i < initList->sons.size(); i++) {
         ast_node * item = initList->sons[i];

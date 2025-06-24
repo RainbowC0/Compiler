@@ -204,6 +204,18 @@ protected:
     /// @return 是否为零值
     bool isZeroValue(ast_node * node);
 
+    /// @brief 填充数组默认值
+    /// @param arrayVal 数组变量
+    /// @param arrayType 数组类型
+    /// @param func 当前函数
+    /// @param blockInsts 指令块
+    void fillArrayDefaults(Value * arrayVal, ArrayType * arrayType, Function * func, InterCode & blockInsts);
+
+    /// @brief 获取数组总元素个数
+    /// @param arrayType 数组类型
+    /// @return 总元素个数
+    uint32_t getTotalArrayElements(ArrayType * arrayType);
+
     /// @brief 处理初始化列表的一维偏移
     /// @param initList 初始化列表
     /// @param dimensions 维度信息
@@ -215,8 +227,8 @@ protected:
     /// @param usedMemset 是否已经使用memset清零
     /// @param dimLevel 当前维度级别
     void processInitListWithOffset(ast_node * initList, const std::vector<uint32_t> & dimensions,
-                                  const std::vector<uint32_t> & dimensionsCnt, uint32_t & currentOffset,
-                                  Value * arrayVal, Function * func, InterCode & blockInsts, bool usedMemset, int dimLevel = 0);
+                                 const std::vector<uint32_t> & dimensionsCnt, uint32_t & currentOffset,
+                                 Value * arrayVal, Function * func, InterCode & blockInsts, bool usedMemset, int dimLevel = 0);
 
     /// @brief AST的节点操作函数
     typedef bool (IRGenerator::*ast2ir_handler_t)(ast_node *);
