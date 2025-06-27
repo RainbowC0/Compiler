@@ -17,6 +17,8 @@
 
 #include <string>
 #include <vector>
+#include <set>
+#include <map>
 
 #include "GlobalValue.h"
 #include "FunctionType.h"
@@ -25,6 +27,12 @@
 #include "MemVariable.h"
 #include "IRCode.h"
 #include "CFG.h"
+
+// 前向声明
+class Instruction;
+class Value;
+class ConstInt;
+class ConstFloat;
 
 ///
 /// @brief 描述函数信息的类，是全局静态存储，其Value的类型为FunctionType
@@ -171,6 +179,40 @@ public:
     ///
     void realArgCountReset();
 
+    ///
+    /// @brief 执行SSA转换
+    ///
+    void convertToSSA();
+
+    ///
+    /// @brief 执行死代码删除优化
+    ///
+    void deadCodeElimination();
+
+    ///
+    /// @brief 执行常量传播优化
+    ///
+    void constantPropagation();
+
+    ///
+    /// @brief 执行强度消减优化
+    ///
+    void strengthReduction();
+
+    ///
+    /// @brief 执行函数内联优化
+    ///
+    void inlineExpansion();
+
+    /// @brief 执行分支剪枝优化
+    void branchPruning();
+
+    ///
+    /// @brief 执行所有优化
+    ///
+    /// 优化顺序：inlineExpansion → branchPruning → deadCodeElimination → constantPropagation → strengthReduction
+    void optimize();
+
 private:
     ///
     /// @brief 函数的返回值类型，有点冗余，可删除，直接从type中取得即可
@@ -251,4 +293,21 @@ private:
     /// @brief 累计的实参个数，用于ARG指令的统计
     ///
     int32_t realArgCount = 0;
+
+    // 优化相关的私有辅助方法
+    std::vector<std::set<int>> computeDominance(CFG& cfg);
+    std::vector<std::set<int>> computeDominanceFrontier(CFG& cfg, const std::vector<std::set<int>>& dom);
+    void insertPhiFunctions(CFG& cfg, const std::vector<std::set<int>>& df);
+    void renameVariables(CFG& cfg);
+    bool hasSideEffects(Instruction* inst);
+    bool isResultUsed(Instruction* inst, size_t pos, const std::vector<Instruction*>& insts);
+    void removeDeadCode(const std::vector<bool>& isDead);
+    bool isConstant(Value* value);
+    bool isBinaryOp(Instruction* inst);
+    Value* evaluateConstant(Value* src1, Value* src2, IRInstOperator op);
+    void replaceConstants(const std::map<Value*, Value*>& constants);
+    bool isPowerOfTwo(Value* value);
+    void replaceWithShift(Instruction* inst, Value* src1, Value* src2, bool isMultiply);
+    bool hasEdge(CFG& cfg, int from, int to);
+    bool isDominatedBy(int node, int dominator, const std::vector<std::set<int>>& dom);
 };

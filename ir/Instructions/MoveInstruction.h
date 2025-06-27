@@ -39,4 +39,10 @@ public:
 
     /// @brief 转换成字符串
     void toString(std::string & str) override;
+
+    /// @brief 获取源操作数
+    Value* getSrcValue() const;
+
+    /// @brief 获取目标操作数
+    Value* getResultValue() const;
 };

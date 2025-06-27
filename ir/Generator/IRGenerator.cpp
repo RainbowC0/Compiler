@@ -529,8 +529,7 @@ bool IRGenerator::ir_assign(ast_node * node)
     // 赋值运算符的左侧操作数
     ast_node * left = ir_visit_ast_node(son1_node);
     if (!left) {
-        // 某个变量没有定值
-        // 这里缺省设置变量不存在则创建，因此这里不会错误
+        minic_log(LOG_ERROR, "赋值左值变量未定义或作用域隐藏");
         return false;
     }
 
@@ -541,15 +540,25 @@ bool IRGenerator::ir_assign(ast_node * node)
         return false;
     }
 
-    // 这里只处理整型的数据，如需支持实数，则需要针对类型进行处理
-    // TODO real number add
+    // 支持float类型赋值：若类型不一致且目标为float，自动插入类型转换
+    Value * leftVal = left->val;
+    Value * rightVal = right->val;
+    Type * leftType = leftVal->getType();
+    Type * rightType = rightVal->getType();
+    Function * func = module->getCurrentFunction();
+    if (leftType->isFloatType() && !rightType->isFloatType()) {
+        // int->float
+        Instruction * castInst = new CastInstruction(func, rightVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
+        right->blockInsts.addInst(castInst);
+        rightVal = castInst;
+    }
+    // TODO: float->int时可加类型检查
 
     Instruction * movInst;
-    Function * func = module->getCurrentFunction();
     if (left->node_type == ASTOP(ARRAY_ACCESS)) {
-        movInst = new StoreInstruction(func, left->val, right->val);
+        movInst = new StoreInstruction(func, leftVal, rightVal);
     } else {
-        movInst = new MoveInstruction(func, left->val, right->val);
+        movInst = new MoveInstruction(func, leftVal, rightVal);
     }
 
     // 创建临时变量保存IR的值，以及线性IR指令
@@ -620,13 +629,12 @@ bool IRGenerator::ir_leaf_node_type(ast_node * node)
 bool IRGenerator::ir_node_var_id(ast_node * node)
 {
     Value * val;
-
-    // 查找ID型Value
-    // 变量，则需要在符号表中查找对应的值
-
     val = module->findVarValue(node->name);
+    if (!val) {
+        minic_log(LOG_ERROR, "变量(%s)未定义或作用域隐藏", node->name.c_str());
+        return false;
+    }
     node->val = val;
-
     return true;
 }
 
@@ -658,11 +666,9 @@ bool IRGenerator::ir_leaf_node_float(ast_node * node)
     return true;
 }
 
-/**
- * @brief 变量声明语句节点翻译成线性中间IR
- * @param node AST节点
- * @return 翻译是否成功，true：成功，false：失败
- */
+/// @brief 变量声明语句节点翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_variable_declare(ast_node * node)
 {
     Function * func = module->getCurrentFunction();
@@ -670,14 +676,20 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
     // 函数内定义
     if (func) {
         for (auto child: node->sons) {
-            // 检查是否要计算维度
             int c = calcDims(child);
-
             Value * val = module->newVarValue(child->type, child->name);
-            child->val = val;
-
-            if (c == -1)
+            if (!val) {
+                minic_log(LOG_ERROR, "变量(%s)声明失败，可能被隐藏或重复", child->name.c_str());
                 continue;
+            }
+            child->val = val;
+            if (c == -1) {
+                // 局部数组未初始化，自动补零
+                if (child->type->isArrayType()) {
+                    fillArrayDefaults(val, (ArrayType*)child->type, func, node->blockInsts);
+                }
+                continue;
+            }
             ast_node * s = child->sons[c];
             if (s->node_type == ASTOP(ARRAY_INIT)) {
                 // 数组初始化 - 使用新的一维偏移方式
@@ -707,8 +719,24 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
         }
     } else
         for (auto child: node->sons) {
-            // 全局变量定义，类似处理
             int c = calcDims(child);
+
+            // 修复：全局const int常量专门处理
+            if (child->type->isIntegerType() && child->type->isConst) {
+                // 只支持常量初始化
+                if (c != -1) {
+                    ast_node * s = child->sons[c];
+                    int v = 0;
+                    if (calcConstExpr(s, &v)) {
+                        ConstInt * cint = module->newConstInt(v);
+                        child->val = cint;
+                        module->setVal(cint, cint);
+                        continue;
+                    }
+                }
+                minic_log(LOG_ERROR, "全局const int %s 必须有常量初始化", child->name.c_str());
+                continue;
+            }
 
             child->val = module->newVarValue(child->type, child->name);
 
@@ -991,7 +1019,6 @@ bool IRGenerator::ir_array_init(ast_node * node)
 /// @brief 填充数组的缺省值（根据SysY2022标准）
 /// @param arrayVal 数组变量
 /// @param arrayType 数组类型
-/// @param initList 初始化列表节点
 /// @param func 当前函数
 /// @param blockInsts 指令块
 void IRGenerator::fillArrayDefaults(Value * arrayVal, ArrayType * arrayType,
@@ -1116,12 +1143,13 @@ int IRGenerator::calcDims(ast_node * child)
         return -1;
     ast_node * firstNode = child->sons[0];
     if (firstNode->node_type == ASTOP(ARRAY_INDICES)) {
-        // 计算数组各维度的值
+        // 计算数组各维度的值，支持常量表达式
         Type * btype = child->type;
         ArrayType * atype = (ArrayType *) btype;
         auto & x = firstNode->sons;
         for (auto dimExp = x.rbegin(); dimExp != x.rend(); ++dimExp) {
             int dim = 0;
+            ir_visit_ast_node(*dimExp); // 支持表达式维度
             calcConstExpr(*dimExp, &dim);
             ArrayType * arr = new ArrayType(atype, dim);
             atype = arr;
@@ -1350,57 +1378,47 @@ void IRGenerator::processInitListWithOffset(ast_node * initList, const std::vect
     if (!initList || initList->sons.empty()) {
         return;
     }
-    
-    // 计算当前维度的步长
     uint32_t currentDimSize = (dimLevel < dimensions.size()) ? dimensions[dimLevel] : 1;
     uint32_t elementSize = (dimLevel < dimensionsCnt.size()) ? dimensionsCnt[dimLevel] : 1;
-    
-    for (size_t i = 0; i < initList->sons.size(); i++) {
+    size_t i = 0;
+    for (; i < initList->sons.size(); i++) {
         ast_node * item = initList->sons[i];
-        
         if (item->node_type == ASTOP(ARRAY_INIT)) {
-            // 嵌套初始化列表，递归处理
             uint32_t startOffset = currentOffset;
             processInitListWithOffset(item, dimensions, dimensionsCnt, currentOffset, arrayVal, func, blockInsts, usedMemset, dimLevel + 1);
-            
-            // 处理完一个嵌套列表后，需要跳跃到下一个同级位置
-            // 计算这个嵌套列表应该占用的总大小
             uint32_t expectedSize = elementSize;
             uint32_t actualSize = currentOffset - startOffset;
-            
-            // 如果实际处理的元素少于预期，需要跳跃到下一个位置
             if (actualSize < expectedSize) {
                 currentOffset = startOffset + expectedSize;
             }
         } else {
-            // 叶子节点，生成存储指令
-            if (!ir_visit_ast_node(item)) {
-                currentOffset++;
-                continue;
-            }
-            
+            // 递归求值，支持表达式初始化
+            ir_visit_ast_node(item);
             blockInsts.addInst(item->blockInsts);
-            
-            // 检查是否需要存储（零值优化）
             bool shouldStore = true;
             if (isZeroValue(item) && usedMemset) {
-                // 如果是零值且已经用memset清零了，就不需要存储
                 shouldStore = false;
             }
-            
             if (shouldStore) {
-                // 使用一维偏移，创建GEP指令
-                // 这里使用扁平化的数组类型进行GEP
                 ArrayType * flatType = getBaseArrayType((ArrayType*)arrayVal->getType());
                 Instruction * ptr = new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, 
                                                          module->newConstInt(currentOffset), flatType);
                 blockInsts.addInst(ptr);
-                
-                // 存储值
                 blockInsts.addInst(new StoreInstruction(func, ptr, item->val));
             }
-            
             currentOffset++;
         }
+    }
+    // 补零：如果初始化元素不足，自动补零
+    uint32_t total = currentDimSize * elementSize;
+    uint32_t filled = currentOffset % total;
+    while (filled != 0 && filled < total) {
+        ArrayType * flatType = getBaseArrayType((ArrayType*)arrayVal->getType());
+        Instruction * ptr = new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, 
+                                                 module->newConstInt(currentOffset), flatType);
+        blockInsts.addInst(ptr);
+        blockInsts.addInst(new StoreInstruction(func, ptr, module->newConstInt(0)));
+        currentOffset++;
+        filled++;
     }
 }

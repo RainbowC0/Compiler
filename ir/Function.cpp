@@ -16,9 +16,20 @@
 
 #include <cstdlib>
 #include <string>
+#include <set>
+#include <map>
+#include <algorithm>
 
 #include "IRConstant.h"
 #include "Function.h"
+#include "MoveInstruction.h"
+#include "BinaryInstruction.h"
+#include "ConstInt.h"
+#include "ConstFloat.h"
+
+// 修复：添加必要的头文件以支持dynamic_cast
+#include "Instructions/FuncCallInstruction.h"
+#include "Instructions/GotoInstruction.h"
 
 /// @brief 指定函数名字、函数类型的构造函数
 /// @param _name 函数名称
@@ -326,4 +337,511 @@ void Function::realArgCountInc()
 void Function::realArgCountReset()
 {
     this->realArgCount = 0;
+}
+
+///
+/// @brief 执行SSA转换
+///
+void Function::convertToSSA()
+{
+    // 内置函数跳过优化
+    if (isBuiltin()) {
+        return;
+    }
+
+    // 构建CFG
+    CFG cfg;
+    cfg.buildCFG(this);
+    
+    // 计算支配关系
+    std::vector<std::set<int>> dom = computeDominance(cfg);
+    
+    // 计算支配边界
+    std::vector<std::set<int>> df = computeDominanceFrontier(cfg, dom);
+    
+    // 插入phi函数
+    insertPhiFunctions(cfg, df);
+    
+    // 重命名变量
+    renameVariables(cfg);
+}
+
+///
+/// @brief 执行死代码删除优化
+///
+void Function::deadCodeElimination()
+{
+    // 内置函数跳过优化
+    if (isBuiltin()) {
+        return;
+    }
+
+    auto& insts = code.getInsts();
+    std::vector<bool> isDead(insts.size(), false);
+    bool changed = true;
+    
+    while (changed) {
+        changed = false;
+        
+        for (size_t i = 0; i < insts.size(); i++) {
+            Instruction* inst = insts[i];
+            
+            // 跳过已标记为死代码的指令
+            if (isDead[i]) continue;
+            
+            // 跳过控制流指令
+            if (inst->getOp() == IRINST_OP_LABEL || 
+                inst->getOp() == IRINST_OP_GOTO ||
+                inst->getOp() == IRINST_OP_ENTRY ||
+                inst->getOp() == IRINST_OP_EXIT) {
+                continue;
+            }
+            
+            // 检查指令是否有副作用
+            if (hasSideEffects(inst)) {
+                continue;
+            }
+            
+            // 检查结果是否被使用
+            if (!isResultUsed(inst, i, insts)) {
+                isDead[i] = true;
+                changed = true;
+            }
+        }
+    }
+    
+    // 删除死代码
+    removeDeadCode(isDead);
+}
+
+///
+/// @brief 执行常量传播优化
+///
+void Function::constantPropagation()
+{
+    // 内置函数跳过优化
+    if (isBuiltin()) {
+        return;
+    }
+
+    auto& insts = code.getInsts();
+    std::map<Value*, Value*> constants;
+    bool changed = true;
+    
+    while (changed) {
+        changed = false;
+        
+        for (auto inst : insts) {
+            if (inst->getOp() == IRINST_OP_ASSIGN) {
+                // 处理赋值指令
+                auto assignInst = static_cast<MoveInstruction*>(inst);
+                Value* src = assignInst->getSrcValue();
+                Value* dest = assignInst->getResultValue();
+                
+                if (isConstant(src)) {
+                    constants[dest] = src;
+                    changed = true;
+                }
+            } else if (isBinaryOp(inst)) {
+                // 处理二元运算指令
+                auto binInst = static_cast<BinaryInstruction*>(inst);
+                Value* src1 = binInst->getSrcValue1();
+                Value* src2 = binInst->getSrcValue2();
+                Value* dest = binInst->getResultValue();
+                
+                if (isConstant(src1) && isConstant(src2)) {
+                    Value* result = evaluateConstant(src1, src2, inst->getOp());
+                    if (result) {
+                        constants[dest] = result;
+                        changed = true;
+                    }
+                }
+            }
+        }
+    }
+    
+    // 替换常量
+    replaceConstants(constants);
+}
+
+///
+/// @brief 执行强度消减优化
+///
+void Function::strengthReduction()
+{
+    // 内置函数跳过优化
+    if (isBuiltin()) {
+        return;
+    }
+
+    auto& insts = code.getInsts();
+    
+    for (auto inst : insts) {
+        if (isBinaryOp(inst)) {
+            auto binInst = static_cast<BinaryInstruction*>(inst);
+            
+            // 乘法转换为移位
+            if (inst->getOp() == IRINST_OP_IMUL) {
+                Value* src1 = binInst->getSrcValue1();
+                Value* src2 = binInst->getSrcValue2();
+                
+                if (isPowerOfTwo(src2)) {
+                    replaceWithShift(inst, src1, src2, true);
+                }
+            }
+            
+            // 除法转换为移位
+            if (inst->getOp() == IRINST_OP_IDIV) {
+                Value* src1 = binInst->getSrcValue1();
+                Value* src2 = binInst->getSrcValue2();
+                
+                if (isPowerOfTwo(src2)) {
+                    replaceWithShift(inst, src1, src2, false);
+                }
+            }
+        }
+    }
+}
+
+///
+/// @brief 执行函数内联优化
+///
+void Function::inlineExpansion() {
+    // 函数内联优化：遍历IR，找到可内联的FuncCallInstruction，
+    // 将被调函数的IR插入到调用点，重命名变量，替换形参为实参。
+    // 这里只提供基础框架，详细逻辑可后续完善。
+    auto &insts = code.getInsts();
+    for (size_t i = 0; i < insts.size(); ++i) {
+        auto callInst = dynamic_cast<FuncCallInstruction*>(insts[i]);
+        if (!callInst) continue;
+        Function *callee = callInst->calledFunction;
+        // 简单判断：只内联非递归、非内置、小体积函数
+        if (!callee || callee == this || callee->isBuiltin()) continue;
+        if (callee->getInterCode().getInsts().size() > 32) continue; // 体积阈值
+        // TODO: 检查递归、全局副作用、内联深度等
+        // TODO: 复制callee的IR，重命名变量，替换形参为实参，插入到当前IR
+        // 这里只做提示，具体实现需变量映射、作用域处理
+    }
+}
+
+///
+/// @brief 执行分支剪枝优化
+///
+void Function::branchPruning() {
+    // 分支剪枝优化：遍历IR，找到条件为常量的GotoInstruction，
+    // 恒真/恒假时直接替换为无条件跳转。
+    auto &insts = code.getInsts();
+    for (size_t i = 0; i < insts.size(); ++i) {
+        auto gotoInst = dynamic_cast<GotoInstruction*>(insts[i]);
+        if (!gotoInst) continue;
+        Value *cond = gotoInst->getCondiValue();
+        auto cint = dynamic_cast<ConstInt*>(cond);
+        if (!cint) continue;
+        // 恒真/恒假
+        if (cint->getVal()) {
+            // 恒真，跳转到iftrue
+            insts[i] = new GotoInstruction(this, gotoInst->iftrue);
+        } else {
+            // 恒假，跳转到iffalse
+            insts[i] = new GotoInstruction(this, gotoInst->iffalse);
+        }
+        delete gotoInst;
+    }
+}
+
+///
+/// @brief 执行所有优化
+///
+void Function::optimize()
+{
+    // 内置函数跳过优化
+    if (isBuiltin()) {
+        return;
+    }
+
+    // 优化顺序：内联 → 分支剪枝 → 死代码删除 → 常量传播 → 强度消减
+    inlineExpansion();
+    branchPruning();
+    deadCodeElimination();
+    constantPropagation();
+    strengthReduction();
+    // SSA转换放在最后，因为它会改变IR结构
+    // convertToSSA();
+}
+
+// 私有辅助方法实现
+
+std::vector<std::set<int>> Function::computeDominance(CFG& cfg)
+{
+    // 简化的支配关系计算
+    std::vector<std::set<int>> dom(cfg.inters.size());
+    
+    // 初始化：每个节点支配自己
+    for (size_t i = 0; i < cfg.inters.size(); i++) {
+        dom[i].insert(i);
+    }
+    
+    // 迭代计算支配关系
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (size_t i = 1; i < cfg.inters.size(); i++) {
+            std::set<int> newDom;
+            newDom.insert(i);
+            
+            // 计算前驱节点的支配交集
+            for (size_t j = 0; j < cfg.inters.size(); j++) {
+                if (j != i && hasEdge(cfg, j, i)) {
+                    if (newDom.empty()) {
+                        newDom = dom[j];
+                    } else {
+                        std::set<int> intersection;
+                        std::set_intersection(newDom.begin(), newDom.end(),
+                                            dom[j].begin(), dom[j].end(),
+                                            std::inserter(intersection, intersection.begin()));
+                        newDom = intersection;
+                    }
+                }
+            }
+            newDom.insert(i);
+            
+            if (newDom != dom[i]) {
+                dom[i] = newDom;
+                changed = true;
+            }
+        }
+    }
+    
+    return dom;
+}
+
+std::vector<std::set<int>> Function::computeDominanceFrontier(CFG& cfg, const std::vector<std::set<int>>& dom)
+{
+    std::vector<std::set<int>> df(cfg.inters.size());
+    
+    for (size_t i = 0; i < cfg.inters.size(); i++) {
+        for (size_t j = 0; j < cfg.inters.size(); j++) {
+            if (hasEdge(cfg, i, j) && !isDominatedBy(j, i, dom)) {
+                df[i].insert(j);
+            }
+        }
+    }
+    
+    return df;
+}
+
+void Function::insertPhiFunctions(CFG& cfg, const std::vector<std::set<int>>& df)
+{
+    // 简化的phi函数插入
+    // 这里只是框架，实际实现需要更复杂的算法
+    
+    // 对于每个变量，在支配边界插入phi函数
+    // 1. 识别所有变量定义
+    // 2. 在支配边界插入phi函数
+    // 3. 更新CFG结构
+    
+    // 由于当前IR没有phi指令，这里只是框架
+    // 实际实现需要：
+    // 1. 创建PhiInstruction类
+    // 2. 在适当位置插入phi指令
+    // 3. 更新控制流图
+}
+
+void Function::renameVariables(CFG& cfg)
+{
+    // 简化的变量重命名
+    // 这里只是框架，实际实现需要更复杂的算法
+    
+    // 1. 为每个变量维护版本栈
+    // 2. 深度优先遍历CFG
+    // 3. 重命名变量定义和使用
+    
+    // 由于当前IR结构限制，这里只是框架
+    // 实际实现需要：
+    // 1. 维护变量版本映射
+    // 2. 重命名所有变量引用
+    // 3. 处理phi指令的特殊情况
+}
+
+bool Function::hasSideEffects(Instruction* inst)
+{
+    // 检查指令是否有副作用
+    switch (inst->getOp()) {
+        case IRINST_OP_STORE:
+        case IRINST_OP_FUNC_CALL:
+        case IRINST_OP_ENTRY:
+        case IRINST_OP_EXIT:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool Function::isResultUsed(Instruction* inst, size_t pos, const std::vector<Instruction*>& insts)
+{
+    if (!inst->hasResultValue()) {
+        return false;
+    }
+    
+    Value* result = inst->getResultValue();
+    if (!result) {
+        return false;
+    }
+    
+    // 检查后续指令是否使用这个结果
+    for (size_t i = pos + 1; i < insts.size(); i++) {
+        Instruction* laterInst = insts[i];
+        
+        // 检查操作数
+        const auto& operands = laterInst->getOperands();
+        for (auto& use : operands) {
+            if (use->getUsee() == result) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+void Function::removeDeadCode(const std::vector<bool>& isDead)
+{
+    auto& insts = code.getInsts();
+    std::vector<Instruction*> newInsts;
+    
+    for (size_t i = 0; i < insts.size(); i++) {
+        if (!isDead[i]) {
+            newInsts.push_back(insts[i]);
+        } else {
+            delete insts[i];
+        }
+    }
+    
+    insts = newInsts;
+}
+
+bool Function::isConstant(Value* value)
+{
+    // 检查是否是常量
+    return dynamic_cast<ConstInt*>(value) != nullptr || 
+           dynamic_cast<ConstFloat*>(value) != nullptr;
+}
+
+bool Function::isBinaryOp(Instruction* inst)
+{
+    IRInstOperator op = inst->getOp();
+    return (op >= IRINST_OP_IADD && op <= IRINST_OP_ILE) ||
+           (op >= IRINST_OP_FADD && op <= IRINST_OP_FLE) ||
+           op == IRINST_OP_XOR;
+}
+
+Value* Function::evaluateConstant(Value* src1, Value* src2, IRInstOperator op)
+{
+    // 简化的常量求值
+    auto constInt1 = dynamic_cast<ConstInt*>(src1);
+    auto constInt2 = dynamic_cast<ConstInt*>(src2);
+    
+    if (constInt1 && constInt2) {
+        int val1 = constInt1->getValue();
+        int val2 = constInt2->getValue();
+        int result = 0;
+        
+        switch (op) {
+            case IRINST_OP_IADD:
+                result = val1 + val2;
+                break;
+            case IRINST_OP_ISUB:
+                result = val1 - val2;
+                break;
+            case IRINST_OP_IMUL:
+                result = val1 * val2;
+                break;
+            case IRINST_OP_IDIV:
+                if (val2 != 0) {
+                    result = val1 / val2;
+                } else {
+                    return nullptr; // 除零错误
+                }
+                break;
+            case IRINST_OP_IMOD:
+                if (val2 != 0) {
+                    result = val1 % val2;
+                } else {
+                    return nullptr; // 除零错误
+                }
+                break;
+            default:
+                return nullptr; // 不支持的操作
+        }
+        
+        return new ConstInt(result);
+    }
+    
+    return nullptr;
+}
+
+void Function::replaceConstants(const std::map<Value*, Value*>& constants)
+{
+    auto& insts = code.getInsts();
+    
+    for (auto inst : insts) {
+        // 替换操作数中的常量
+        const auto& operands = inst->getOperands();
+        for (auto& use : operands) {
+            Value* operand = use->getUsee();
+            auto it = constants.find(operand);
+            if (it != constants.end()) {
+                use->setUsee(it->second);
+            }
+        }
+    }
+}
+
+bool Function::isPowerOfTwo(Value* value)
+{
+    // 检查是否是2的幂次
+    if (auto constInt = dynamic_cast<ConstInt*>(value)) {
+        int val = constInt->getValue();
+        return val > 0 && (val & (val - 1)) == 0;
+    }
+    return false;
+}
+
+void Function::replaceWithShift(Instruction* inst, Value* src1, Value* src2, bool isMultiply)
+{
+    // 将乘法/除法替换为移位操作
+    // 这里只是框架，实际实现需要创建新的移位指令
+    
+    if (auto constInt = dynamic_cast<ConstInt*>(src2)) {
+        int val = constInt->getValue();
+        int shift = 0;
+        
+        // 计算移位次数
+        while (val > 1) {
+            val >>= 1;
+            shift++;
+        }
+        
+        // 创建移位常量
+        // ConstInt* shiftConst = new ConstInt(shift);  // 暂时注释掉，避免未使用变量警告
+        
+        // 这里应该创建新的移位指令来替换原来的指令
+        // 由于当前IR没有移位指令，我们暂时保留原指令
+        // 在实际实现中，需要：
+        // 1. 创建新的移位指令
+        // 2. 替换原指令
+        // 3. 更新操作数
+    }
+}
+
+bool Function::hasEdge(CFG& cfg, int from, int to)
+{
+    // 检查CFG中是否存在从from到to的边
+    // 这里只是框架，实际实现需要更复杂的逻辑
+    return false;
+}
+
+bool Function::isDominatedBy(int node, int dominator, const std::vector<std::set<int>>& dom)
+{
+    return dom[node].find(dominator) != dom[node].end();
 }

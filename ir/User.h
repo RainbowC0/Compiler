@@ -43,6 +43,12 @@ public:
     std::vector<Use *> & getOperands();
 
     ///
+    /// @brief Get the Operands object（const版本）
+    /// @return const std::vector<Use *>&
+    ///
+    const std::vector<Use *> & getOperands() const;
+
+    ///
     /// @brief 取得操作数
     /// @return std::vector<Value *>
     ///
@@ -60,6 +66,13 @@ public:
     /// @return Value* 操作数
     ///
     Value * getOperand(int32_t pos);
+
+    ///
+    /// @brief 获取指定的操作数（const版本）
+    /// @param pos 位置
+    /// @return Value* 操作数
+    ///
+    Value * getOperand(int32_t pos) const;
 
     ///
     /// @brief 更新指定Pos的Value

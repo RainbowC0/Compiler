@@ -1,0 +1,23 @@
+int main()
+{
+    int a = 5;
+    int b = 10;
+    int c = 2;
+    
+    // 常量传播测试
+    int d = a + b;  // 应该被优化为 d = 15
+    int e = d * c;  // 应该被优化为 e = 30
+    
+    // 死代码删除测试
+    int f = 100;
+    int g = f + 50;  // g被定义但未使用，应该被删除
+    
+    // 强度消减测试
+    int h = a * 8;   // 应该被优化为 h = a << 3
+    int i = b / 4;   // 应该被优化为 i = b >> 2
+    
+    // 使用变量，防止被优化掉
+    int result = d + e + h + i;
+    
+    return result;
+} 

@@ -35,4 +35,13 @@ public:
     /// @brief 转换成字符串
     /// @param str 转换后的字符串
     void toString(std::string & str) override;
+
+    /// @brief 获取源操作数1
+    Value* getSrcValue1() const;
+
+    /// @brief 获取源操作数2
+    Value* getSrcValue2() const;
+
+    /// @brief 获取结果操作数
+    Value* getResultValue() const;
 };

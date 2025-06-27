@@ -41,6 +41,15 @@ public:
     }
 
     ///
+    /// @brief 获取浮点值（别名方法）
+    /// @return 浮点值
+    ///
+    [[nodiscard]] float getValue() const
+    {
+        return getVal();
+    }
+
+    ///
     /// @brief 获取IR变量名
     /// @return IR变量名
     ///
