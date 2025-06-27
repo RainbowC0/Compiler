@@ -18,17 +18,14 @@
 
 #include "Common.h"
 #include "AST.h"
-//#include "Antlr4Executor.h"
 #include "CodeGenerator.h"
 #include "CodeGeneratorArm64.h"
-#include "CodeGeneratorArm32.h"
 #include "FlexBisonExecutor.h"
 #include "FrontEndExecutor.h"
 #include "Graph.h"
 #include "IRGenerator.h"
 #include "Module.h"
 #include "CFG.h"
-#include "getopt-port.h"
 
 ///
 /// @brief 是否显示帮助信息
@@ -58,7 +55,7 @@ static bool gShowSymbol = false;
 ///
 /// @brief 前端分析器，默认选Flex和Bison
 ///
-//static bool gFrontEndFlexBison = true;
+// static bool gFrontEndFlexBison = true;
 
 ///
 /// @brief 在输出汇编时是否输出中间IR作为注释
@@ -69,9 +66,6 @@ static bool gCFG = false;
 
 /// @brief 优化的级别，即-O后面的数字，默认为0
 static int gOptLevel = 0;
-
-/// @brief 指定CPU目标架构，这里默认为ARM32
-static std::string gCPUTarget = "ARM64";
 
 /// @brief 输入源文件
 static std::string gInputFile;
@@ -99,10 +93,9 @@ static int ArgsAnalysis(int argc, char * argv[])
     // -T指定时输出AST，-I输出中间IR，不指定则默认输出汇编
     // -o要求必须带有附加参数，指定输出的文件
     // -O要求必须带有附加整数，指明优化的级别
-    // -t要求必须带有目标CPU，指明目标CPU的汇编
     // -c选项在输出汇编时有效，附带输出IR指令内容
     // -g生成CFG图
-    const char options[] = "ho:STIO:t:c:g";
+    const char options[] = "ho:STIO:c:g";
 
     opterr = 1;
 
@@ -132,9 +125,6 @@ lb_check:
             case 'O':
                 // 优化级别分析，暂时没有用，如开启优化时请使用
                 gOptLevel = std::stoi(optarg);
-                break;
-            case 't':
-                gCPUTarget = optarg;
                 break;
             case 'c':
                 gAsmAlsoShowIR = true;
@@ -293,10 +283,10 @@ static int compile(std::string inputFile, std::string outputFile)
             std::string file;
 
             if (gCFG) {
-                for (auto fun:module->getFunctionList()) {
+                for (auto fun: module->getFunctionList()) {
                     if (!fun->isBuiltin()) {
-                        file = "."+fun->getName()+".dot";
-                        CFG *cfg = new CFG();
+                        file = "." + fun->getName() + ".dot";
+                        CFG * cfg = new CFG();
                         cfg->buildCFG(fun);
                         cfg->dumpCFG(fun, file.c_str());
                     }
@@ -325,17 +315,7 @@ static int compile(std::string inputFile, std::string outputFile)
         // 需要时可根据需要修改或追加新的目标体系架构
         if (gShowASM) {
 
-            CodeGenerator * generator = nullptr;
-
-            if (gCPUTarget == "ARM32") {
-                generator = new CodeGeneratorArm32(module);
-            } else if (gCPUTarget == "ARM64") {
-                generator = new CodeGeneratorArm64(module);
-            } else {
-                // 不支持指定的CPU架构
-                minic_log(LOG_ERROR, "指定的目标CPU架构(%s)不支持", gCPUTarget.c_str());
-                break;
-            }
+            CodeGenerator * generator = new CodeGeneratorArm64(module);
             generator->setShowLinearIR(gAsmAlsoShowIR);
             generator->run(outputFile);
             delete generator;

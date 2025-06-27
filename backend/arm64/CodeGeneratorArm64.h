@@ -50,7 +50,8 @@ protected:
 
     /// @brief 寄存器分配前对形参指令调整，便于栈内空间分配以及寄存器分配
     /// @param func 要处理的函数
-    void adjustFormalParamInsts(Function * func);
+    /// @return 栈传值大小
+    int adjustFormalParamInsts(Function * func);
 
     ///
     /// @brief 获取IR变量相关信息字符串

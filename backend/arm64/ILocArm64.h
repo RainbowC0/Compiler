@@ -15,15 +15,64 @@
 ///
 #pragma once
 
-//#include <list>
 #include <string>
+#include <list>
 
 #include "Instruction.h"
 #include "Module.h"
-#include "ILocArm32.h"
 
 #define Instanceof(res, type, var) auto res = dynamic_cast<type>(var)
-typedef const std::string &cstr;
+typedef const std::string & cstr;
+
+/// @brief 底层汇编指令：ARM32
+struct ArmInst {
+
+    /// @brief 操作码
+    std::string opcode;
+
+    /// @brief 条件
+    std::string cond;
+
+    /// @brief 结果
+    std::string result;
+
+    /// @brief 源操作数1
+    std::string arg1;
+
+    /// @brief 源操作数2
+    std::string arg2;
+
+    /// @brief 附加信息
+    std::string addition;
+
+    /// @brief 标识指令是否无效
+    bool dead;
+
+    /// @brief 构造函数
+    /// @param op
+    /// @param rs
+    /// @param s1
+    /// @param s2
+    /// @param add
+    ArmInst(cstr op, cstr rs = "", cstr s1 = "", cstr s2 = "", cstr cond = "", cstr extra = "");
+
+    /// @brief 指令更新
+    /// @param op
+    /// @param rs
+    /// @param s1
+    /// @param s2
+    /// @param add
+    void replace(cstr op, cstr rs = "", cstr s1 = "", cstr s2 = "", cstr cond = "", cstr extra = "");
+
+    /// @brief 设置死指令
+    void setDead();
+
+    /// @brief 指令字符串输出函数
+    /// @return
+    std::string outPut();
+};
+
+typedef std::list<ArmInst *> ArmInsts;
 
 /// @brief 底层汇编序列-ARM32
 class ILocArm64 {
@@ -33,11 +82,6 @@ class ILocArm64 {
 
     /// @brief 符号表
     Module * module;
-
-    /// @brief 加载立即数 ldr r0,=#100
-    /// @param rs_reg_no 结果寄存器号
-    /// @param num 立即数
-    void load_imm(int rs_reg_no, int num);
 
     /// @brief 加载符号值 ldr r0,=g; ldr r0,[r0]
     /// @param rsReg 结果寄存器号
@@ -57,6 +101,11 @@ public:
 
     /// @brief 析构函数
     ~ILocArm64();
+
+    /// @brief 加载立即数 ldr r0,=#100
+    /// @param rs_reg_no 结果寄存器号
+    /// @param num 立即数
+    void load_imm(int rs_reg_no, int num, bool wide = false);
 
     ///
     /// @brief 注释指令，不包含分号
@@ -100,19 +149,14 @@ public:
     /// @param op 操作码
     /// @param rs 操作数
     /// @param arg1 源操作数
-    void inst(cstr op,
-        cstr rs,
-        cstr arg1);
+    void inst(cstr op, cstr rs, cstr arg1);
 
     /// @brief 一个操作数指令
     /// @param op 操作码
     /// @param rs 操作数
     /// @param arg1 源操作数
     /// @param arg2 源操作数
-    void inst(cstr op,
-        cstr rs,
-        cstr arg1,
-        cstr arg2);
+    void inst(cstr op, cstr rs, cstr arg1, cstr arg2);
 
     /// @brief 加载变量到寄存器
     /// @param rs_reg_no 结果寄存器
@@ -164,5 +208,5 @@ public:
     void outPut(FILE * file, bool outputEmpty = false);
 
     /// @brief 删除无用的Label指令
-    void deleteUsedLabel();
+    void deleteUsed();
 };

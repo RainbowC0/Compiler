@@ -75,7 +75,7 @@ public:
     /// @param _regId 基址寄存器编号
     /// @param _offset 偏移
     ///
-    void setMemoryAddr(int32_t _regId, int64_t _offset)
+    void setMemoryAddr(int32_t _regId, int64_t _offset) override
     {
         baseRegNo = _regId;
         offset = _offset;

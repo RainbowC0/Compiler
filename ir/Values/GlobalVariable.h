@@ -17,7 +17,6 @@
 #pragma once
 
 #include "GlobalValue.h"
-#include "IRConstant.h"
 
 ///
 /// @brief 全局变量，寻址时通过符号名或变量名来寻址

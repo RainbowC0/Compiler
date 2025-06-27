@@ -17,6 +17,7 @@
 
 #include <vector>
 
+#include "FuncCallInstruction.h"
 #include "Function.h"
 #include "ILocArm64.h"
 #include "Instruction.h"
@@ -109,6 +110,8 @@ protected:
     /// @param inst
     ///
     void translate_arg(Instruction * inst);
+
+    bool inset_builtin(FuncCallInstruction * call);
 
     ///
     /// @brief 输出IR指令

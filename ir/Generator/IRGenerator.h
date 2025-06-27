@@ -181,8 +181,11 @@ protected:
     /// @param func 当前函数
     /// @param blockInsts 指令块
     /// @param currentOffset 当前偏移（引用，会被修改）
-    void processArrayInitialization(Value * arrayVal, ArrayType * arrayType, ast_node * initList, 
-                                   Function * func, InterCode & blockInsts, uint32_t & currentOffset);
+    void processArrayInitialization(Value * arrayVal,
+                                    ArrayType * arrayType,
+                                    ast_node * initList,
+                                    InterCode & blockInsts,
+                                    uint32_t & currentOffset);
 
     /// @brief 计算数组维度信息
     /// @param arrayType 数组类型
@@ -204,13 +207,6 @@ protected:
     /// @return 是否为零值
     bool isZeroValue(ast_node * node);
 
-    /// @brief 填充数组默认值
-    /// @param arrayVal 数组变量
-    /// @param arrayType 数组类型
-    /// @param func 当前函数
-    /// @param blockInsts 指令块
-    void fillArrayDefaults(Value * arrayVal, ArrayType * arrayType, Function * func, InterCode & blockInsts);
-
     /// @brief 获取数组总元素个数
     /// @param arrayType 数组类型
     /// @return 总元素个数
@@ -226,9 +222,14 @@ protected:
     /// @param blockInsts 指令块
     /// @param usedMemset 是否已经使用memset清零
     /// @param dimLevel 当前维度级别
-    void processInitListWithOffset(ast_node * initList, const std::vector<uint32_t> & dimensions,
-                                 const std::vector<uint32_t> & dimensionsCnt, uint32_t & currentOffset,
-                                 Value * arrayVal, Function * func, InterCode & blockInsts, bool usedMemset, int dimLevel = 0);
+    void processInitListWithOffset(ast_node * initList,
+                                   const std::vector<uint32_t> & dimensions,
+                                   const std::vector<uint32_t> & dimensionsCnt,
+                                   uint32_t & currentOffset,
+                                   Value * arrayVal,
+                                   InterCode & blockInsts,
+                                   bool usedMemset,
+                                   int dimLevel = 0);
 
     /// @brief AST的节点操作函数
     typedef bool (IRGenerator::*ast2ir_handler_t)(ast_node *);

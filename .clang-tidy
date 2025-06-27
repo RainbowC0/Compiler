@@ -2,7 +2,6 @@
 # bugprone-*启用 bugprone 开头的所有检查
 # -bugprone-argument-comment 禁用 bugprone-argument-comment 的检查
 Checks: "-*,\
-  boost-*,\
   bugprone-*,\
   -bugprone-argument-comment,\
   -bugprone-branch-clone,\

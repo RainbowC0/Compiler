@@ -13,7 +13,9 @@
 /// <tr><td>2024-11-21 <td>1.0     <td>zenglj  <td>新做
 /// </table>
 ///
+#include <cstdint>
 #include <cstdio>
+#include <string>
 
 #include "CastInstruction.h"
 #include "Common.h"
@@ -219,9 +221,9 @@ void InstSelectorArm64::translate_exit(Instruction * inst)
     int32_t dp = func->getMaxDep();
     if (dp) {
         cstr sp = PlatformArm64::regName[ARM64_SP_REG_NO];
-        cstr tp = "x"+to_string(ARM64_TMP_REG_NO);
+        cstr tp = "x" + to_string(ARM64_TMP_REG_NO);
         if (PlatformArm64::constExpr(dp))
-            iloc.inst("add", sp, sp, "#"+to_string(dp));
+            iloc.inst("add", sp, sp, "#" + to_string(dp));
         else {
             iloc.load_var(ARM64_TMP_REG_NO, new ConstInt(dp));
             iloc.inst("add", sp, sp, tp);
@@ -311,12 +313,12 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, cstr operator
         load_arg1_reg_no = arg1_reg_no;
     }
 
-    const std::string *sarg2;
+    const std::string * sarg2;
     // 看arg2是否是寄存器，若是则寄存器寻址，否则要load变量到寄存器中
     if (arg2_reg_no == -1) {
-        Instanceof(cint, ConstInt*, arg2);
+        Instanceof(cint, ConstInt *, arg2);
         if (cint && test(cint->getVal())) {
-            std::string s("#"+to_string(cint->getVal()));
+            std::string s("#" + to_string(cint->getVal()));
             sarg2 = &s;
         } else {
             // 分配一个寄存器r9
@@ -328,7 +330,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, cstr operator
         }
     } else {
         load_arg2_reg_no = arg2_reg_no;
-BR:
+    BR:
         sarg2 = &PlatformArm64::regName[load_arg2_reg_no];
     }
 
@@ -380,23 +382,28 @@ void InstSelectorArm64::translate_div_int32(Instruction * inst)
     translate_two_operator(inst, "sdiv");
 }
 
-void InstSelectorArm64::translate_fadd(Instruction *inst) {
+void InstSelectorArm64::translate_fadd(Instruction * inst)
+{
     translate_two_operator(inst, "fadd");
 }
 
-void InstSelectorArm64::translate_fsub(Instruction *inst) {
+void InstSelectorArm64::translate_fsub(Instruction * inst)
+{
     translate_two_operator(inst, "fsub");
 }
 
-void InstSelectorArm64::translate_fmul(Instruction *inst) {
+void InstSelectorArm64::translate_fmul(Instruction * inst)
+{
     translate_two_operator(inst, "fmul");
 }
 
-void InstSelectorArm64::translate_fdiv(Instruction *inst) {
+void InstSelectorArm64::translate_fdiv(Instruction * inst)
+{
     translate_two_operator(inst, "fdiv");
 }
 
-void InstSelectorArm64::translate_fmod(Instruction *inst) {
+void InstSelectorArm64::translate_fmod(Instruction * inst)
+{
     translate_two_operator(inst, "fmod");
 }
 
@@ -424,9 +431,10 @@ void InstSelectorArm64::translate_rem_int32(Instruction * inst)
     arg2->setRegId(reg2);
 }
 
-void InstSelectorArm64::translate_gep(Instruction *inst) {
-    Value *arg1 = inst->getOperand(0);
-    Value *arg2 = inst->getOperand(1);
+void InstSelectorArm64::translate_gep(Instruction * inst)
+{
+    Value * arg1 = inst->getOperand(0);
+    Value * arg2 = inst->getOperand(1);
 
     int32_t baseReg = -1;
     int64_t baseOff;
@@ -435,10 +443,10 @@ void InstSelectorArm64::translate_gep(Instruction *inst) {
         baseOff = 0;
     }
 
-    Instanceof(off, ConstInt*, arg2);
-    uint32_t l = ((ArrayType*)(inst->getType()))->getElementType()->getSize();
+    Instanceof(off, ConstInt *, arg2);
+    uint32_t l = ((ArrayType *) (inst->getType()))->getElementType()->getSize();
     if (off) {
-        if (dynamic_cast<GlobalVariable*>(arg1)) {
+        if (dynamic_cast<GlobalVariable *>(arg1)) {
             iloc.lea_var(ARM64_TMP_REG_NO, arg1);
             baseReg = ARM64_TMP_REG_NO;
         }
@@ -449,7 +457,7 @@ void InstSelectorArm64::translate_gep(Instruction *inst) {
         // // mul l1, l1, lx
         if (baseReg == -1) {
             baseReg = ARM64_TMP_REG_NO;
-            if (dynamic_cast<GlobalVariable*>(arg1)) {
+            if (dynamic_cast<GlobalVariable *>(arg1)) {
                 iloc.lea_var(baseReg, arg1);
             } else {
                 iloc.load_var(baseReg, arg1);
@@ -461,25 +469,27 @@ void InstSelectorArm64::translate_gep(Instruction *inst) {
             iloc.load_var(reg2, arg2);
         }
         if (__builtin_popcount(l) == 1) {
-            iloc.inst("add", "x"+to_string(ARM64_TMP_REG_NO2), "x"+to_string(baseReg), "x"+to_string(reg2)+",lsl "+to_string(__builtin_ctz(l)));
+            iloc.inst("add",
+                      "x" + to_string(ARM64_TMP_REG_NO2),
+                      "x" + to_string(baseReg),
+                      "x" + to_string(reg2) + ",lsl " + to_string(__builtin_ctz(l)));
         } else {
-            iloc.inst("mov", "x"+to_string(ARM64_TMP_REG_NO), "#"+to_string(l));
-            iloc.inst("madd", "x"+to_string(ARM64_TMP_REG_NO2),
-                        "x"+to_string(reg2),
-                        "x"+to_string(ARM64_TMP_REG_NO)
-                        +",x"+to_string(baseReg));
+            iloc.load_imm(ARM64_TMP_REG_NO, l, true);
+            iloc.inst("madd",
+                      "x" + to_string(ARM64_TMP_REG_NO2),
+                      "x" + to_string(reg2),
+                      "x" + to_string(ARM64_TMP_REG_NO) + ",x" + to_string(baseReg));
         }
         inst->setMemoryAddr(ARM64_TMP_REG_NO2, baseOff);
         // add t1, l0, l1, lsl 2
     }
 }
 
-void InstSelectorArm64::translate_store(Instruction *inst) {
+void InstSelectorArm64::translate_store(Instruction * inst)
+{
     int64_t off = 0;
-    Value *ptr = inst->getOperand(0),
-          *src = inst->getOperand(1);
-    int32_t basereg = ptr->getRegId(),
-            loadreg = src->getRegId();
+    Value *ptr = inst->getOperand(0), *src = inst->getOperand(1);
+    int32_t basereg = ptr->getRegId(), loadreg = src->getRegId();
     if (loadreg == -1) {
         loadreg = ARM64_TMP_REG_NO;
         iloc.load_var(loadreg, src);
@@ -487,15 +497,15 @@ void InstSelectorArm64::translate_store(Instruction *inst) {
     if (basereg == -1) {
         ptr->getMemoryAddr(&basereg, &off);
     }
-    
+
     iloc.store_base(loadreg, basereg, off, ARM64_TMP_REG_NO);
 }
 
-void InstSelectorArm64::translate_load(Instruction *inst) {
+void InstSelectorArm64::translate_load(Instruction * inst)
+{
     int64_t off = 0;
-    Value *addr = inst->getOperand(0);
-    int32_t basereg = addr->getRegId(),
-            loadreg = inst->getRegId();
+    Value * addr = inst->getOperand(0);
+    int32_t basereg = addr->getRegId(), loadreg = inst->getRegId();
     if (loadreg == -1) {
         loadreg = ARM64_TMP_REG_NO;
         iloc.load_var(loadreg, addr);
@@ -518,7 +528,7 @@ void InstSelectorArm64::translate_bi_op(Instruction * inst)
         case IRINST_OP_ILT: {
             lstcmp = inst->getOp();
             Instanceof(v, ConstInt *, inst->getOperand(1));
-            if (v && v->getVal() == 0) {
+            if (v && v->getVal() == 0 && iloc.getCode().size()) {
                 ArmInst * it = iloc.getCode().back();
                 int32_t reg = inst->getOperand(0)->getRegId();
                 if (reg >= 0 && PlatformArm64::regName[reg] == it->arg1 &&
@@ -580,11 +590,48 @@ void InstSelectorArm64::translate_xor_int32(Instruction * inst)
     translate_two_operator(inst, "eor");
 }
 
+bool InstSelectorArm64::inset_builtin(FuncCallInstruction * call)
+{
+    Function * func = call->calledFunction;
+    if (func->isBuiltin()) {
+        if (func->getName() == "memset") {
+            // std::string ca;
+            //  call->toString(ca);
+            //   putchar('\n');
+            int offset = call->getOperandsNum() && call->getOperand(0) == call;
+            Value * v = call->getOperand(offset);
+            iloc.inst("movi", "v31.4s", to_string(((ConstInt *) call->getOperand(1 + offset))->getVal()));
+            int size = ((ConstInt *) call->getOperand(2 + offset))->getVal();
+            int baseReg = 0;
+            int64_t off = 0;
+            // TODO 检查是否有效
+            v->getMemoryAddr(&baseReg, &off);
+            cstr bracReg = "[x" + to_string(baseReg);
+            int i = 0;
+            for (; i + 15 < size; i += 16) {
+                iloc.inst("str", "q31", bracReg, "#" + to_string(off + i) + "]");
+            }
+            if (i < size && size > 16) {
+                iloc.inst("str", "q31", bracReg, "#" + to_string(off + size - 16) + "]");
+            }
+            for (i = 0; i < call->getOperandsNum(); i++) {
+                fprintf(stderr, "%s", call->getOperand(i)->getName().c_str());
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
 /// @brief 函数调用指令翻译成ARM64汇编
 /// @param inst IR指令
 void InstSelectorArm64::translate_call(Instruction * inst)
 {
     FuncCallInstruction * callInst = dynamic_cast<FuncCallInstruction *>(inst);
+
+    if (inset_builtin(callInst)) {
+        return;
+    }
 
     int32_t operandNum = callInst->calledFunction->getParams().size();
 

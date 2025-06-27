@@ -24,7 +24,92 @@
 
 #define emit(...) code.push_back(new ArmInst(__VA_ARGS__))
 
-#define ARRTYPE(v) ({Type *_tp = v->getType(); _tp && _tp->isArrayType();})
+#define ARRTYPE(v)                                                                                                     \
+    ({                                                                                                                 \
+        Type * _tp = v->getType();                                                                                     \
+        _tp && _tp->isArrayType();                                                                                     \
+    })
+
+ArmInst::ArmInst(cstr _opcode, cstr _result, cstr _arg1, cstr _arg2, cstr _cond, cstr _addition)
+    : opcode(_opcode), cond(_cond), result(_result), arg1(_arg1), arg2(_arg2), addition(_addition), dead(false)
+{}
+
+/*
+指令内容替换
+*/
+void ArmInst::replace(cstr _opcode, cstr _result, cstr _arg1, cstr _arg2, cstr _cond, cstr _addition)
+{
+    opcode = _opcode;
+    result = _result;
+    arg1 = _arg1;
+    arg2 = _arg2;
+    cond = _cond;
+    addition = _addition;
+
+#if 0
+// 空操作，则设置为dead
+if (op == "") {
+dead = true;
+}
+#endif
+}
+
+/*
+设置为无效指令
+*/
+void ArmInst::setDead()
+{
+    dead = true;
+}
+
+/*
+输出函数
+*/
+std::string ArmInst::outPut()
+{
+    // 无用代码，什么都不输出
+    if (dead) {
+        return "";
+    }
+
+    // 占位指令,可能需要输出一个空操作，看是否支持 FIXME
+    if (opcode.empty()) {
+        return "";
+    }
+
+    std::string ret = opcode;
+
+    if (!cond.empty()) {
+        ret += cond;
+    }
+
+    // 结果输出
+    if (!result.empty()) {
+        if (result == ":") {
+            ret += result;
+        } else {
+            ret += " " + result;
+        }
+    }
+
+    // 第一元参数输出
+    if (!arg1.empty()) {
+        ret += "," + arg1;
+    }
+
+    // 第二元参数输出
+    if (!arg2.empty()) {
+        ret += "," + arg2;
+    }
+
+    // 其他附加信息输出
+    if (!addition.empty()) {
+        ret += "," + addition;
+    }
+
+    return ret;
+}
+
 /// @brief 构造函数
 /// @param _module 符号表
 ILocArm64::ILocArm64(Module * _module)
@@ -35,26 +120,34 @@ ILocArm64::ILocArm64(Module * _module)
 /// @brief 析构函数
 ILocArm64::~ILocArm64()
 {
-    for (auto pIter:code) {
+    for (auto pIter: code) {
         delete pIter;
     }
 }
 
-/// @brief 删除无用的Label指令
-void ILocArm64::deleteUsedLabel()
+/// @brief 删除无用的Label和Goto指令
+void ILocArm64::deleteUsed()
 {
     ArmInsts labelInsts;
-    //ArmInst *arm;
-    for (auto arm:code) {
-        if ((!arm->dead) && (arm->opcode[0] == '.') && (arm->result == ":")) {
-            labelInsts.push_back(arm);
+    bool reachable = true;
+    // ArmInst *arm;
+    for (auto arm: code) {
+        if (!arm->dead) {
+            if ((arm->opcode[0] == '.') && (arm->result == ":")) {
+                labelInsts.push_back(arm);
+                reachable = true;
+            } else if (!reachable) {
+                arm->setDead();
+            } else if (arm->opcode == "b") {
+                reachable = false;
+            }
         }
     }
 
     for (ArmInst * labelArm: labelInsts) {
         bool labelUsed = false;
 
-        for (auto arm:code) {
+        for (auto arm: code) {
             // TODO 转移语句的指令标识符根据定义修改判断
             if ((!arm->dead) && (arm->opcode[0] == 'b') && (arm->result == labelArm->opcode)) {
                 labelUsed = true;
@@ -73,7 +166,7 @@ void ILocArm64::deleteUsedLabel()
 /// @param outputEmpty 是否输出空语句
 void ILocArm64::outPut(FILE * file, bool outputEmpty)
 {
-    for (auto arm:code) {
+    for (auto arm: code) {
         std::string s = arm->outPut();
 
         if (arm->result == ":") {
@@ -134,10 +227,7 @@ void ILocArm64::inst(cstr op, cstr rs)
 /// @param op 操作码
 /// @param rs 操作数
 /// @param arg1 源操作数
-void ILocArm64::inst(
-    cstr op,
-    cstr rs,
-    cstr arg1)
+void ILocArm64::inst(cstr op, cstr rs, cstr arg1)
 {
     emit(op, rs, arg1);
 }
@@ -147,10 +237,7 @@ void ILocArm64::inst(
 /// @param rs 操作数
 /// @param arg1 源操作数
 /// @param arg2 源操作数
-void ILocArm64::inst(cstr op,
-    cstr rs,
-    cstr arg1,
-    cstr arg2)
+void ILocArm64::inst(cstr op, cstr rs, cstr arg1, cstr arg2)
 {
     emit(op, rs, arg1, arg2);
 }
@@ -167,32 +254,33 @@ void ILocArm64::comment(cstr str)
     加载立即数 ldr r0,=#100
 */
 
-void ILocArm64::load_imm(int rs_reg_no, int constant)
+void ILocArm64::load_imm(int rs_reg_no, int constant, bool wide)
 {
     union {
         int32_t val;
         struct {
-        #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        uint16_t low, high;
-        #else
-        uint16_t high, low;
-        #endif
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+            uint16_t low, high;
+#else
+            uint16_t high, low;
+#endif
         };
     } z, n;
-    if (constant==0) {
-        emit("mov", PlatformArm64::regName[rs_reg_no], "wzr");
+    cstr reg = wide ? "x" + std::to_string(rs_reg_no) : PlatformArm64::regName[rs_reg_no];
+    if (constant == 0) {
+        emit("mov", reg, "wzr");
         return;
     }
     z.val = constant;
     n.val = ~constant;
-    if (z.high&&z.low&&n.high&&n.low) {
-        emit("mov", PlatformArm64::regName[rs_reg_no], "#"+std::to_string(z.low));
-        emit("movk", PlatformArm64::regName[rs_reg_no], "#"+std::to_string(z.high), "lsl #16");
+    if (z.high && z.low && n.high && n.low) {
+        emit("mov", reg, "#" + std::to_string(z.low));
+        emit("movk", reg, "#" + std::to_string(z.high), "lsl #16");
     } else
-        emit("mov", PlatformArm64::regName[rs_reg_no], "#"+std::to_string(constant));
+        emit("mov", reg, "#" + std::to_string(constant));
 }
 
-#define xregs(i) ("x"+std::to_string(i))
+#define xregs(i) ("x" + std::to_string(i))
 /// @brief 加载符号值 ldr r0,=g ldr r0,=.L1
 /// @param rs_reg_no 结果寄存器编号
 /// @param name 符号名
@@ -200,8 +288,8 @@ void ILocArm64::load_symbol(int rs_reg_no, cstr name)
 {
     // movw r10, #:lower16:a
     // movt r10, #:upper16:a
-    //emit("movw", PlatformArm64::regName[rs_reg_no], "#:lower16:" + name);
-    //emit("movt", PlatformArm64::regName[rs_reg_no], "#:upper16:" + name);
+    // emit("movw", PlatformArm64::regName[rs_reg_no], "#:lower16:" + name);
+    // emit("movt", PlatformArm64::regName[rs_reg_no], "#:upper16:" + name);
     // adrp x0, a
     // ldr w0, [x0, :loc12:a]
     std::string x = xregs(rs_reg_no);
@@ -222,7 +310,8 @@ void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset)
 {
     std::string rsReg = PlatformArm64::regName[rs_reg_no];
     std::string base = PlatformArm64::regName[base_reg_no];
-    if (base[0]=='w') base[0] = 'x';
+    if (base[0] == 'w')
+        base[0] = 'x';
 
     if (PlatformArm64::isDisp(offset)) {
         // 有效的偏移常量
@@ -255,7 +344,8 @@ void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset)
 void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_reg_no)
 {
     std::string base = PlatformArm64::regName[base_reg_no];
-    if (base[0]=='w') base[0] = 'x';
+    if (base[0] == 'w')
+        base[0] = 'x';
 
     if (PlatformArm64::isDisp(disp)) {
         // 有效的偏移常量
@@ -322,7 +412,7 @@ void ILocArm64::load_var(int rs_reg_no, Value * src_var)
         load_symbol(rs_reg_no, globalVar->getName());
 
         // ldr r8, [r8]
-        //emit("ldr", PlatformArm64::regName[rs_reg_no], "[" + PlatformArm64::regName[rs_reg_no] + "]");
+        // emit("ldr", PlatformArm64::regName[rs_reg_no], "[" + PlatformArm64::regName[rs_reg_no] + "]");
 
     } else {
 
@@ -360,10 +450,10 @@ void ILocArm64::lea_var(int rs_reg_no, Value * var)
     int32_t var_baseRegId = -1;
     int64_t var_offset = -1;
 
-    if (dynamic_cast<GlobalVariable*>(var)) {
+    if (dynamic_cast<GlobalVariable *>(var)) {
         cstr xreg = xregs(rs_reg_no);
         emit("adrp", xreg, var->getName());
-        emit("add", xreg, xreg, ":lo12:"+var->getName());
+        emit("add", xreg, xreg, ":lo12:" + var->getName());
     } else {
         bool result = var->getMemoryAddr(&var_baseRegId, &var_offset);
         if (!result) {
@@ -395,19 +485,19 @@ void ILocArm64::store_var(int src_reg_no, Value * dest_var, int tmp_reg_no, bool
                 emit("mov", xregs(dest_reg_id), xregs(src_reg_no));
             else
 
-            // mov r2,r8 | 这里有优化空间——消除r8
-            emit("mov", PlatformArm64::regName[dest_reg_id], PlatformArm64::regName[src_reg_no]);
+                // mov r2,r8 | 这里有优化空间——消除r8
+                emit("mov", PlatformArm64::regName[dest_reg_id], PlatformArm64::regName[src_reg_no]);
         }
 
     } else if (Instanceof(globalVar, GlobalVariable *, dest_var)) {
         // 全局变量
 
         // 读取符号的地址到寄存器x10
-        //load_symbol(tmp_reg_no, globalVar->getName());
+        // load_symbol(tmp_reg_no, globalVar->getName());
         std::string x = xregs(tmp_reg_no);
         emit("adrp", x, globalVar->getName());
         // str r8, [x10, :lo12:a]
-        emit("str", PlatformArm64::regName[src_reg_no], "[" + x + ",:lo12:"+globalVar->getName()+"]");
+        emit("str", PlatformArm64::regName[src_reg_no], "[" + x + ",:lo12:" + globalVar->getName() + "]");
 
     } else {
 
@@ -479,7 +569,7 @@ void ILocArm64::allocStack(Function * func, int tmp_reg_no)
         load_imm(tmp_reg_no, off);
 
         // sub sp,sp,r8
-        emit("sub", "sp", "sp", "x"+std::to_string(tmp_reg_no));
+        emit("sub", "sp", "sp", "x" + std::to_string(tmp_reg_no));
     }
 
     // 函数调用通过栈传递的基址寄存器设置
@@ -510,6 +600,7 @@ void ILocArm64::jump(cstr label)
     emit("b", label);
 }
 
-void ILocArm64::branch(cstr cond, cstr label) {
-    emit("b"+cond, label);
+void ILocArm64::branch(cstr cond, cstr label)
+{
+    emit("b" + cond, label);
 }

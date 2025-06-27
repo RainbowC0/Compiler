@@ -333,7 +333,7 @@ Statement : RETURN Expr ';' {
 		$$ = create_contain_node(ASTOP(RETURN), $2);
 	}
     | RETURN ';' {
-        $$ = ast_node::New(ASTOP(RETURN));
+        $$ = new ast_node(ASTOP(RETURN));
     }
 	| LVal '=' Expr ';' {
 		// 赋值语句

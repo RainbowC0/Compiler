@@ -17,7 +17,6 @@
 #pragma once
 
 #include "Value.h"
-#include "IRConstant.h"
 
 ///
 /// @brief 局部变量的Value
@@ -58,7 +57,8 @@ public:
         return regId;
     }
 
-    void setRegId(int32_t reg) override {
+    void setRegId(int32_t reg) override
+    {
         regId = reg;
     }
     ///
@@ -89,7 +89,7 @@ public:
     /// @param _regId 基址寄存器编号
     /// @param _offset 偏移
     ///
-    void setMemoryAddr(int32_t _regId, int64_t _offset)
+    void setMemoryAddr(int32_t _regId, int64_t _offset) override
     {
         baseRegNo = _regId;
         offset = _offset;

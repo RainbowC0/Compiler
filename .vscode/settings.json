@@ -1,7 +1,7 @@
 {
 	"tabnine.experimentalAutoImports": true,
 	"editor.fontFamily": "'FiraCode NFM',monospace,'Courier New',Menlo,Monaco",
-	"editor.fontSize": 16,
+	"editor.fontSize": 14,
 	"editor.fontLigatures": true,
 	"editor.linkedEditing": true,
 	"editor.formatOnType": true,
@@ -67,7 +67,7 @@
 	"clang-format.style": "file",
 	"clang-format.fallbackStyle": "LLVM",
 	"[cpp]": {
-		"editor.defaultFormatter": "xaver.clang-format"
+		"editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
 	},
 	"[jsonc]": {
 		"editor.defaultFormatter": "esbenp.prettier-vscode"
