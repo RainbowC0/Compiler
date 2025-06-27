@@ -1,6 +1,5 @@
 # .gitlab-ci.yml
 #
-#
 # 使用一个包含基本构建工具的 Docker 镜像。
 # Ubuntu 22.04 是一个不错的选择，因为它通常包含较新的 g++ 和 cmake。
 image: ubuntu:22.04
