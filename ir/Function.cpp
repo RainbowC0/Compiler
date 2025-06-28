@@ -550,6 +550,131 @@ void Function::branchPruning() {
 }
 
 ///
+/// @brief 执行短路计算优化
+///
+void Function::shortCircuitOptimization()
+{
+    // 内置函数跳过优化
+    if (isBuiltin()) {
+        return;
+    }
+
+    auto& insts = code.getInsts();
+    bool changed = true;
+    
+    while (changed) {
+        changed = false;
+        
+        for (size_t i = 0; i < insts.size(); i++) {
+            Instruction* inst = insts[i];
+            
+            // 检查是否是条件跳转指令
+            auto gotoInst = dynamic_cast<GotoInstruction*>(inst);
+            if (!gotoInst || !gotoInst->getCondiValue()) {
+                continue;
+            }
+            
+            // 检查条件是否是常量
+            Value* cond = gotoInst->getCondiValue();
+            auto constInt = dynamic_cast<ConstInt*>(cond);
+            if (!constInt) {
+                continue;
+            }
+            
+            // 短路优化：如果条件是常量，直接替换为无条件跳转
+            if (constInt->getValue()) {
+                // 条件为真，直接跳转到iftrue
+                insts[i] = new GotoInstruction(this, gotoInst->iftrue);
+                delete gotoInst;
+                changed = true;
+            } else {
+                // 条件为假，直接跳转到iffalse
+                insts[i] = new GotoInstruction(this, gotoInst->iffalse);
+                delete gotoInst;
+                changed = true;
+            }
+        }
+    }
+}
+
+///
+/// @brief 执行短路表达式优化
+///
+void Function::shortCircuitExpressionOptimization()
+{
+    // 内置函数跳过优化
+    if (isBuiltin()) {
+        return;
+    }
+
+    auto& insts = code.getInsts();
+    bool changed = true;
+    
+    while (changed) {
+        changed = false;
+        
+        for (size_t i = 0; i < insts.size(); i++) {
+            Instruction* inst = insts[i];
+            
+            // 检查是否是二元运算指令
+            auto binInst = dynamic_cast<BinaryInstruction*>(inst);
+            if (!binInst) {
+                continue;
+            }
+            
+            // 检查是否是关系运算（这些在短路计算中会被转换为条件跳转）
+            IRInstOperator op = binInst->getOp();
+            if (op < IRINST_OP_IEQ || op > IRINST_OP_ILE) {
+                continue;
+            }
+            
+            Value* src1 = binInst->getSrcValue1();
+            Value* src2 = binInst->getSrcValue2();
+            
+            // 检查操作数是否是常量
+            auto const1 = dynamic_cast<ConstInt*>(src1);
+            auto const2 = dynamic_cast<ConstInt*>(src2);
+            
+            if (const1 && const2) {
+                // 两个操作数都是常量，可以提前计算
+                int val1 = const1->getValue();
+                int val2 = const2->getValue();
+                bool result = false;
+                
+                switch (op) {
+                    case IRINST_OP_IEQ:
+                        result = (val1 == val2);
+                        break;
+                    case IRINST_OP_INE:
+                        result = (val1 != val2);
+                        break;
+                    case IRINST_OP_IGT:
+                        result = (val1 > val2);
+                        break;
+                    case IRINST_OP_IGE:
+                        result = (val1 >= val2);
+                        break;
+                    case IRINST_OP_ILT:
+                        result = (val1 < val2);
+                        break;
+                    case IRINST_OP_ILE:
+                        result = (val1 <= val2);
+                        break;
+                    default:
+                        continue;
+                }
+                
+                // 替换为常量
+                ConstInt* resultConst = new ConstInt(result ? 1 : 0);
+                binInst->setSrcValue1(resultConst);
+                binInst->setSrcValue2(resultConst);
+                changed = true;
+            }
+        }
+    }
+}
+
+///
 /// @brief 执行所有优化
 ///
 void Function::optimize()
@@ -559,7 +684,9 @@ void Function::optimize()
         return;
     }
 
-    // 优化顺序：内联 → 分支剪枝 → 死代码删除 → 常量传播 → 强度消减
+    // 优化顺序：短路优化 → 内联 → 分支剪枝 → 死代码删除 → 常量传播 → 强度消减
+    shortCircuitOptimization();
+    shortCircuitExpressionOptimization();
     inlineExpansion();
     branchPruning();
     deadCodeElimination();

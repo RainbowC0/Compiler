@@ -140,6 +140,18 @@ Value* BinaryInstruction::getSrcValue2() const
     return getOperand(1);
 }
 
+/// @brief 设置源操作数1
+void BinaryInstruction::setSrcValue1(Value* value)
+{
+    setOperand(0, value);
+}
+
+/// @brief 设置源操作数2
+void BinaryInstruction::setSrcValue2(Value* value)
+{
+    setOperand(1, value);
+}
+
 /// @brief 获取结果操作数
 Value* BinaryInstruction::getResultValue() const
 {

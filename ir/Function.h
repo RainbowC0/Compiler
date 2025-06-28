@@ -213,6 +213,16 @@ public:
     /// 优化顺序：inlineExpansion → branchPruning → deadCodeElimination → constantPropagation → strengthReduction
     void optimize();
 
+    ///
+    /// @brief 执行短路计算优化
+    ///
+    void shortCircuitOptimization();
+
+    ///
+    /// @brief 执行短路表达式优化
+    ///
+    void shortCircuitExpressionOptimization();
+
 private:
     ///
     /// @brief 函数的返回值类型，有点冗余，可删除，直接从type中取得即可
