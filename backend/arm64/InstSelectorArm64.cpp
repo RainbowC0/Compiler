@@ -35,7 +35,7 @@
 #include "ArrayType.h"
 // #include "BinaryInstruction.h"
 
-static char * cmpmap[] = {"eq", "ne", "gt", "le", "ge", "lt"};
+static const char * cmpmap[] = {"eq", "ne", "gt", "le", "ge", "lt"};
 #define CSTRJ(C) cmpmap[(C - IRINST_OP_IEQ) ^ 1]
 #define CSTR(C) cmpmap[(C - IRINST_OP_IEQ)]
 

@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <string>
+#include <getopt.h>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -277,7 +278,7 @@ static int compile(std::string inputFile, std::string outputFile)
 
         // 执行优化（如果优化级别大于0）
         if (gOptLevel > 0) {
-            for (auto fun : module->getFunctionList()) {
+            for (auto fun: module->getFunctionList()) {
                 if (!fun->isBuiltin()) {
                     fun->optimize();
                 }
