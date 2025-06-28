@@ -21,6 +21,7 @@
 #include "Common.h"
 #include "ILocArm64.h"
 #include "InstSelectorArm64.h"
+#include "Instruction.h"
 #include "PlatformArm64.h"
 
 #include "PointerType.h"
@@ -81,6 +82,13 @@ InstSelectorArm64::InstSelectorArm64(std::vector<Instruction *> & _irCode,
     translator_handlers[IRINST_OP_FMUL] = &InstSelectorArm64::translate_fmul;
     translator_handlers[IRINST_OP_FDIV] = &InstSelectorArm64::translate_fdiv;
     translator_handlers[IRINST_OP_FMOD] = &InstSelectorArm64::translate_fmod;
+
+    translator_handlers[IRINST_OP_FEQ] = &InstSelectorArm64::translate_fcmp;
+    translator_handlers[IRINST_OP_FNE] = &InstSelectorArm64::translate_fcmp;
+    translator_handlers[IRINST_OP_FGT] = &InstSelectorArm64::translate_fcmp;
+    translator_handlers[IRINST_OP_FGE] = &InstSelectorArm64::translate_fcmp;
+    translator_handlers[IRINST_OP_FLT] = &InstSelectorArm64::translate_fcmp;
+    translator_handlers[IRINST_OP_FLE] = &InstSelectorArm64::translate_fcmp;
 
     translator_handlers[IRINST_OP_GEP] = &InstSelectorArm64::translate_gep;
     translator_handlers[IRINST_OP_STORE] = &InstSelectorArm64::translate_store;
@@ -385,26 +393,56 @@ void InstSelectorArm64::translate_div_int32(Instruction * inst)
 void InstSelectorArm64::translate_fadd(Instruction * inst)
 {
     translate_two_operator(inst, "fadd");
+    ArmInst * i = iloc.getCode().back();
+    if (i->opcode == "fadd") {
+        i->result[0] = 's';
+        i->arg1[0] = 's';
+        i->arg2[0] = 's';
+    }
 }
 
 void InstSelectorArm64::translate_fsub(Instruction * inst)
 {
     translate_two_operator(inst, "fsub");
+    ArmInst * i = iloc.getCode().back();
+    if (i->opcode == "fsub") {
+        i->result[0] = 's';
+        i->arg1[0] = 's';
+        i->arg2[0] = 's';
+    }
 }
 
 void InstSelectorArm64::translate_fmul(Instruction * inst)
 {
     translate_two_operator(inst, "fmul");
+    ArmInst * i = iloc.getCode().back();
+    if (i->opcode == "fmul") {
+        i->result[0] = 's';
+        i->arg1[0] = 's';
+        i->arg2[0] = 's';
+    }
 }
 
 void InstSelectorArm64::translate_fdiv(Instruction * inst)
 {
     translate_two_operator(inst, "fdiv");
+    ArmInst * i = iloc.getCode().back();
+    if (i->opcode == "fdiv") {
+        i->result[0] = 's';
+        i->arg1[0] = 's';
+        i->arg2[0] = 's';
+    }
 }
 
 void InstSelectorArm64::translate_fmod(Instruction * inst)
 {
     translate_two_operator(inst, "fmod");
+    ArmInst * i = iloc.getCode().back();
+    if (i->opcode == "fmod") {
+        i->result[0] = 's';
+        i->arg1[0] = 's';
+        i->arg2[0] = 's';
+    }
 }
 
 void InstSelectorArm64::translate_rem_int32(Instruction * inst)
@@ -514,6 +552,35 @@ void InstSelectorArm64::translate_load(Instruction * inst)
         addr->getMemoryAddr(&basereg, &off);
     }
     iloc.load_base(loadreg, basereg, off);
+}
+
+void InstSelectorArm64::translate_fcmp(Instruction * inst)
+{
+    // const char *op;
+    switch (inst->getOp()) {
+        case IRINST_OP_FEQ:
+        case IRINST_OP_FNE:
+        case IRINST_OP_FGT:
+        case IRINST_OP_FLE:
+        case IRINST_OP_FGE:
+        case IRINST_OP_FLT: {
+            lstcmp = IRInstOperator(inst->getOp() + IRINST_OP_IEQ - IRINST_OP_FEQ);
+            int32_t x = inst->getRegId();
+            inst->setRegId(ARM64_ZR_REG_NO);
+            translate_two_operator(inst, "fcmp");
+            ArmInst * i = iloc.getCode().back();
+            i->result = i->arg1;
+            i->arg1 = i->arg2;
+            i->arg1[0] = 's';
+            if (i->arg1 == "szr")
+                i->arg1 = "#0.0";
+            i->arg2 = "";
+            i->result[0] = 's';
+            inst->setRegId(x);
+        }
+        default:
+            return;
+    }
 }
 
 void InstSelectorArm64::translate_bi_op(Instruction * inst)

@@ -548,7 +548,8 @@ bool IRGenerator::ir_assign(ast_node * node)
     Function * func = module->getCurrentFunction();
     if (leftType->isFloatType() && !rightType->isFloatType()) {
         // int->float
-        Instruction * castInst = new CastInstruction(func, rightVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
+        Instruction * castInst =
+            new CastInstruction(func, rightVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
         right->blockInsts.addInst(castInst);
         rightVal = castInst;
     }
@@ -684,10 +685,6 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
             }
             child->val = val;
             if (c == -1) {
-                // 局部数组未初始化，自动补零
-                if (child->type->isArrayType()) {
-                    fillArrayDefaults(val, (ArrayType*)child->type, func, node->blockInsts);
-                }
                 continue;
             }
             ast_node * s = child->sons[c];
@@ -1402,17 +1399,5 @@ void IRGenerator::processInitListWithOffset(ast_node * initList,
             }
             currentOffset++;
         }
-    }
-    // 补零：如果初始化元素不足，自动补零
-    uint32_t total = currentDimSize * elementSize;
-    uint32_t filled = currentOffset % total;
-    while (filled != 0 && filled < total) {
-        ArrayType * flatType = getBaseArrayType((ArrayType*)arrayVal->getType());
-        Instruction * ptr = new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, 
-                                                 module->newConstInt(currentOffset), flatType);
-        blockInsts.addInst(ptr);
-        blockInsts.addInst(new StoreInstruction(func, ptr, module->newConstInt(0)));
-        currentOffset++;
-        filled++;
     }
 }

@@ -86,7 +86,7 @@ class ILocArm64 {
     /// @brief 加载符号值 ldr r0,=g; ldr r0,[r0]
     /// @param rsReg 结果寄存器号
     /// @param name Label名字
-    void load_symbol(int rs_reg_no, cstr name);
+    void load_symbol(int rs_reg_no, cstr name, bool f = false);
 
     /// @brief 加载栈内变量地址
     /// @param rsReg 结果寄存器号
@@ -106,6 +106,8 @@ public:
     /// @param rs_reg_no 结果寄存器号
     /// @param num 立即数
     void load_imm(int rs_reg_no, int num, bool wide = false);
+
+    void load_fimm(int rs_reg_no, float num, bool wide = false);
 
     ///
     /// @brief 注释指令，不包含分号

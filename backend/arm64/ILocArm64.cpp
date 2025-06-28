@@ -280,11 +280,22 @@ void ILocArm64::load_imm(int rs_reg_no, int constant, bool wide)
         emit("mov", reg, "#" + std::to_string(constant));
 }
 
+void ILocArm64::load_fimm(int rs_reg, float f, bool wide)
+{
+    union {
+        float f;
+        int i;
+    } num;
+    num.f = f;
+    load_imm(ARM64_TMP_REG_NO, num.i, wide);
+    emit("fmov", "s" + std::to_string(rs_reg), PlatformArm64::regName[ARM64_TMP_REG_NO]);
+}
+
 #define xregs(i) ("x" + std::to_string(i))
 /// @brief 加载符号值 ldr r0,=g ldr r0,=.L1
 /// @param rs_reg_no 结果寄存器编号
 /// @param name 符号名
-void ILocArm64::load_symbol(int rs_reg_no, cstr name)
+void ILocArm64::load_symbol(int rs_reg_no, cstr name, bool f)
 {
     // movw r10, #:lower16:a
     // movt r10, #:upper16:a
@@ -299,7 +310,7 @@ void ILocArm64::load_symbol(int rs_reg_no, cstr name)
     adr += ",:lo12:";
     adr += name;
     adr += "]";
-    emit("ldr", PlatformArm64::regName[rs_reg_no], adr);
+    emit("ldr", f ? "s" + std::to_string(rs_reg_no) : PlatformArm64::regName[rs_reg_no], adr);
 }
 
 /// @brief 基址寻址 ldr r0,[fp,#100]
@@ -393,6 +404,8 @@ void ILocArm64::load_var(int rs_reg_no, Value * src_var)
         // TODO 目前只考虑整数类型 100
         // ldr r8,#100
         load_imm(rs_reg_no, constVal->getVal());
+    } else if (Instanceof(constFloat, ConstFloat *, src_var)) {
+        load_fimm(rs_reg_no, constFloat->getVal());
     } else if (src_var->getRegId() != -1) {
 
         // 源操作数为寄存器变量
@@ -409,7 +422,7 @@ void ILocArm64::load_var(int rs_reg_no, Value * src_var)
         // 读取全局变量的地址
         // movw r8, #:lower16:a
         // movt r8, #:lower16:a
-        load_symbol(rs_reg_no, globalVar->getName());
+        load_symbol(rs_reg_no, globalVar->getName(), globalVar->getType()->isFloatType());
 
         // ldr r8, [r8]
         // emit("ldr", PlatformArm64::regName[rs_reg_no], "[" + PlatformArm64::regName[rs_reg_no] + "]");

@@ -78,11 +78,11 @@ typedef enum IRInstOperator {
 
     IRINST_OP_FGT,
 
+    IRINST_OP_FLE,
+
     IRINST_OP_FGE,
 
     IRINST_OP_FLT,
-
-    IRINST_OP_FLE,
 
     IRINST_OP_XOR,
 
@@ -161,7 +161,7 @@ public:
     /// @brief 获取指令的结果值
     /// @return 结果值，如果指令没有结果值则返回nullptr
     ///
-    Value* getResultValue();
+    Value * getResultValue();
 
     ///
     /// @brief 获得分配的寄存器编号或ID

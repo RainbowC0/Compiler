@@ -94,6 +94,8 @@ protected:
     void translate_fdiv(Instruction *);
     void translate_fmod(Instruction *);
 
+    void translate_fcmp(Instruction *);
+
     void translate_gep(Instruction *);
 
     void translate_store(Instruction *);
