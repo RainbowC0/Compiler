@@ -73,6 +73,18 @@ bool Instruction::hasResultValue()
     return !type->isVoidType();
 }
 
+///
+/// @brief 获取指令的结果值
+/// @return 结果值，如果指令没有结果值则返回nullptr
+///
+Value* Instruction::getResultValue()
+{
+    if (hasResultValue()) {
+        return this;
+    }
+    return nullptr;
+}
+
 void Instruction::setMemoryAddr(int32_t _regId, int64_t _offset)
 {
     baseRegNo = _regId;

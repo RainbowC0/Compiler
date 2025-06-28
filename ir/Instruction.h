@@ -158,6 +158,12 @@ public:
     bool hasResultValue();
 
     ///
+    /// @brief 获取指令的结果值
+    /// @return 结果值，如果指令没有结果值则返回nullptr
+    ///
+    Value* getResultValue();
+
+    ///
     /// @brief 获得分配的寄存器编号或ID
     /// @return int32_t 寄存器编号
     ///

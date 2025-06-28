@@ -137,6 +137,15 @@ std::vector<Use *> & User::getOperands()
 }
 
 ///
+/// @brief Get the Operands object（const版本）
+/// @return const std::vector<Use *>&
+///
+const std::vector<Use *> & User::getOperands() const
+{
+    return uses;
+}
+
+///
 /// @brief 取得操作数
 /// @return std::vector<Value *>
 ///
@@ -164,6 +173,20 @@ int32_t User::getOperandsNum()
 /// @return Value* 操作数
 ///
 Value * User::getOperand(int32_t pos)
+{
+    if (pos < (int32_t) uses.size()) {
+        return uses[pos]->getUsee();
+    }
+
+    return nullptr;
+}
+
+///
+/// @brief 获取指定的操作数（const版本）
+/// @param pos 位置
+/// @return Value* 操作数
+///
+Value * User::getOperand(int32_t pos) const
 {
     if (pos < (int32_t) uses.size()) {
         return uses[pos]->getUsee();

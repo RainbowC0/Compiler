@@ -41,3 +41,15 @@ void MoveInstruction::toString(std::string & str)
 
     str = dstVal->getIRName() + " = " + srcVal->getIRName();
 }
+
+/// @brief 获取源操作数
+Value* MoveInstruction::getSrcValue() const
+{
+    return getOperand(1);
+}
+
+/// @brief 获取目标操作数
+Value* MoveInstruction::getResultValue() const
+{
+    return getOperand(0);
+}

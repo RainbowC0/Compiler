@@ -54,6 +54,12 @@ public:
     int32_t getVal();
 
     ///
+    /// @brief 获取值（别名方法）
+    /// @return int32_t
+    ///
+    int32_t getValue() { return getVal(); }
+
+    ///
     /// @brief 对该Value进行Load用的寄存器编号
     /// @return int32_t 寄存器编号
     ///
