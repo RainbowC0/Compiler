@@ -16,8 +16,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <algorithm>
 
-#include "BinaryInstruction.h"
 #include "CastInstruction.h"
 #include "Common.h"
 #include "FormalParam.h"
@@ -27,7 +27,6 @@
 #include "PlatformArm64.h"
 
 #include "PointerType.h"
-// #include "RegVariable.h"
 #include "Function.h"
 
 #include "LabelInstruction.h"
@@ -36,7 +35,6 @@
 #include "MoveInstruction.h"
 #include "ArrayType.h"
 #include "Type.h"
-// #include "BinaryInstruction.h"
 
 static const char * cmpmap[] = {"eq", "ne", "gt", "le", "ge", "lt"};
 #define CSTRJ(C) cmpmap[(C - IRINST_OP_IEQ) ^ 1]
