@@ -396,12 +396,22 @@ AddExp : MulExp {
 	}
     | AddExp AddOp MulExp { // TODO 隐式转换
 		// 创建加减运算节点，孩子为AddExp($1)和UnaryExp($3)
-        if ($1->node_type == ASTOP(LEAF_LITERAL_INT) && $3->node_type == ASTOP(LEAF_LITERAL_INT)) {
+        bool li = $1->node_type == ASTOP(LEAF_LITERAL_INT);
+        bool lf = $1->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+        bool ri = $3->node_type == ASTOP(LEAF_LITERAL_INT);
+        bool rf = $3->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+        if (li && ri) {
             if ($2 == (int)ASTOP(ADD))
                 $1->integer_val += $3->integer_val;
             else
                 $1->integer_val -= $3->integer_val;
             $$ = $1;
+            delete $3;
+        } else if (lf && rf) {
+            if ($2 == (int)ASTOP(ADD))
+                $1->float_val += $3->float_val;
+            else
+                $1->float_val -= $3->float_val;
             delete $3;
         } else {
 		    $$ = create_contain_node(ast_operator_type($2), $1, $3);

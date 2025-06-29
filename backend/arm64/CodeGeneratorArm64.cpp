@@ -24,6 +24,7 @@
 #include "Function.h"
 #include "GotoInstruction.h"
 #include "Instruction.h"
+#include "LocalVariable.h"
 #include "Module.h"
 // #include "PlatformArm64.h"
 #include "CodeGeneratorArm64.h"
@@ -36,6 +37,7 @@
 #include "MoveInstruction.h"
 #include "PlatformArm64.h"
 #include "ArrayType.h"
+#include "Use.h"
 
 #define DEBUG 1
 #ifdef DEBUG
@@ -284,8 +286,10 @@ int CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
     int k;
     std::vector<Instruction *> moves(std::min(8, pm));
     for (k = 0; k < std::min(8, pm); k++) {
-        moves[k] = new MoveInstruction(func, params[k], PlatformArm64::intRegVal[k]);
-        if (params[k]->getType()->isArrayType())
+        auto param = params[k];
+        Type * type = param->getType();
+        moves[k] = new MoveInstruction(func, param, PlatformArm64::regVal[type->isFloatType() ? k + ARM64_F0 : k]);
+        if (type->isArrayType())
             params[k]->setMemoryAddr(params[k]->getRegId(), 0);
     }
     auto & insts = func->getInterCode().getInsts();
@@ -318,7 +322,7 @@ int CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
         if (isArray && (fp_esp & 7)) {
             fp_esp += 4;
         }
-        param->setMemoryAddr(ARM64_FP_REG_NO, fp_esp);
+        param->setMemoryAddr(ARM64_SP_REG_NO, fp_esp);
         fp_esp += 4 + 4 * isArray;
     }
     return fp_esp;
@@ -332,19 +336,23 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
 
     // 当前函数的指令列表
     auto & insts = func->getInterCode().getInsts();
+    // auto & protects = func->getProtectedReg();
 
     // 函数返回值用R0寄存器，若函数调用有返回值，则赋值R0到对应寄存器
     for (auto pIter = insts.begin(); pIter != insts.end(); pIter++) {
 
-        // 检查是否是函数调用指令，并且含有返回值
-        if (Instanceof(callInst, FuncCallInstruction *, *pIter)) {
+        Instruction * inst = *pIter;
+        int32_t opnum = inst->getOperandsNum();
 
-            if (callInst->getCalledName() == "memset")
-                continue;
-            // 实参前8个要寄存器传值，其它参数通过栈传递
-            // 前8个的后面参数采用栈传递
+        // 检查是否是函数调用指令，并且含有返回值
+        if (Instanceof(callInst, FuncCallInstruction *, inst)) {
+
+            // if (callInst->getCalledName() == "memset")
+            //     continue;
+            //  实参前8个要寄存器传值，其它参数通过栈传递
+            //  前8个的后面参数采用栈传递
             int esp = 0;
-            for (int32_t k = 8, l = callInst->getOperandsNum(); k < l; k++) {
+            for (int32_t k = 8; k < opnum; k++) {
 
                 auto arg = callInst->getOperand(k);
                 if (arg == callInst)
@@ -364,7 +372,7 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
                 pIter++;
             }
 
-            for (int k = 0, l = std::min(callInst->getOperandsNum(), 8); k < l; k++) {
+            for (int k = 0, l = std::min(opnum, 8); k < l; k++) {
 
                 // 检查实参的类型是否是临时变量。
                 // 如果是临时变量，该变量可更改为寄存器变量即可，或者设置寄存器号
@@ -373,16 +381,17 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
                 if (arg == callInst)
                     break;
 
-                if (arg->getRegId() == k) {
+                int regno = arg->getType()->isFloatType() ? k + 32 : k;
+
+                if (arg->getRegId() == regno) {
                     // 则说明寄存器已经是实参传递的寄存器，不用创建赋值指令
                     continue;
                 } else {
                     // 创建临时变量，指定寄存器
+                    Value * reg = PlatformArm64::regVal[regno];
+                    Instruction * assignInst = new MoveInstruction(func, reg, arg);
 
-                    Instruction * assignInst =
-                        new MoveInstruction(func, PlatformArm64::intRegVal[k], callInst->getOperand(k));
-
-                    callInst->setOperand(k, PlatformArm64::intRegVal[k]);
+                    callInst->setOperand(k, reg);
 
                     // 函数调用指令前插入后，pIter仍指向函数调用指令
                     pIter = insts.insert(pIter, assignInst);
@@ -390,7 +399,7 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
                 }
             }
 
-            for (int k = 0; k < callInst->getOperandsNum(); k++) {
+            for (int k = 0; k < opnum; k++) {
                 auto arg = callInst->getOperand(k);
                 if (arg == callInst)
                     continue;
@@ -405,14 +414,14 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
 
             // 赋值指令
             if (callInst->hasResultValue()) {
-
-                if (callInst->getRegId() == 0) {
+                int regRet = callInst->getType()->isFloatType() * ARM64_F0;
+                if (callInst->getRegId() == regRet) {
                     // 结果变量的寄存器和返回值寄存器一样，则什么都不需要做
                     ;
                 } else {
                     // 其它情况，需要产生赋值指令
                     // 新建一个赋值操作
-                    Instruction * assignInst = new MoveInstruction(func, callInst, PlatformArm64::intRegVal[0]);
+                    Instruction * assignInst = new MoveInstruction(func, callInst, PlatformArm64::regVal[regRet]);
 
                     // 函数调用指令的下一个指令的前面插入指令，因为有Exit指令，+1肯定有效
                     pIter = insts.insert(pIter + 1, assignInst);
@@ -471,27 +480,50 @@ const std::vector<LiveRange> & calculateLiveRanges(Function * func)
     return *ranges;
 }
 
+static inline bool usedByFunc0(Instruction * inst)
+{
+    int32_t opnum = inst->getOperandsNum();
+    return inst->hasResultValue() && opnum && ({
+               User * u = inst->getOperands()[opnum - 1]->getUser();
+               dynamic_cast<FuncCallInstruction *>(u) && u->getOperandsNum() && u->getOperand(0) == inst;
+           });
+}
+
 void CodeGeneratorArm64::linearScanRegisterAllocation(std::vector<LiveRange> & ranges, Function * func)
 {
     // 使用被调用者保留寄存器
-    std::vector<int32_t> freeRegs = {19, 20, 21, 22, 23, 24, 25, 26, 27, 28}; // x9-x15
+    std::vector<int32_t> freeRegs = {19, 20, 21, 22, 23, 24, 25, 26, 27, 28};
+    /**
+     * 参考https://learn.microsoft.com/zh-cn/cpp/build/arm64-windows-abi-conventions?view=msvc-170#floating-pointsimd-registers，
+     * 对于浮点数，优先使用非易失寄存器(v8-v15低64位，即d8-v15), 保留v16和v17为临时寄存器，其余为易失可分配寄存器
+     */
+    std::vector<int32_t> floatRegs = {40, 41, 42, 43, 44, 45, 46, 47};
     if (!func->getExistFuncCall()) {
-        freeRegs.insert(freeRegs.end(), {9, 10, 11, 12, 13, 14, 15}); // x9-x15
+        freeRegs.insert(freeRegs.end(), {9, 10, 11, 12, 13, 14, 15});
+        // v18-v31, 50-63
+        floatRegs.insert(floatRegs.end(), {50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63});
     }
-    std::vector<LiveRange> active;
+    std::vector<LiveRange> activei, activef;
     auto & protects = func->getProtectedReg();
 
     for (auto & range: ranges) {
+        bool isFloat = range.value->getType()->isFloatType();
+        auto & frees = isFloat ? floatRegs : freeRegs;
+        auto & active = isFloat ? activef : activei;
         // 1. 过期已结束的区间
-        expireOldRanges(active, freeRegs, range.start);
+        expireOldRanges(active, frees, range.start);
+        Instruction * inst;
 
         // 2. 溢出到栈
-        if ((range.value->getType()->isArrayType() && !dynamic_cast<FormalParam *>(range.value)) || freeRegs.empty()) {
+        if ((range.value->getType()->isArrayType() && dynamic_cast<LocalVariable *>(range.value)) || frees.empty()) {
             range.stackOffset = allocateStackSlot(func, range.value);
+        } else if ((inst = dynamic_cast<Instruction *>(range.value)) && usedByFunc0(inst)) {
+            // 当该指令作为其他函数的第一个参数时，设置结果寄存器0
+            range.reg = isFloat ? ARM64_F0 : 0;
         } else {
             // 3. 分配寄存器
-            range.reg = freeRegs.back();
-            freeRegs.pop_back();
+            range.reg = frees.back();
+            frees.pop_back();
             active.push_back(range);
         }
     }

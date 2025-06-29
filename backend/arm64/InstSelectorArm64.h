@@ -113,8 +113,6 @@ protected:
     ///
     void translate_arg(Instruction * inst);
 
-    bool inset_builtin(FuncCallInstruction * call);
-
     ///
     /// @brief 输出IR指令
     ///

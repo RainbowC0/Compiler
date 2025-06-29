@@ -88,12 +88,6 @@ class ILocArm64 {
     /// @param name Label名字
     void load_symbol(int rs_reg_no, cstr name, bool f = false);
 
-    /// @brief 加载栈内变量地址
-    /// @param rsReg 结果寄存器号
-    /// @param base_reg_no 基址寄存器
-    /// @param off 偏移
-    void leaStack(int rs_reg_no, int base_reg_no, int offset);
-
 public:
     /// @brief 构造函数
     /// @param _module 符号表-模块
@@ -108,6 +102,12 @@ public:
     void load_imm(int rs_reg_no, int num, bool wide = false);
 
     void load_fimm(int rs_reg_no, float num, bool wide = false);
+
+    /// @brief 加载栈内变量地址
+    /// @param rsReg 结果寄存器号
+    /// @param base_reg_no 基址寄存器
+    /// @param off 偏移
+    void leaStack(int rs_reg_no, int base_reg_no, int offset);
 
     ///
     /// @brief 注释指令，不包含分号

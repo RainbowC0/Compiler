@@ -46,7 +46,7 @@ public:
     /// @brief Get the Operands object（const版本）
     /// @return const std::vector<Use *>&
     ///
-    const std::vector<Use *> & getOperands() const;
+    [[nodiscard]] const std::vector<Use *> & getOperands() const;
 
     ///
     /// @brief 取得操作数

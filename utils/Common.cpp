@@ -37,11 +37,7 @@ bool isLetterUnderLine(char ch)
 
 void minic_log_common(int level, const char * content)
 {
-    if (level != LOG_ERROR) {
-        fputs(content, stderr);
-        fputc('\n', stderr);
-    } else {
-        puts(content);
-    }
+    fputs(content, stderr);
+    fputc('\n', stderr);
 }
 }

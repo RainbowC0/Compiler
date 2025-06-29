@@ -266,7 +266,7 @@ void ILocArm64::load_imm(int rs_reg_no, int constant, bool wide)
 #endif
         };
     } z, n;
-    cstr reg = wide ? "x" + std::to_string(rs_reg_no) : PlatformArm64::regName[rs_reg_no];
+    cstr reg = (wide ? PlatformArm64::xregName : PlatformArm64::regName)[rs_reg_no];
     if (constant == 0) {
         emit("mov", reg, "wzr");
         return;
@@ -288,10 +288,10 @@ void ILocArm64::load_fimm(int rs_reg, float f, bool wide)
     } num;
     num.f = f;
     load_imm(ARM64_TMP_REG_NO, num.i, wide);
-    emit("fmov", "s" + std::to_string(rs_reg), PlatformArm64::regName[ARM64_TMP_REG_NO]);
+    emit("fmov", PlatformArm64::regName[rs_reg], PlatformArm64::regName[ARM64_TMP_REG_NO]);
 }
 
-#define xregs(i) ("x" + std::to_string(i))
+#define xregs(i) PlatformArm64::xregName[i]
 /// @brief 加载符号值 ldr r0,=g ldr r0,=.L1
 /// @param rs_reg_no 结果寄存器编号
 /// @param name 符号名
@@ -303,14 +303,15 @@ void ILocArm64::load_symbol(int rs_reg_no, cstr name, bool f)
     // emit("movt", PlatformArm64::regName[rs_reg_no], "#:upper16:" + name);
     // adrp x0, a
     // ldr w0, [x0, :loc12:a]
-    std::string x = xregs(rs_reg_no);
+
+    std::string x = xregs(rs_reg_no >= 32 ? ARM64_TMP_REG_NO : rs_reg_no);
     emit("adrp", x, name);
     std::string adr = "[";
     adr += x;
     adr += ",:lo12:";
     adr += name;
     adr += "]";
-    emit("ldr", f ? "s" + std::to_string(rs_reg_no) : PlatformArm64::regName[rs_reg_no], adr);
+    emit("ldr", rs_reg_no == ARM64_ZR_REG_NO ? "sp" : PlatformArm64::regName[rs_reg_no], adr);
 }
 
 /// @brief 基址寻址 ldr r0,[fp,#100]
@@ -320,9 +321,7 @@ void ILocArm64::load_symbol(int rs_reg_no, cstr name, bool f)
 void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset)
 {
     std::string rsReg = PlatformArm64::regName[rs_reg_no];
-    std::string base = PlatformArm64::regName[base_reg_no];
-    if (base[0] == 'w')
-        base[0] = 'x';
+    std::string base = base_reg_no == ARM64_ZR_REG_NO ? "sp" : PlatformArm64::xregName[base_reg_no];
 
     if (PlatformArm64::isDisp(offset)) {
         // 有效的偏移常量
@@ -354,9 +353,7 @@ void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset)
 /// @param tmp_reg_no 可能需要临时寄存器编号
 void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_reg_no)
 {
-    std::string base = PlatformArm64::regName[base_reg_no];
-    if (base[0] == 'w')
-        base[0] = 'x';
+    std::string base = base_reg_no == ARM64_ZR_REG_NO ? "sp" : PlatformArm64::xregName[base_reg_no];
 
     if (PlatformArm64::isDisp(disp)) {
         // 有效的偏移常量
@@ -507,10 +504,12 @@ void ILocArm64::store_var(int src_reg_no, Value * dest_var, int tmp_reg_no, bool
 
         // 读取符号的地址到寄存器x10
         // load_symbol(tmp_reg_no, globalVar->getName());
-        std::string x = xregs(tmp_reg_no);
+        std::string x = tmp_reg_no == ARM64_ZR_REG_NO ? "sp" : xregs(tmp_reg_no);
         emit("adrp", x, globalVar->getName());
         // str r8, [x10, :lo12:a]
-        emit("str", PlatformArm64::regName[src_reg_no], "[" + x + ",:lo12:" + globalVar->getName() + "]");
+        emit("str",
+             (wide ? PlatformArm64::xregName : PlatformArm64::regName)[src_reg_no],
+             "[" + x + ",:lo12:" + globalVar->getName() + "]");
 
     } else {
 
@@ -524,7 +523,8 @@ void ILocArm64::store_var(int src_reg_no, Value * dest_var, int tmp_reg_no, bool
 
         bool result = dest_var->getMemoryAddr(&dest_baseRegId, &dest_offset);
         if (!result) {
-            minic_log(LOG_ERROR, "BUG");
+            minic_log(LOG_ERROR, "BUG getMemoryAddr");
+            return;
         }
 
         // str r8,[r9]
@@ -544,7 +544,7 @@ void ILocArm64::leaStack(int rs_reg_no, int base_reg_no, int off)
 
     if (PlatformArm64::constExpr(off))
         // add r8,fp,#-16
-        emit("add", rs_reg_name, base_reg_name, toStr(off));
+        emit("add", rs_reg_name, base_reg_name, off ? toStr(off) : PlatformArm64::xregName[ARM64_ZR_REG_NO]);
     else {
         // ldr r8,=-257
         load_imm(rs_reg_no, off);
@@ -582,7 +582,7 @@ void ILocArm64::allocStack(Function * func, int tmp_reg_no)
         load_imm(tmp_reg_no, off);
 
         // sub sp,sp,r8
-        emit("sub", "sp", "sp", "x" + std::to_string(tmp_reg_no));
+        emit("sub", "sp", "sp", xregs(tmp_reg_no));
     }
 
     // 函数调用通过栈传递的基址寄存器设置

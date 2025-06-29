@@ -11,7 +11,7 @@
 	"editor.fontVariations": false,
 	"editor.detectIndentation": false,
 	"editor.guides.bracketPairs": true,
-	"editor.insertSpaces": false,
+	"editor.insertSpaces": true,
 	"git.enableSmartCommit": true,
 	"git.confirmSync": false,
 	"git.autofetch": true,
@@ -116,7 +116,7 @@
 		"-I${workspaceFolder}/frontend/flexbison",
 		"-I${workspaceFolder}/frontend/recursivedescent",
 		"-I${workspaceFolder}/backend",
-		"-I${workspaceFolder}/backend/arm32",
+		"-I${workspaceFolder}/backend/arm64",
 		"-I${workspaceFolder}/utils",
 		"-I${workspaceFolder}/common",
 		"-I${workspaceFolder}/symboltable"

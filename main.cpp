@@ -122,7 +122,6 @@ lb_check:
                 // 产生中间IR
                 gShowLineIR = true;
                 break;
-                break;
             case 'O':
                 // 优化级别分析，暂时没有用，如开启优化时请使用
                 gOptLevel = std::stoi(optarg);

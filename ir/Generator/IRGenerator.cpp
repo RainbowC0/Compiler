@@ -22,6 +22,7 @@
 
 #include "AST.h"
 #include "Common.h"
+#include "ConstInt.h"
 #include "Function.h"
 #include "IRCode.h"
 #include "IRGenerator.h"
@@ -35,6 +36,7 @@
 #include "StoreInstruction.h"
 #include "LoadInstruction.h"
 #include "GotoInstruction.h"
+#include "Type.h"
 #include "TypeSystem.h"
 #include "CastInstruction.h"
 #include "ConstFloat.h"
@@ -462,16 +464,18 @@ bool IRGenerator::ir_binary(ast_node * node)
 
     // 如果操作数类型与结果类型不同，需要进行隐式类型转换
     if (resultType->isFloatType()) {
-        if (!leftType->isFloatType()) {
+        if (Instanceof(leftInt, ConstInt *, leftVal)) {
+            leftVal = module->newConstFloat((float) leftInt->getVal());
+        } else if (Instanceof(rightInt, ConstInt *, rightVal)) {
+            rightVal = module->newConstFloat((float) rightInt->getVal());
+        } else if (!leftType->isFloatType()) {
             // 整数转浮点 - 使用CastInstruction
-            Instruction * castInst =
-                new CastInstruction(func, leftVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
+            Instruction * castInst = new CastInstruction(func, leftVal, resultType, CastInstruction::INT_TO_FLOAT);
             left->blockInsts.addInst(castInst);
             leftVal = castInst;
         } else if (!rightType->isFloatType()) {
             // 整数转浮点 - 使用CastInstruction
-            Instruction * castInst =
-                new CastInstruction(func, rightVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
+            Instruction * castInst = new CastInstruction(func, rightVal, resultType, CastInstruction::INT_TO_FLOAT);
             right->blockInsts.addInst(castInst);
             rightVal = castInst;
         }
@@ -1221,6 +1225,7 @@ void IRGenerator::processArrayInitialization(Value * arrayVal,
                                     {arrayVal, module->newConstInt(0), module->newConstInt(arraySize)},
                                     VoidType::getType());
         blockInsts.addInst(memsetCall);
+        module->getCurrentFunction()->setExistFuncCall(true);
     }
 
     // 4. 处理原始嵌套结构，保持维度边界
