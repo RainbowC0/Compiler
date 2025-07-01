@@ -564,7 +564,10 @@ void InstSelectorArm64::translate_store(Instruction * inst)
         iloc.load_var(loadreg, src);
     }
 
-    iloc.store_base(loadreg, basereg, off, basereg==ARM64_TMP_REG_NO?ARM64_TMP_REG_NO2:ARM64_TMP_REG_NO);
+    int32_t load_reg = simpleRegisterAllocator.Allocate();
+    fprintf(stderr, "reg %d\n", load_reg);
+    iloc.store_base(loadreg, basereg, off, load_reg);
+    simpleRegisterAllocator.free(load_reg);
 }
 
 void InstSelectorArm64::translate_load(Instruction * inst)

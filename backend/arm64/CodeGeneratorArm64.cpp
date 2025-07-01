@@ -61,6 +61,11 @@ CodeGeneratorArm64::CodeGeneratorArm64(Module * _module)
     : CodeGeneratorAsm(_module), simpleRegisterAllocator(PlatformArm64::maxUsableRegNum)
 {
     ConstInt::setZeroReg(ARM64_ZR_REG_NO);
+    simpleRegisterAllocator.Allocate(ARM64_ZR_REG_NO);
+    simpleRegisterAllocator.Allocate(ARM64_FP_REG_NO);
+    simpleRegisterAllocator.Allocate(ARM64_LR_REG_NO);
+    simpleRegisterAllocator.Allocate(ARM64_TMP_REG_NO);
+    simpleRegisterAllocator.Allocate(ARM64_TMP_REG_NO2);
 }
 
 /// @brief 析构函数
@@ -291,6 +296,7 @@ int CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
         moves[k] = new MoveInstruction(func, param, PlatformArm64::regVal[type->isFloatType() ? k + ARM64_F0 : k]);
         if (type->isArrayType())
             params[k]->setMemoryAddr(params[k]->getRegId(), 0);
+        simpleRegisterAllocator.Allocate(k);
     }
     auto & insts = func->getInterCode().getInsts();
     insts.insert(insts.begin() + 1, moves.begin(), moves.end());
@@ -306,7 +312,8 @@ int CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
         if (ARM64_CALLER_SAVE(reg)) {
             std::remove(protects.begin(), protects.end(), reg);
         }
-        params[k]->setRegId(k + param->getType()->isFloatType() * ARM64_F0);
+        param->setRegId(k + param->getType()->isFloatType() * ARM64_F0);
+        simpleRegisterAllocator.Allocate(k);
     }
 
     // 根据ARM64版C语言的调用约定，除前8个外的实参进行值传递，逆序入栈
@@ -494,6 +501,9 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(std::vector<LiveRange> & r
 {
     // 使用被调用者保留寄存器
     std::vector<int32_t> freeRegs = {19, 20, 21, 22, 23, 24, 25, 26, 27, 28};
+    for (int i : freeRegs) {
+        simpleRegisterAllocator.Allocate(i);
+    }
     /**
      * 参考https://learn.microsoft.com/zh-cn/cpp/build/arm64-windows-abi-conventions?view=msvc-170#floating-pointsimd-registers，
      * 对于浮点数，优先使用非易失寄存器(v8-v15低64位，即d8-v15), 保留v16和v17为临时寄存器，其余为易失可分配寄存器
@@ -533,6 +543,7 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(std::vector<LiveRange> & r
     for (const auto & range: ranges) {
         if (range.reg != -1) {
             range.value->setRegId(range.reg);
+            simpleRegisterAllocator.Allocate(range.reg);
             if (ARM64_CALLER_SAVE(range.reg) &&
                 std::find(protects.begin(), protects.end(), range.reg) == protects.end())
                 protects.push_back(range.reg);

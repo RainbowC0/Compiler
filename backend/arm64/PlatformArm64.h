@@ -82,7 +82,7 @@ public:
     static const int maxRegNum = 32;
 
     /// @brief 可使用的通用寄存器的个数r0-r10
-    static const int maxUsableRegNum = 16;
+    static const int maxUsableRegNum = 32;
 
     /// @brief 32位寄存器名, 通用+零+浮点
     static const std::string regName[maxRegNum + 32];
