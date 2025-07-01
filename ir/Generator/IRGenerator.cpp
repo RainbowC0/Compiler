@@ -15,6 +15,7 @@
 /// </table>
 ///
 // #include <algorithm>
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <unordered_map>
@@ -373,13 +374,28 @@ bool IRGenerator::ir_function_call(ast_node * node)
 
             // 遍历参数列表，孩子是表达式
             // 这里自左往右计算表达式
+            auto pIter = calledFunction->getParams().begin();
             for (auto son: paramsNode->sons) {
 
                 // 遍历Block的每个语句，进行显示或者运算
                 ast_node * CHECK_NODE(temp, son);
+                Value * v = temp->val;
+                Type * rtype = v->getType();
+                Type * ftype = (*pIter)->getType();
 
-                realParams.push_back(temp->val);
+                if (rtype != ftype) {
+                    if (rtype->isIntegerType() && ftype->isFloatType()) {
+                        v = new CastInstruction(currentFunc, temp->val, ftype, CastInstruction::INT_TO_FLOAT);
+                        temp->blockInsts.addInst((Instruction*)v);
+                    } else if (rtype->isFloatType() && ftype->isIntegerType()) {
+                        v = new CastInstruction(currentFunc, temp->val, ftype, CastInstruction::FLOAT_TO_INT);
+                        temp->blockInsts.addInst((Instruction*)v);
+                    }
+                }
+
+                realParams.push_back(v);
                 node->blockInsts.addInst(temp->blockInsts);
+                pIter++;
             }
         }
     }
@@ -550,15 +566,20 @@ bool IRGenerator::ir_assign(ast_node * node)
     Type * leftType = leftVal->getType();
     Type * rightType = rightVal->getType();
     Function * func = module->getCurrentFunction();
-    if (leftType->isFloatType() && !rightType->isFloatType()) {
-        // int->float
-        Instruction * castInst =
-            new CastInstruction(func, rightVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
-        right->blockInsts.addInst(castInst);
-        rightVal = castInst;
+    if (leftType != rightType) {
+        if (leftType->isFloatType() && rightType->isIntegerType()) {
+            // int->float
+            auto * castInst =
+                new CastInstruction(func, rightVal, FloatType::getTypeFloat(), CastInstruction::INT_TO_FLOAT);
+            right->blockInsts.addInst(castInst);
+            rightVal = castInst;
+        } else if (leftType->isIntegerType() && rightType->isFloatType()) {
+            // float->int
+            auto cast = new CastInstruction(func, rightVal, IntegerType::getTypeInt(), CastInstruction::FLOAT_TO_INT);
+            right->blockInsts.addInst(cast);
+            rightVal = cast;
+        }
     }
-    // TODO: float->int时可加类型检查
-
     Instruction * movInst;
     if (left->node_type == ASTOP(ARRAY_ACCESS)) {
         movInst = new StoreInstruction(func, leftVal, rightVal);
@@ -715,7 +736,19 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
                 }
                 CHECK_NODE(s, s);
                 node->blockInsts.addInst(s->blockInsts);
-                node->blockInsts.addInst(new MoveInstruction(func, val, s->val));
+                Type * tv = val->getType();
+                Type * ts = s->val->getType();
+                Instruction * inst = nullptr;
+                if (tv != ts) {
+                    if (tv->isFloatType() && ts->isIntegerType()) {
+                        inst = new CastInstruction(func, s->val, tv, CastInstruction::INT_TO_FLOAT);
+                    } else if (tv->isIntegerType() && ts->isFloatType()) {
+                        inst = new CastInstruction(func, s->val, tv, CastInstruction::FLOAT_TO_INT);
+                    }
+                }
+                if (!inst)
+                    inst = new MoveInstruction(func, val, s->val);
+                node->blockInsts.addInst(inst);
             }
         }
     } else
@@ -758,6 +791,10 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
                     arr[i + 1] = s->sons[i]->integer_val;
                 }
                 ((GlobalVariable *) child->val)->intVal = arr;
+                /*auto v = new std::vector<void*>();
+                if (array_init(s, (ArrayType*)child->type, s->sons.begin(), s->sons.end(), *v)) {
+                    ((GlobalVariable *)child->val)->intVal = (int*)v->data();
+                }*/
             }
         }
     return true;
@@ -1015,6 +1052,91 @@ bool IRGenerator::ir_array_init(ast_node * node)
     }
 
     return true;
+}
+
+/**
+ * @brief 列表展平初始化
+ * @param node 处理节点
+ * @param type 初始化对应的数组类型
+ * @param begin end array_init的子列表
+ * @param v 返回的list
+ * @return 是否包含变量元素
+ */
+
+static float * pfzero = new float(0.f);
+static int * pzero = new int(0);
+
+bool IRGenerator::array_init(ast_node * node, ArrayType * type,
+    std::vector<ast_node*>::const_iterator begin, std::vector<ast_node*>::const_iterator end,
+    std::vector<void*> &v) {
+    const Type * tp = type->getElementType();
+    bool hasVariable = false;
+    if (tp->isArrayType()) {
+        Instanceof(arrTp, const ArrayType *, tp);
+        uint32_t n = arrTp->getNumElements();
+        uint32_t dim = 0;
+        for (auto iter = begin; iter < end;) {
+            ast_node * child = *iter;
+            bool ret;
+            if (child->node_type == ASTOP(ARRAY_INIT)) {
+                auto & sons = child->sons;
+                ret = array_init(child, (ArrayType*)arrTp, sons.begin(), sons.end(), v);
+                iter++;
+            } else {
+                auto iend = std::min(iter + n, end);
+                ret = array_init(child, (ArrayType*)arrTp, iter, iend, v);
+                iter += n;
+            }
+            if (ret) hasVariable = true;
+            dim++;
+        }
+        if (type->getNumElements() == 0)
+            type->setNumElements(dim);
+    } else {
+        uint32_t n = type->getNumElements(), i = 0;
+        if (n == 0) {
+            n = end - begin;
+            type->setNumElements(n);
+        }
+        void * cnst = tp->isFloatType() ? (void*)pfzero : (void*)pzero;
+        auto * func = module->getCurrentFunction();
+        for (; begin < end && i < n; begin++, i++) {
+            // 仅处理第一个元素
+            auto x = begin, e = end;
+            while (x < e && (*x)->node_type == ASTOP(ARRAY_INIT)) {
+                auto & sons = (*x)->sons;
+                x = sons.begin();
+                e = sons.end();
+            }
+            void * vl = cnst;
+            if (x < e) {
+                ast_node * CHECK_NODE(xx, *x);
+                node->blockInsts.addInst(xx->blockInsts);
+                vl = xx->val;
+                if (nullptr==dynamic_cast<Constant*>((Value*)vl))
+                    hasVariable = true;
+                Type * rtype = xx->val->getType();
+                if (rtype != tp) {
+                    // 类型转换
+                    if (tp->isFloatType() && dynamic_cast<ConstInt*>((Value*)vl)) {
+                        vl = &((ConstInt*)vl)->intVal;
+                    } else if (tp->isIntegerType() && dynamic_cast<ConstFloat*>((Value*)vl)) {
+                        vl = &((ConstFloat*)vl)->val;
+                    } else if (func) {
+                        auto * inst = new CastInstruction(func, (Value*)vl, (Type*)tp,
+                            tp->isFloatType() ? CastInstruction::INT_TO_FLOAT : CastInstruction::FLOAT_TO_INT);
+                        node->blockInsts.addInst(inst);
+                        node->val = inst;
+                        vl = inst;
+                    }
+                }
+            }
+            v.push_back(vl);
+        }
+        for (; i < n; i++)
+            v.push_back(cnst);
+    }
+    return hasVariable;
 }
 
 /// @brief 计算数组总元素个数

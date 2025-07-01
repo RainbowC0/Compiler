@@ -85,11 +85,12 @@ public:
 
     static void setZeroReg(int32_t reg);
 
+    int32_t intVal = 0;
+
 private:
     ///
     /// @brief 整数值
     ///
-    int32_t intVal = 0;
 
     ///
     /// @brief 变量加载到寄存器中时对应的寄存器编号

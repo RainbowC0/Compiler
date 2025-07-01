@@ -169,7 +169,7 @@ void InstSelectorArm64::translate_label(Instruction * inst)
     Instanceof(labelInst, LabelInstruction *, inst);
 
     ArmInst * ai = iloc.getCode().back();
-    if (ai->opcode[0] == 'b' && ai->result == labelInst->getName())
+    if (ai && ai->opcode[0] == 'b' && ai->result == labelInst->getName())
         ai->setDead();
     iloc.label(labelInst->getName());
 }
@@ -230,7 +230,7 @@ void InstSelectorArm64::translate_exit(Instruction * inst)
         Value * retVal = inst->getOperand(0);
 
         // 赋值给寄存器R0
-        iloc.load_var(0, retVal);
+        iloc.load_var(func->getReturnType()->isFloatType() * ARM64_F0, retVal);
     }
 
     // 恢复栈空间
@@ -253,7 +253,6 @@ void InstSelectorArm64::translate_exit(Instruction * inst)
         int i = (m - 2) | 1;
         while (i > 0) {
             int32_t xa = protectedReg[i - 1], xb = protectedReg[i];
-            i -= 2;
             if (xb >= ARM64_F0 && xa < ARM64_F0) {
                 xb = ARM64_TMP_REG_NO;
             }
@@ -261,6 +260,7 @@ void InstSelectorArm64::translate_exit(Instruction * inst)
             if (xb == ARM64_TMP_REG_NO) {
                 iloc.inst("fmov", xreg(protectedReg[i]), xreg(xb));
             }
+            i -= 2;
         }
     }
 
@@ -281,7 +281,7 @@ void InstSelectorArm64::translate_assign(Instruction * inst)
         // 寄存器 => 内存
         // 寄存器 => 寄存器
 
-        iloc.store_var(arg1_regId, result, ARM64_TMP_REG_NO, ARRTYPE(arg1));
+        iloc.store_var(arg1_regId, result, arg1->getType()->isFloatType() ? ARM64_FTMP_REG_NO : ARM64_TMP_REG_NO, ARRTYPE(arg1));
     } else if (result_regId != -1) {
         // 内存变量 => 寄存器
         // 地址 => 寄存器
@@ -327,7 +327,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, cstr operator
     if (arg1_reg_no == -1) {
 
         // 分配一个寄存器r8
-        load_arg1_reg_no = isFloat ? ARM64_FTMP_REG_NO : ARM64_TMP_REG_NO;
+        load_arg1_reg_no = arg1->getType()->isFloatType() ? ARM64_FTMP_REG_NO : ARM64_TMP_REG_NO;
 
         // arg1 -> r8，这里可能由于偏移不满足指令的要求，需要额外分配寄存器
         iloc.load_var(load_arg1_reg_no, arg1);
@@ -344,7 +344,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, cstr operator
             sarg2 = &s;
         } else {
             // 分配一个寄存器r9
-            load_arg2_reg_no = isFloat ? ARM64_FTMP_REG_NO2 : ARM64_TMP_REG_NO2;
+            load_arg2_reg_no = arg2->getType()->isFloatType() ? ARM64_FTMP_REG_NO2 : ARM64_TMP_REG_NO2;
 
             // arg2 -> r9
             iloc.load_var(load_arg2_reg_no, arg2);
@@ -564,7 +564,7 @@ void InstSelectorArm64::translate_store(Instruction * inst)
         iloc.load_var(loadreg, src);
     }
 
-    iloc.store_base(loadreg, basereg, off, ARM64_TMP_REG_NO);
+    iloc.store_base(loadreg, basereg, off, basereg==ARM64_TMP_REG_NO?ARM64_TMP_REG_NO2:ARM64_TMP_REG_NO);
 }
 
 void InstSelectorArm64::translate_load(Instruction * inst)
@@ -667,8 +667,17 @@ void InstSelectorArm64::translate_cast(Instruction * inst)
             }
             break;
         case CastInstruction::FLOAT_TO_INT:
+            if (reg == -1) {
+                reg = ARM64_FTMP_REG_NO;
+                iloc.load_var(reg, arg);
+            }
+            iloc.inst("fcvtzs", PlatformArm64::regName[inst->getRegId()], PlatformArm64::regName[reg]);
             break;
         case CastInstruction::INT_TO_FLOAT:
+            if (reg == -1) {
+                reg = ARM64_TMP_REG_NO;
+                iloc.load_var(reg, arg);
+            }
             iloc.inst("scvtf", PlatformArm64::regName[inst->getRegId()], PlatformArm64::regName[reg]);
             break;
         default:

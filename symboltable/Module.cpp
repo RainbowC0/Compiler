@@ -31,6 +31,9 @@ Module::Module(const std::string & _name) : name(_name)
     // 确保全局变量作用域入栈，这样全局变量才可以加入
     scopeStack->enterScope();
 
+    Type * fv = (Type*)ArrayType::get(FloatType::getTypeFloat(), 0);
+    Type * iv = (Type*)ArrayType::get(IntegerType::getTypeInt(), 0);
+
     // 加入内置函数putint
     (void) newFunction("putint", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}}, true);
     (void) newFunction("getint", IntegerType::getTypeInt(), {}, true);
@@ -39,10 +42,10 @@ Module::Module(const std::string & _name) : name(_name)
     (void) newFunction("getfloat", FloatType::getTypeFloat(), {}, true);
     (void) newFunction("putfloat", VoidType::getType(), {new FormalParam{FloatType::getTypeFloat(), ""}}, true);
     // TODO 使用 ArrayType
-    (void) newFunction("getarray", IntegerType::getTypeInt(), {new FormalParam{IntegerType::getTypeInt(), ""}}, true);
-    (void) newFunction("getfarray", FloatType::getTypeFloat(), {new FormalParam{FloatType::getTypeFloat(), ""}}, true);
-    (void) newFunction("putarray", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{FloatType::getTypeFloat(), ""}}, true);
-    (void) newFunction("putfarray", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{FloatType::getTypeFloat(), ""}}, true);
+    (void) newFunction("getarray", IntegerType::getTypeInt(), {new FormalParam{iv, ""}}, true);
+    (void) newFunction("getfarray", IntegerType::getTypeInt(), {new FormalParam{fv, ""}}, true);
+    (void) newFunction("putarray", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{iv, ""}}, true);
+    (void) newFunction("putfarray", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{fv, ""}}, true);
     // TODO 使用 ArrayType
     (void) newFunction("memset", VoidType::getType(), {new FormalParam{ArrayType::empty(), ""}, new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{IntegerType::getTypeInt(), ""}}, true);
 }

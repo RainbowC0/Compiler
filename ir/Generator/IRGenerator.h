@@ -158,6 +158,11 @@ protected:
     /// @return 值节点下标，-1无值节点
     int calcDims(ast_node * node);
 
+    /// @brief 初始化列表计算
+    /// @return true表示列表中有变量
+    bool array_init(ast_node * node, ArrayType * type,
+    std::vector<ast_node*>::const_iterator begin, std::vector<ast_node*>::const_iterator end,
+    std::vector<void*> &v);
     /// @brief 计算多维数组索引的一维偏移
     /// @param arrayType 数组类型
     /// @param indices 多维索引值列表

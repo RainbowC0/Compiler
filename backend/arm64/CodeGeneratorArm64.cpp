@@ -105,7 +105,7 @@ void CodeGeneratorArm64::genDataSection()
             fprintf(fp, "%s:\n", var->getName().c_str());
             if (var->getType()->isArrayType()) {
                 int len = var->getType()->getSize() / 4;
-                int rlen = var->intVal ? *var->intVal : 0;
+                int rlen = var->intVal ? *(int*)(var->intVal) : 0;
                 for (int i = 1; i <= rlen; i++) {
                     fprintf(fp, ".word 0x%x\n", var->intVal[i]);
                 }
@@ -301,11 +301,12 @@ int CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
     for (int j = std::min(pm, 8); k < j; k++) {
 
         // 前8个设置分配寄存器
-        int32_t reg = params[k]->getRegId();
+        FormalParam * param = params[k];
+        int32_t reg = param->getRegId();
         if (ARM64_CALLER_SAVE(reg)) {
             std::remove(protects.begin(), protects.end(), reg);
         }
-        params[k]->setRegId(k);
+        params[k]->setRegId(k + param->getType()->isFloatType() * ARM64_F0);
     }
 
     // 根据ARM64版C语言的调用约定，除前8个外的实参进行值传递，逆序入栈

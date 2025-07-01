@@ -20,7 +20,7 @@
 ///
 /// @brief 唯一的FLOAT类型实例
 ///
-FloatType * FloatType::oneInstanceFloat = new FloatType();
+FloatType * FloatType::oneInstanceFloat = nullptr;
 
 ///
 /// @brief 获取类型float
@@ -28,5 +28,8 @@ FloatType * FloatType::oneInstanceFloat = new FloatType();
 ///
 FloatType * FloatType::getTypeFloat()
 {
+    if (oneInstanceFloat == nullptr) {
+        oneInstanceFloat = new FloatType();
+    }
     return oneInstanceFloat;
 }

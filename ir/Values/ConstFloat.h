@@ -63,9 +63,10 @@ public:
         val = f;
     }
 
+    float val = 0.f;
+
 private:
     ///
     /// @brief 常量值
     ///
-    float val;
 };

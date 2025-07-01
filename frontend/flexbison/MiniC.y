@@ -525,6 +525,9 @@ UnaryExp : PrimaryExp {
         if ($2->node_type==ASTOP(LEAF_LITERAL_INT)) {
             $2->integer_val = -$2->integer_val;
             $$ = $2;
+        } else if ($2->node_type==ASTOP(LEAF_LITERAL_FLOAT)) {
+            $2->float_val = -$2->float_val;
+            $$ = $2;
         } else {
             auto v = ast_node::New(digit_int_attr{0,$2->line_no});
             $$ = create_contain_node(ASTOP(SUB), v, $2);

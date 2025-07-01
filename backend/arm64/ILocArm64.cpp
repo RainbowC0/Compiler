@@ -365,7 +365,9 @@ void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_re
         }
     } else {
         // 先把立即数赋值给指定的寄存器tmpReg，然后采用基址+寄存器的方式进行
-
+        if (base_reg_no==tmp_reg_no) {
+            fprintf(stderr, "errr\n");
+        }
         // ldr r9,=-4096
         load_imm(tmp_reg_no, disp);
 
@@ -411,7 +413,8 @@ void ILocArm64::load_var(int rs_reg_no, Value * src_var)
         if (src_regId != rs_reg_no) {
 
             // mov r8,r2 | 这里有优化空间——消除r8
-            emit("mov", PlatformArm64::regName[rs_reg_no], PlatformArm64::regName[src_regId]);
+            cstr op = rs_reg_no >= ARM64_F0 ? "fmov" : "mov";
+            emit(op, PlatformArm64::regName[rs_reg_no], PlatformArm64::regName[src_regId]);
         }
     } else if (Instanceof(globalVar, GlobalVariable *, src_var)) {
         // 全局变量
@@ -491,12 +494,13 @@ void ILocArm64::store_var(int src_reg_no, Value * dest_var, int tmp_reg_no, bool
 
         // 寄存器不一样才需要mov操作
         if (src_reg_no != dest_reg_id) {
+            cstr op = dest_reg_id >= ARM64_F0 ? "fmov" : "mov";
             if (wide || ARRTYPE(dest_var))
-                emit("mov", xregs(dest_reg_id), xregs(src_reg_no));
+                emit(op, xregs(dest_reg_id), xregs(src_reg_no));
             else
 
                 // mov r2,r8 | 这里有优化空间——消除r8
-                emit("mov", PlatformArm64::regName[dest_reg_id], PlatformArm64::regName[src_reg_no]);
+                emit(op, PlatformArm64::regName[dest_reg_id], PlatformArm64::regName[src_reg_no]);
         }
 
     } else if (Instanceof(globalVar, GlobalVariable *, dest_var)) {
