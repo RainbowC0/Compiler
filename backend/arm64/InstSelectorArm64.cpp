@@ -565,7 +565,6 @@ void InstSelectorArm64::translate_store(Instruction * inst)
     }
 
     int32_t load_reg = simpleRegisterAllocator.Allocate();
-    fprintf(stderr, "reg %d\n", load_reg);
     iloc.store_base(loadreg, basereg, off, load_reg);
     simpleRegisterAllocator.free(load_reg);
 }

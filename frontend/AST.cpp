@@ -205,6 +205,24 @@ void ast_node::Delete(ast_node * node)
     delete node;
 }
 
+static ast_node * _izero = nullptr;
+static ast_node * _fzero = nullptr;
+
+ast_node * ast_node::izero()
+{
+    if (_izero == nullptr) {
+        _izero = ast_node::New(digit_int_attr{0, 0});
+    }
+    return _izero;
+}
+
+ast_node * ast_node::fzero()
+{
+    if (_fzero == nullptr) {
+        _fzero = ast_node::New(digit_real_attr{0.f, 0});
+    }
+    return _fzero;
+}
 ///
 /// @brief AST资源清理
 ///

@@ -160,9 +160,10 @@ protected:
 
     /// @brief 初始化列表计算
     /// @return true表示列表中有变量
-    bool array_init(ast_node * node, ArrayType * type,
-    std::vector<ast_node*>::const_iterator begin, std::vector<ast_node*>::const_iterator end,
-    std::vector<void*> &v);
+    bool array_init(ArrayType * type,
+                    std::vector<ast_node *>::const_iterator begin,
+                    std::vector<ast_node *>::const_iterator end,
+                    void (*process)(ast_node *));
     /// @brief 计算多维数组索引的一维偏移
     /// @param arrayType 数组类型
     /// @param indices 多维索引值列表

@@ -86,7 +86,7 @@ enum class ast_operator_type : int8_t {
     /// @brief 数组访问
     AST_OP_ARRAY_ACCESS,
 
-    /// @brief 数组索引列表  
+    /// @brief 数组索引列表
     AST_OP_ARRAY_INDICES,
 
     /// @brief 数组初始化
@@ -238,6 +238,12 @@ public:
     /// @param line_no 行号
     /// @return 创建的节点
     static ast_node * New(Type * type);
+
+    /// @brief 整数0叶节点
+    static ast_node * izero();
+
+    /// @brief 浮点数0叶节点
+    static ast_node * fzero();
 
     ///
     /// @brief 释放节点

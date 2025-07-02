@@ -112,11 +112,21 @@ void CodeGeneratorArm64::genDataSection()
                 int len = var->getType()->getSize() / 4;
                 int rlen = var->intVal ? *(int*)(var->intVal) : 0;
                 for (int i = 1; i <= rlen; i++) {
-                    fprintf(fp, ".word 0x%x\n", var->intVal[i]);
+					int v = var->intVal[i];
+					if (v == 0) {
+						int zero_count = i;
+						do {
+							i++;
+						} while (i <= rlen && var->intVal[i] == 0);
+						zero_count = i - zero_count;
+						fprintf(fp, ".zero %d\n", zero_count << 2);
+						i--;
+					} else
+                    	fprintf(fp, ".word 0x%x\n", v);
                 }
-                if ((len -= rlen) > 0) {
-                    fprintf(fp, ".zero %d\n", len << 2);
-                }
+				if ((len -= rlen) > 0) {
+					fprintf(fp, ".zero %d\n", len <<2);
+				}
                 delete var->intVal;
             } else {
                 int32_t i = var->intVal ? *var->intVal : 0;

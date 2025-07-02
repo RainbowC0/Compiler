@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "AST.h"
+#include "AttrType.h"
 #include "Common.h"
 #include "ConstInt.h"
 #include "Function.h"
@@ -386,10 +387,10 @@ bool IRGenerator::ir_function_call(ast_node * node)
                 if (rtype != ftype) {
                     if (rtype->isIntegerType() && ftype->isFloatType()) {
                         v = new CastInstruction(currentFunc, temp->val, ftype, CastInstruction::INT_TO_FLOAT);
-                        temp->blockInsts.addInst((Instruction*)v);
+                        temp->blockInsts.addInst((Instruction *) v);
                     } else if (rtype->isFloatType() && ftype->isIntegerType()) {
                         v = new CastInstruction(currentFunc, temp->val, ftype, CastInstruction::FLOAT_TO_INT);
-                        temp->blockInsts.addInst((Instruction*)v);
+                        temp->blockInsts.addInst((Instruction *) v);
                     }
                 }
 
@@ -692,6 +693,12 @@ bool IRGenerator::ir_leaf_node_float(ast_node * node)
     return true;
 }
 
+static std::vector<int32_t> * vec;
+
+static void init_global_array(ast_node * node)
+{
+    vec->push_back(node->integer_val);
+}
 /// @brief 变量声明语句节点翻译成线性中间IR
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
@@ -784,17 +791,22 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
                 Instanceof(gVal, GlobalVariable *, child->val);
                 gVal->floatVal = new float(cexp->getVal());
             } else if (child->type->isArrayType()) {
-                int l = std::min((int32_t) s->sons.size(), child->type->getSize() / 4);
+                /*int l = std::min((int32_t) s->sons.size(), child->type->getSize() / 4);
                 int32_t * arr = (int32_t *) malloc(sizeof(int32_t) * (1 + l));
                 *arr = l;
                 for (int i = 0; i < l; i++) {
                     arr[i + 1] = s->sons[i]->integer_val;
                 }
-                ((GlobalVariable *) child->val)->intVal = arr;
-                /*auto v = new std::vector<void*>();
-                if (array_init(s, (ArrayType*)child->type, s->sons.begin(), s->sons.end(), *v)) {
-                    ((GlobalVariable *)child->val)->intVal = (int*)v->data();
-                }*/
+                ((GlobalVariable *) child->val)->intVal = arr;*/
+                vec = new std::vector<int32_t>();
+				vec->push_back(0);
+                bool hasVar =
+                    array_init((ArrayType *) child->type, s->sons.begin(), s->sons.end(), init_global_array);
+                if (!hasVar) {
+                    int l = child->type->getSize() / 4;
+                    vec->data()[0] = l;
+                    ((GlobalVariable *) child->val)->intVal = vec->data();
+                }
             }
         }
     return true;
@@ -1059,19 +1071,19 @@ bool IRGenerator::ir_array_init(ast_node * node)
  * @param node 处理节点
  * @param type 初始化对应的数组类型
  * @param begin end array_init的子列表
- * @param v 返回的list
+ * @param process 每个解析单元逐个处理，参数为当前解析的节点
  * @return 是否包含变量元素
  */
 
-static float * pfzero = new float(0.f);
-static int * pzero = new int(0);
-
-bool IRGenerator::array_init(ast_node * node, ArrayType * type,
-    std::vector<ast_node*>::const_iterator begin, std::vector<ast_node*>::const_iterator end,
-    std::vector<void*> &v) {
+bool IRGenerator::array_init(ArrayType * type,
+                             std::vector<ast_node *>::const_iterator begin,
+                             std::vector<ast_node *>::const_iterator end,
+                             void (*process)(ast_node *))
+{
     const Type * tp = type->getElementType();
     bool hasVariable = false;
     if (tp->isArrayType()) {
+        // 多维数组需按维度展开
         Instanceof(arrTp, const ArrayType *, tp);
         uint32_t n = arrTp->getNumElements();
         uint32_t dim = 0;
@@ -1080,25 +1092,27 @@ bool IRGenerator::array_init(ast_node * node, ArrayType * type,
             bool ret;
             if (child->node_type == ASTOP(ARRAY_INIT)) {
                 auto & sons = child->sons;
-                ret = array_init(child, (ArrayType*)arrTp, sons.begin(), sons.end(), v);
+                ret = array_init((ArrayType *) arrTp, sons.begin(), sons.end(), process);
                 iter++;
             } else {
                 auto iend = std::min(iter + n, end);
-                ret = array_init(child, (ArrayType*)arrTp, iter, iend, v);
+                ret = array_init((ArrayType *) arrTp, iter, iend, process);
                 iter += n;
             }
-            if (ret) hasVariable = true;
+            if (ret)
+                hasVariable = true;
             dim++;
         }
         if (type->getNumElements() == 0)
             type->setNumElements(dim);
     } else {
+        // 一维数组直接元素
         uint32_t n = type->getNumElements(), i = 0;
         if (n == 0) {
             n = end - begin;
             type->setNumElements(n);
         }
-        void * cnst = tp->isFloatType() ? (void*)pfzero : (void*)pzero;
+        ast_node * cnst = tp->isFloatType() ? ast_node::fzero() : ast_node::izero();
         auto * func = module->getCurrentFunction();
         for (; begin < end && i < n; begin++, i++) {
             // 仅处理第一个元素
@@ -1108,33 +1122,35 @@ bool IRGenerator::array_init(ast_node * node, ArrayType * type,
                 x = sons.begin();
                 e = sons.end();
             }
-            void * vl = cnst;
+            ast_node * vl = cnst;
             if (x < e) {
-                ast_node * CHECK_NODE(xx, *x);
-                node->blockInsts.addInst(xx->blockInsts);
-                vl = xx->val;
-                if (nullptr==dynamic_cast<Constant*>((Value*)vl))
+                CHECK_NODE(vl, *x);
+                // node->blockInsts.addInst(xx->blockInsts);
+                if (vl->node_type != ASTOP(LEAF_LITERAL_INT) && vl->node_type != ASTOP(LEAF_LITERAL_FLOAT))
                     hasVariable = true;
-                Type * rtype = xx->val->getType();
+                Type * rtype = vl->type;
                 if (rtype != tp) {
                     // 类型转换
-                    if (tp->isFloatType() && dynamic_cast<ConstInt*>((Value*)vl)) {
-                        vl = &((ConstInt*)vl)->intVal;
-                    } else if (tp->isIntegerType() && dynamic_cast<ConstFloat*>((Value*)vl)) {
-                        vl = &((ConstFloat*)vl)->val;
+                    if (tp->isFloatType() && vl->node_type == ASTOP(LEAF_LITERAL_INT)) {
+                        vl->node_type = ASTOP(LEAF_LITERAL_FLOAT);
+                    } else if (tp->isIntegerType() && vl->node_type == ASTOP(LEAF_LITERAL_FLOAT)) {
+                        vl->node_type = ASTOP(LEAF_LITERAL_INT);
                     } else if (func) {
-                        auto * inst = new CastInstruction(func, (Value*)vl, (Type*)tp,
-                            tp->isFloatType() ? CastInstruction::INT_TO_FLOAT : CastInstruction::FLOAT_TO_INT);
-                        node->blockInsts.addInst(inst);
-                        node->val = inst;
-                        vl = inst;
+                        auto * inst = new CastInstruction(func,
+                                                          vl->val,
+                                                          (Type *) tp,
+                                                          tp->isFloatType() ? CastInstruction::INT_TO_FLOAT
+                                                                            : CastInstruction::FLOAT_TO_INT);
+                        vl->blockInsts.addInst(inst);
+                        vl->val = inst;
+                        vl->type = (Type *) tp;
                     }
                 }
             }
-            v.push_back(vl);
+            process(vl);
         }
         for (; i < n; i++)
-            v.push_back(cnst);
+            process(cnst);
     }
     return hasVariable;
 }
