@@ -381,7 +381,8 @@ bool IRGenerator::ir_function_call(ast_node * node)
                 // 遍历Block的每个语句，进行显示或者运算
                 ast_node * CHECK_NODE(temp, son);
                 Value * v = temp->val;
-                Type * rtype = v->getType();
+				//函数调用不会隐式转换，而是直接传值
+                /*Type * rtype = v->getType();
                 Type * ftype = (*pIter)->getType();
 
                 if (rtype != ftype) {
@@ -392,7 +393,7 @@ bool IRGenerator::ir_function_call(ast_node * node)
                         v = new CastInstruction(currentFunc, temp->val, ftype, CastInstruction::FLOAT_TO_INT);
                         temp->blockInsts.addInst((Instruction *) v);
                     }
-                }
+                }*/
 
                 realParams.push_back(v);
                 node->blockInsts.addInst(temp->blockInsts);

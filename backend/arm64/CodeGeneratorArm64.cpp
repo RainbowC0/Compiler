@@ -273,7 +273,6 @@ void CodeGeneratorArm64::registerAllocation(Function * func)
     func->setMaxDep((dep + 15) & ~15);
     if (dep)
         protectedRegNo.push_back(ARM64_FP_REG_NO);
-
     // 6. 调整形参
     adjustFormalParamInsts(func);
 
@@ -320,6 +319,7 @@ void CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
         int32_t reg = param->getRegId();
         if (ARM64_CALLER_SAVE(reg)) {
             std::remove(protects.begin(), protects.end(), reg);
+			protects.pop_back();
         }
         param->setRegId(k + param->getType()->isFloatType() * ARM64_F0);
         simpleRegisterAllocator.Allocate(k);
@@ -332,7 +332,7 @@ void CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
         int32_t reg = param->getRegId();
         if (ARM64_CALLER_SAVE(reg)) {
             std::remove(protects.begin(), protects.end(), reg);
-            
+            protects.pop_back();
         }
         param->setRegId(-1);
     }
@@ -386,7 +386,7 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
                 pIter = insts.insert(pIter, assignInst);
                 pIter++;
             }
-
+			auto piter = callInst->calledFunction->getParams().begin();
             for (int k = 0, l = std::min(opnum, 8); k < l; k++) {
 
                 // 检查实参的类型是否是临时变量。
@@ -396,7 +396,7 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
                 if (arg == callInst)
                     break;
 
-                int regno = arg->getType()->isFloatType() ? k + 32 : k;
+                int regno = k + (*piter)->getType()->isFloatType() * ARM64_F0;
 
                 if (arg->getRegId() == regno) {
                     // 则说明寄存器已经是实参传递的寄存器，不用创建赋值指令
@@ -552,8 +552,9 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(std::vector<LiveRange> & r
             range.value->setRegId(range.reg);
             simpleRegisterAllocator.Allocate(range.reg);
             if (ARM64_CALLER_SAVE(range.reg) &&
-                std::find(protects.begin(), protects.end(), range.reg) == protects.end())
+                std::find(protects.begin(), protects.end(), range.reg) == protects.end()) {
                 protects.push_back(range.reg);
+			}
         } else {
             range.value->setMemoryAddr(ARM64_FP_REG_NO, range.stackOffset);
         }
