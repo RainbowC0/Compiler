@@ -791,13 +791,6 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
                 Instanceof(gVal, GlobalVariable *, child->val);
                 gVal->floatVal = new float(cexp->getVal());
             } else if (child->type->isArrayType()) {
-                /*int l = std::min((int32_t) s->sons.size(), child->type->getSize() / 4);
-                int32_t * arr = (int32_t *) malloc(sizeof(int32_t) * (1 + l));
-                *arr = l;
-                for (int i = 0; i < l; i++) {
-                    arr[i + 1] = s->sons[i]->integer_val;
-                }
-                ((GlobalVariable *) child->val)->intVal = arr;*/
                 vec = new std::vector<int32_t>();
 				vec->push_back(0);
                 bool hasVar =

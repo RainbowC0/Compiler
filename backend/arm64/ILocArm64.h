@@ -86,7 +86,7 @@ class ILocArm64 {
     /// @brief 加载符号值 ldr r0,=g; ldr r0,[r0]
     /// @param rsReg 结果寄存器号
     /// @param name Label名字
-    void load_symbol(int rs_reg_no, cstr name, bool f = false);
+    void load_symbol(int rs_reg_no, cstr name);
 
 public:
     /// @brief 构造函数
@@ -129,14 +129,14 @@ public:
     /// @param rs_reg_no 结果寄存器
     /// @param base_reg_no 基址寄存器
     /// @param disp 偏移
-    void load_base(int rs_reg_no, int base_reg_no, int disp);
+    void load_base(int rs_reg_no, int base_reg_no, int disp, bool wide = false);
 
     /// @brief Store指令，基址寻址 str r0,[fp,#100]
     /// @param src_reg_no 源寄存器
     /// @param base_reg_no 基址寄存器
     /// @param disp 偏移
     /// @param tmp_reg_no 可能需要临时寄存器编号
-    void store_base(int src_reg_no, int base_reg_no, int disp, int tmp_reg_no);
+    void store_base(int src_reg_no, int base_reg_no, int disp, int tmp_reg_no, bool wide = false);
 
     /// @brief 标签指令
     /// @param name
@@ -163,7 +163,7 @@ public:
     /// @brief 加载变量到寄存器
     /// @param rs_reg_no 结果寄存器
     /// @param var 变量
-    void load_var(int rs_reg_no, Value * var);
+    void load_var(int rs_reg_no, Value * var, bool wide = false);
 
     /// @brief 加载变量地址到寄存器
     /// @param rs_reg_no 结果寄存器

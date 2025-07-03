@@ -295,7 +295,7 @@ void ILocArm64::load_fimm(int rs_reg, float f, bool wide)
 /// @brief 加载符号值 ldr r0,=g ldr r0,=.L1
 /// @param rs_reg_no 结果寄存器编号
 /// @param name 符号名
-void ILocArm64::load_symbol(int rs_reg_no, cstr name, bool f)
+void ILocArm64::load_symbol(int rs_reg_no, cstr name)
 {
     // movw r10, #:lower16:a
     // movt r10, #:upper16:a
@@ -318,9 +318,10 @@ void ILocArm64::load_symbol(int rs_reg_no, cstr name, bool f)
 /// @param rsReg 结果寄存器
 /// @param base_reg_no 基址寄存器
 /// @param offset 偏移
-void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset)
+void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset, bool wide)
 {
-    std::string rsReg = PlatformArm64::regName[rs_reg_no];
+    auto * regs = wide ? PlatformArm64::xregName : PlatformArm64::regName;
+    std::string rsReg = regs[rs_reg_no];
     std::string base = base_reg_no == ARM64_ZR_REG_NO ? "sp" : PlatformArm64::xregName[base_reg_no];
 
     if (PlatformArm64::isDisp(offset)) {
@@ -351,7 +352,7 @@ void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset)
 /// @param base_reg_no 基址寄存器
 /// @param disp 偏移
 /// @param tmp_reg_no 可能需要临时寄存器编号
-void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_reg_no)
+void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_reg_no, bool wide)
 {
     std::string base = base_reg_no == ARM64_ZR_REG_NO ? "sp" : PlatformArm64::xregName[base_reg_no];
 
@@ -380,7 +381,7 @@ void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_re
 
     // str r8,[fp,#-16]
     // str r8,[fp,r9]
-    emit("str", PlatformArm64::regName[src_reg_no], base);
+    emit("str", (wide ? PlatformArm64::xregName : PlatformArm64::regName)[src_reg_no], base);
 }
 
 /// @brief 寄存器Mov操作
@@ -394,7 +395,7 @@ void ILocArm64::mov_reg(int rs_reg_no, int src_reg_no)
 /// @brief 加载变量到寄存器，保证将变量放到reg中
 /// @param rs_reg_no 结果寄存器
 /// @param src_var 源操作数
-void ILocArm64::load_var(int rs_reg_no, Value * src_var)
+void ILocArm64::load_var(int rs_reg_no, Value * src_var, bool wide)
 {
 
     if (Instanceof(constVal, ConstInt *, src_var)) {
@@ -402,19 +403,19 @@ void ILocArm64::load_var(int rs_reg_no, Value * src_var)
 
         // TODO 目前只考虑整数类型 100
         // ldr r8,#100
-        load_imm(rs_reg_no, constVal->getVal());
+        load_imm(rs_reg_no, constVal->getVal(), wide);
     } else if (Instanceof(constFloat, ConstFloat *, src_var)) {
-        load_fimm(rs_reg_no, constFloat->getVal());
+        load_fimm(rs_reg_no, constFloat->getVal(), wide);
     } else if (src_var->getRegId() != -1) {
 
         // 源操作数为寄存器变量
         int32_t src_regId = src_var->getRegId();
 
         if (src_regId != rs_reg_no) {
-
+            auto * regs = wide ? PlatformArm64::xregName : PlatformArm64::regName;
             // mov r8,r2 | 这里有优化空间——消除r8
             cstr op = rs_reg_no >= ARM64_F0 ? "fmov" : "mov";
-            emit(op, PlatformArm64::regName[rs_reg_no], PlatformArm64::regName[src_regId]);
+            emit(op, regs[rs_reg_no], regs[src_regId]);
         }
     } else if (Instanceof(globalVar, GlobalVariable *, src_var)) {
         // 全局变量
@@ -422,7 +423,7 @@ void ILocArm64::load_var(int rs_reg_no, Value * src_var)
         // 读取全局变量的地址
         // movw r8, #:lower16:a
         // movt r8, #:lower16:a
-        load_symbol(rs_reg_no, globalVar->getName(), globalVar->getType()->isFloatType());
+        load_symbol(rs_reg_no, globalVar->getName());
 
         // ldr r8, [r8]
         // emit("ldr", PlatformArm64::regName[rs_reg_no], "[" + PlatformArm64::regName[rs_reg_no] + "]");
@@ -444,7 +445,7 @@ void ILocArm64::load_var(int rs_reg_no, Value * src_var)
         // 但对于形参，其保存的是调用函数栈的数组的地址，需要读取出来
 
         // ldr r8,[sp,#16]
-        load_base(rs_reg_no, var_baseRegId, var_offset);
+        load_base(rs_reg_no, var_baseRegId, var_offset, wide);
     }
 }
 
@@ -533,7 +534,7 @@ void ILocArm64::store_var(int src_reg_no, Value * dest_var, int tmp_reg_no, bool
 
         // str r8,[r9]
         // str r8, [fp, # - 16]
-        store_base(src_reg_no, dest_baseRegId, dest_offset, tmp_reg_no);
+        store_base(src_reg_no, dest_baseRegId, dest_offset, tmp_reg_no, wide);
     }
 }
 
@@ -569,15 +570,19 @@ void ILocArm64::allocStack(Function * func, int tmp_reg_no)
         funcCallArgCnt = 0;
     }
 
-    // 计算栈帧大小
-    int off = func->getMaxDep();
+    int argSize = funcCallArgCnt * 8;
+    argSize = (argSize + 15) & ~15;
 
-    off += funcCallArgCnt * 8;
+    // 计算栈帧大小
+    int off = func->getMaxDep() + argSize;
 
     // 不需要在栈内额外分配空间，则什么都不做
     if (0 == off)
         return;
 
+    // 16对齐
+    off = (off + 15) & ~15;
+    func->setMaxDep(off);
     if (PlatformArm64::constExpr(off)) {
         // sub sp,sp,#16
         emit("sub", "sp", "sp", toStr(off));
@@ -590,7 +595,7 @@ void ILocArm64::allocStack(Function * func, int tmp_reg_no)
     }
 
     // 函数调用通过栈传递的基址寄存器设置
-    inst("add", ARM64_FP, "sp", toStr(funcCallArgCnt * 8));
+    inst("add", ARM64_FP, "sp", toStr(argSize));
 }
 
 /// @brief 调用函数fun

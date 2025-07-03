@@ -296,10 +296,14 @@ void InstSelectorArm64::translate_assign(Instruction * inst)
         // int32_t temp_regno = simpleRegisterAllocator.Allocate();
 
         // arg1 -> r8
-        iloc.load_var(ARM64_TMP_REG_NO2, arg1);
+        bool isArray = arg1->getType()->isArrayType();
+        if (isArray)
+            iloc.lea_var(ARM64_TMP_REG_NO2, arg1);
+        else
+            iloc.load_var(ARM64_TMP_REG_NO2, arg1);
 
         // r8 -> rs 可能用到r9
-        iloc.store_var(ARM64_TMP_REG_NO2, result, ARM64_TMP_REG_NO, ARRTYPE(arg1));
+        iloc.store_var(ARM64_TMP_REG_NO2, result, ARM64_TMP_REG_NO, isArray);
 
         // simpleRegisterAllocator.free(temp_regno);
     }
@@ -503,7 +507,7 @@ void InstSelectorArm64::translate_gep(Instruction * inst)
     } else {
         baseReg = reg1;
         if (baseReg == -1) {
-            iloc.load_var(ARM64_TMP_REG_NO, arg1);
+            iloc.load_var(ARM64_TMP_REG_NO, arg1, true);
             baseReg = ARM64_TMP_REG_NO;
             baseOff = 0;
         }
@@ -557,7 +561,7 @@ void InstSelectorArm64::translate_store(Instruction * inst)
         ptr->getMemoryAddr(&basereg, &off);
     } else if (basereg == -1) {
         basereg = ARM64_TMP_REG_NO;
-        iloc.load_var(basereg, ptr);
+        iloc.load_var(basereg, ptr, true);
     }
     if (loadreg == -1) {
         loadreg = ARM64_TMP_REG_NO2;
@@ -739,7 +743,7 @@ void InstSelectorArm64::translate_call(Instruction * inst)
         simpleRegisterAllocator.Allocate(7);
 
         // 前四个的后面参数采用栈传递
-        int esp = 0;
+        /*int esp = 0;
         for (int32_t k = 8; k < operandNum; k++) {
 
             auto arg = callInst->getOperand(k);
@@ -747,7 +751,7 @@ void InstSelectorArm64::translate_call(Instruction * inst)
             // 新建一个内存变量，用于栈传值到形参变量中
             MemVariable * newVal = func->newMemVariable((Type *) PointerType::get(arg->getType()));
             newVal->setMemoryAddr(ARM64_SP_REG_NO, esp);
-            esp += 4;
+            esp += 8;
 
             Instruction * assignInst = new MoveInstruction(func, newVal, arg);
 
@@ -755,7 +759,7 @@ void InstSelectorArm64::translate_call(Instruction * inst)
             translate_assign(assignInst);
 
             delete assignInst;
-        }
+        }*/
 
         for (int32_t k = 0, d = 0; k < operandNum && k < 8; k++) {
 

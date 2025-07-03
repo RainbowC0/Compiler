@@ -268,15 +268,14 @@ void CodeGeneratorArm64::registerAllocation(Function * func)
     // 4. 处理剩余逻辑（如保护寄存器）
     adjustFuncCallInsts(func);
 
-    // 5. 调整形参
-    int dep = adjustFormalParamInsts(func);
-
-    // 6. 对齐sp
-    dep += func->getMaxDep();
+    // 5. 对齐sp
+    int32_t dep = func->getMaxDep();
     func->setMaxDep((dep + 15) & ~15);
-
     if (dep)
         protectedRegNo.push_back(ARM64_FP_REG_NO);
+
+    // 6. 调整形参
+    adjustFormalParamInsts(func);
 
 #if 0
     // 临时输出调整后的IR指令，用于查看当前的寄存器分配、栈内变量分配、实参入栈等信息的正确性
@@ -289,7 +288,7 @@ void CodeGeneratorArm64::registerAllocation(Function * func)
 /// @brief 寄存器分配前对函数内的指令进行调整，以便方便寄存器分配
 /// @param func 要处理的函数
 /// @param usedArgs 调用其余函数时最大实参数
-int CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
+void CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
 {
     // 请注意这里所得的所有形参都是对应的实参的值关联的临时变量
     // 如果不是不能使用这里的代码
@@ -327,23 +326,21 @@ int CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
     }
 
     // 根据ARM64版C语言的调用约定，除前8个外的实参进行值传递，逆序入栈
-    int64_t fp_esp = 0;
     for (; k < pm; k++) {
         auto param = params[k];
-        // 目前假定变量大小都是4字节。实际要根据类型来计算
+        // 目前假定变量大小都是8字节。
         int32_t reg = param->getRegId();
         if (ARM64_CALLER_SAVE(reg)) {
             std::remove(protects.begin(), protects.end(), reg);
-            param->setRegId(-1);
+            
         }
-        bool isArray = param->getType()->isArrayType();
-        if (isArray && (fp_esp & 7)) {
-            fp_esp += 4;
-        }
-        param->setMemoryAddr(ARM64_SP_REG_NO, fp_esp);
-        fp_esp += 4 + 4 * isArray;
+        param->setRegId(-1);
     }
-    return fp_esp;
+    int32_t fp_esp = func->getMaxDep() + ((protects.size() + 1) & ~1) * 8;
+    for (k = 8; k < pm; k++) {
+        params[k]->setMemoryAddr(ARM64_SP_REG_NO, fp_esp);
+        fp_esp += 8;
+    }
 }
 
 /// @brief 寄存器分配前对函数内的指令进行调整，以便方便寄存器分配
@@ -377,9 +374,9 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
                     break;
 
                 // 新建一个内存变量，用于栈传值到形参变量中
-                LocalVariable * newVal = func->newLocalVarValue(IntegerType::getTypeInt());
+                LocalVariable * newVal = func->newLocalVarValue(arg->getType());
                 newVal->setMemoryAddr(ARM64_SP_REG_NO, esp);
-                esp += 4;
+                esp += 8;
 
                 Instruction * assignInst = new MoveInstruction(func, newVal, arg);
 
