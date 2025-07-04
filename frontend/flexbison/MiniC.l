@@ -116,7 +116,7 @@ CMT         {SCMT}|{TCMT}
                 yylval.type.lineno = yylineno;
                 return T_VOID;
             }
-"const"     { }
+"const"     {  }
 "return"    {
                 // return关键字 关键字的识别要在标识符识别的前边，，这是因为关键字也是标识符，不过是保留的
                 return RETURN;

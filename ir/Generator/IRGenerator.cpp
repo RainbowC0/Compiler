@@ -382,7 +382,7 @@ bool IRGenerator::ir_function_call(ast_node * node)
                 ast_node * CHECK_NODE(temp, son);
                 Value * v = temp->val;
 				//函数调用不会隐式转换，而是直接传值
-                /*Type * rtype = v->getType();
+                Type * rtype = v->getType();
                 Type * ftype = (*pIter)->getType();
 
                 if (rtype != ftype) {
@@ -393,7 +393,7 @@ bool IRGenerator::ir_function_call(ast_node * node)
                         v = new CastInstruction(currentFunc, temp->val, ftype, CastInstruction::FLOAT_TO_INT);
                         temp->blockInsts.addInst((Instruction *) v);
                     }
-                }*/
+                }
 
                 realParams.push_back(v);
                 node->blockInsts.addInst(temp->blockInsts);
@@ -566,6 +566,8 @@ bool IRGenerator::ir_assign(ast_node * node)
     Value * leftVal = left->val;
     Value * rightVal = right->val;
     Type * leftType = leftVal->getType();
+    if (leftType->isArrayType())
+        leftType = (Type *)((ArrayType *)leftType)->getBaseElementType();
     Type * rightType = rightVal->getType();
     Function * func = module->getCurrentFunction();
     if (leftType != rightType) {
@@ -793,12 +795,11 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
                 gVal->floatVal = new float(cexp->getVal());
             } else if (child->type->isArrayType()) {
                 vec = new std::vector<int32_t>();
-				vec->push_back(0);
+                vec->push_back(0);
                 bool hasVar =
                     array_init((ArrayType *) child->type, s->sons.begin(), s->sons.end(), init_global_array);
                 if (!hasVar) {
-                    int l = child->type->getSize() / 4;
-                    vec->data()[0] = l;
+                    vec->data()[0] = vec->size() - 1;
                     ((GlobalVariable *) child->val)->intVal = vec->data();
                 }
             }

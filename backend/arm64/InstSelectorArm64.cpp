@@ -471,20 +471,25 @@ void InstSelectorArm64::translate_rem_int32(Instruction * inst)
     int32_t reg1 = arg1->getRegId();
     int32_t reg2 = arg2->getRegId();
     int32_t res = inst->getRegId();
+    int32_t loadreg = -1;
 
     if (res != -1) {
+        loadreg = simpleRegisterAllocator.Allocate();
         // 参数寄存器与结果寄存器相同时，要借助临时寄存器
         if (res == reg1) {
-            iloc.inst("mov", PlatformArm64::regName[ARM64_TMP_REG_NO], PlatformArm64::regName[reg1]);
-            inst->getOperand(0)->setRegId(ARM64_TMP_REG_NO);
+            iloc.inst("mov", PlatformArm64::regName[loadreg], PlatformArm64::regName[reg1]);
+            inst->getOperand(0)->setRegId(loadreg);
         } else if (res == reg2) {
-            iloc.inst("mov", PlatformArm64::regName[ARM64_TMP_REG_NO], PlatformArm64::regName[reg2]);
-            inst->getOperand(1)->setRegId(ARM64_TMP_REG_NO);
+            iloc.inst("mov", PlatformArm64::regName[loadreg], PlatformArm64::regName[reg2]);
+            inst->getOperand(1)->setRegId(loadreg);
         }
     }
     translate_two_operator(inst, "rem");
     arg1->setRegId(reg1);
     arg2->setRegId(reg2);
+    if (loadreg != -1) {
+        simpleRegisterAllocator.free(loadreg);
+    }
 }
 
 void InstSelectorArm64::translate_gep(Instruction * inst)
