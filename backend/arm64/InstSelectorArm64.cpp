@@ -545,7 +545,8 @@ void InstSelectorArm64::translate_gep(Instruction * inst)
             iloc.load_var(reg2, arg2);
         }
         if (__builtin_popcount(l) == 1) {
-            iloc.inst("add", xreg(ARM64_TMP_REG_NO), xreg(baseReg), xreg(reg2) + ",lsl " + to_string(__builtin_ctz(l)));
+            iloc.inst("add", xreg(ARM64_TMP_REG_NO), xreg(baseReg),
+                xreg(reg2) + ",lsl " + to_string(__builtin_ctz(l)));
         } else {
             const int tmp = reg2 == ARM64_TMP_REG_NO2 ? ARM64_TMP_REG_NO : ARM64_TMP_REG_NO2;
             iloc.load_imm(tmp, l, true);
@@ -569,7 +570,7 @@ void InstSelectorArm64::translate_store(Instruction * inst)
         iloc.load_var(basereg, ptr, true);
     }
     if (loadreg == -1) {
-        loadreg = ARM64_TMP_REG_NO2;
+        loadreg = ARM64_TMP_REG_NO2 + src->getType()->isFloatType() * ARM64_F0;
         iloc.load_var(loadreg, src);
     }
 
@@ -780,7 +781,7 @@ void InstSelectorArm64::translate_call(Instruction * inst)
             int32_t reg = arg->getRegId();
             if (reg >= ARM64_F0)
                 regno += ARM64_F0;
-            if (arg->getRegId() != regno) {
+            if (reg != regno) {
                 Instruction * assignInst = new MoveInstruction(func, PlatformArm64::regVal[regno], arg);
 
                 // 翻译赋值指令

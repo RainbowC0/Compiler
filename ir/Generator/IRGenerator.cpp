@@ -630,8 +630,14 @@ bool IRGenerator::ir_return(ast_node * node)
     // 创建临时变量保存IR的值，以及线性IR指令
     node->blockInsts.addInst(right->blockInsts);
 
+    Value * val = right->val;
+    Type * retType = currentFunc->getReturnType();
+    if (val->getType() != retType) {
+        val = new CastInstruction(currentFunc, val, retType, retType->isFloatType() ? CastInstruction::INT_TO_FLOAT : CastInstruction::FLOAT_TO_INT);
+        node->blockInsts.addInst((Instruction*)val);
+    }
     // 返回值赋值到函数返回值变量上，然后跳转到函数的尾部
-    node->blockInsts.addInst(new MoveInstruction(currentFunc, currentFunc->getReturnValue(), right->val));
+    node->blockInsts.addInst(new MoveInstruction(currentFunc, currentFunc->getReturnValue(), val));
 
     // 跳转到函数的尾部出口指令上
     node->blockInsts.addInst(new GotoInstruction(currentFunc, currentFunc->getExitLabel()));
@@ -765,24 +771,24 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
         for (auto child: node->sons) {
             int c = calcDims(child);
 
+            child->val = module->newVarValue(child->type, child->name);
+
             // 修复：全局const int常量专门处理
-            if (child->type->isIntegerType() && child->type->isConst) {
+            /*if (child->type->isIntegerType() && child->type->isConst) {
                 // 只支持常量初始化
                 if (c != -1) {
                     ast_node * s = child->sons[c];
                     int v = 0;
                     if (calcConstExpr(s, &v)) {
                         ConstInt * cint = module->newConstInt(v);
+                        module->setVal(child->val, cint);
                         child->val = cint;
-                        module->setVal(cint, cint);
                         continue;
                     }
                 }
                 minic_log(LOG_ERROR, "全局const int %s 必须有常量初始化", child->name.c_str());
                 continue;
-            }
-
-            child->val = module->newVarValue(child->type, child->name);
+            }*/
 
             if (c == -1)
                 continue;
@@ -1036,6 +1042,7 @@ bool IRGenerator::ir_lval_to_r(ast_node * node)
     Type * tp = s->type;
     Value * v = s->val;
     if (s->node_type == ASTOP(ARRAY_ACCESS)) {
+        //fprintf(stderr, "%s \n", tp->toString().c_str());
         auto func = module->getCurrentFunction();
         auto ldr = new LoadInstruction(func, v, tp);
         node->blockInsts.addInst(ldr);
@@ -1168,6 +1175,7 @@ uint32_t IRGenerator::getTotalArrayElements(ArrayType * arrayType)
     return totalElements;
 }
 
+typedef union {int i;float f;} uif;
 /// @brief 计算常量表达式（只包含常量符号、字面量）
 bool IRGenerator::calcConstExpr(ast_node * node, void * ret)
 {
@@ -1193,25 +1201,77 @@ bool IRGenerator::calcConstExpr(ast_node * node, void * ret)
             return false;
         }
         case ASTOP(ADD):
-            int a, b;
-            calcConstExpr(node->sons[0], &a);
-            calcConstExpr(node->sons[1], &b);
-            *(int *) ret = a + b;
+            uif a, b;
+            ast_node *l = node->sons[0], *r = node->sons[1];
+            calcConstExpr(l, &a.i);
+            calcConstExpr(r, &b.i);
+            bool li = l->node_type == ASTOP(LEAF_LITERAL_INT);
+            bool lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+            bool ri = r->node_type == ASTOP(LEAF_LITERAL_INT);
+            bool rf = r->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+            if (li && ri)
+                *(int *) ret = a.i + b.i;
+            else if (li && rf)
+                *(float *) ret = a.i + b.f;
+            else if (lf && ri)
+                *(float *) ret = a.f + b.i;
+            else
+                *(float *) ret = a.f + b.f;
+            node->node_type = li && ri ? ASTOP(LEAF_LITERAL_INT) : ASTOP(LEAF_LITERAL_FLOAT);
             return true;
         case ASTOP(SUB):
-            calcConstExpr(node->sons[0], &a);
-            calcConstExpr(node->sons[1], &b);
-            *(int *) ret = a - b;
+            l = node->sons[0], r = node->sons[1];
+            calcConstExpr(l, &a);
+            calcConstExpr(r, &b);
+            li = l->node_type == ASTOP(LEAF_LITERAL_INT);
+            lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+            ri = r->node_type == ASTOP(LEAF_LITERAL_INT);
+            rf = r->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+            if (li && ri)
+                *(int *) ret = a.i - b.i;
+            else if (li && rf)
+                *(float *) ret = a.i - b.f;
+            else if (lf && ri)
+                *(float *) ret = a.f - b.i;
+            else
+                *(float *) ret = a.f - b.f;
+            node->node_type = li && ri ? ASTOP(LEAF_LITERAL_INT) : ASTOP(LEAF_LITERAL_FLOAT);
             return true;
         case ASTOP(MUL):
-            calcConstExpr(node->sons[0], &a);
-            calcConstExpr(node->sons[1], &b);
-            *(int *) ret = a * b;
+            l = node->sons[0], r = node->sons[1];
+            calcConstExpr(l, &a);
+            calcConstExpr(r, &b);
+            li = l->node_type == ASTOP(LEAF_LITERAL_INT);
+            lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+            ri = r->node_type == ASTOP(LEAF_LITERAL_INT);
+            rf = r->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+            if (li && ri)
+                *(int *) ret = a.i * b.i;
+            else if (li && rf)
+                *(float *) ret = a.i * b.f;
+            else if (lf && ri)
+                *(float *) ret = a.f * b.i;
+            else
+                *(float *) ret = a.f * b.f;
+            node->node_type = li && ri ? ASTOP(LEAF_LITERAL_INT) : ASTOP(LEAF_LITERAL_FLOAT);
             return true;
         case ASTOP(DIV):
-            calcConstExpr(node->sons[0], &a);
-            calcConstExpr(node->sons[1], &b);
-            *(int *) ret = a / b;
+            l = node->sons[0], r = node->sons[1];
+            calcConstExpr(l, &a.i);
+            calcConstExpr(r, &b.i);
+            li = l->node_type == ASTOP(LEAF_LITERAL_INT);
+            lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+            ri = r->node_type == ASTOP(LEAF_LITERAL_INT);
+            rf = r->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+            if (li && ri)
+                *(int *) ret = a.i / b.i;
+            else if (li && rf)
+                *(float *) ret = a.i / b.f;
+            else if (lf && ri)
+                *(float *) ret = a.f / b.i;
+            else
+                *(float *) ret = a.f / b.f;
+            node->node_type = li && ri ? ASTOP(LEAF_LITERAL_INT) : ASTOP(LEAF_LITERAL_FLOAT);
             return true;
         case ASTOP(MOD):
             calcConstExpr(node->sons[0], &a);
@@ -1474,7 +1534,7 @@ void IRGenerator::processInitListWithOffset(ast_node * initList,
                                             bool usedMemset,
                                             int dimLevel)
 {
-    if (!initList || initList->sons.empty()) {
+    if (!initList) {
         return;
     }
 
@@ -1482,6 +1542,7 @@ void IRGenerator::processInitListWithOffset(ast_node * initList,
     uint32_t elementSize = (dimLevel < dimensionsCnt.size()) ? dimensionsCnt[dimLevel] : 1;
 
     ArrayType * flatType = getBaseArrayType((ArrayType *) arrayVal->getType());
+    Type * elemType = (Type*)flatType->getElementType();
 
     Function * func = module->getCurrentFunction();
     for (size_t i = 0; i < initList->sons.size(); i++) {
@@ -1532,8 +1593,24 @@ void IRGenerator::processInitListWithOffset(ast_node * initList,
                 Instruction * ptr =
                     new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, module->newConstInt(currentOffset), flatType);
                 blockInsts.addInst(ptr);
+                Value * vl = item->val;
+                if (elemType != vl->getType()) {
+                    if (elemType->isFloatType() && dynamic_cast<ConstInt*>(vl)) {
+                        vl = module->newConstFloat(((ConstInt*)vl)->getVal());
+                    } else if (elemType->isIntegerType() && dynamic_cast<ConstFloat*>(vl)) {
+                        vl = module->newConstInt(((ConstFloat*)vl)->getVal());
+                    } else {
+                        auto * inst = new CastInstruction(func,
+                                                          vl,
+                                                          elemType,
+                                                          elemType->isFloatType() ? CastInstruction::INT_TO_FLOAT
+                                                                            : CastInstruction::FLOAT_TO_INT);
+                        blockInsts.addInst(inst);
+                        vl = inst;
+                    }
+                }
                 // 存储值
-                blockInsts.addInst(new StoreInstruction(func, ptr, item->val));
+                blockInsts.addInst(new StoreInstruction(func, ptr, vl));
             }
             currentOffset++;
         }

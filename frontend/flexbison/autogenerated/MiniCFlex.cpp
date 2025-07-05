@@ -1129,7 +1129,7 @@ YY_RULE_SETUP
 case 40:
 YY_RULE_SETUP
 #line 119 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.l"
-{  }
+{ return CONST; }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP

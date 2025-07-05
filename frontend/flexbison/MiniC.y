@@ -400,6 +400,13 @@ AddExp : MulExp {
         bool lf = $1->node_type == ASTOP(LEAF_LITERAL_FLOAT);
         bool ri = $3->node_type == ASTOP(LEAF_LITERAL_INT);
         bool rf = $3->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+        if (li && rf) {
+            lf = true; li = false;
+            $1->float_val = $1->integer_val;
+        } else if (lf && ri) {
+            rf = true; ri = false;
+            $3->float_val = $3->integer_val;
+        }
         if (li && ri) {
             if ($2 == (int)ASTOP(ADD))
                 $1->integer_val += $3->integer_val;
@@ -412,6 +419,7 @@ AddExp : MulExp {
                 $1->float_val += $3->float_val;
             else
                 $1->float_val -= $3->float_val;
+            $$ = $1;
             delete $3;
         } else {
 		    $$ = create_contain_node(ast_operator_type($2), $1, $3);
@@ -425,11 +433,30 @@ AddOp: '+' { $$ = (int)ASTOP(ADD); }
 
 MulExp: UnaryExp { $$ = $1; }
     | MulExp MulOp UnaryExp {
-        if ($1->node_type == ASTOP(LEAF_LITERAL_INT) && $3->node_type == ASTOP(LEAF_LITERAL_INT)) {
+    bool li = $1->node_type == ASTOP(LEAF_LITERAL_INT);
+        bool lf = $1->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+        bool ri = $3->node_type == ASTOP(LEAF_LITERAL_INT);
+        bool rf = $3->node_type == ASTOP(LEAF_LITERAL_FLOAT);
+        if (li && rf) {
+            lf = true; li = false;
+            $1->float_val = $1->integer_val;
+        } else if (lf && ri) {
+            rf = true; ri = false;
+            $3->float_val = $3->integer_val;
+        }
+        if (li && ri) {
             switch (ast_operator_type($2)) {
                 case ASTOP(MUL): $1->integer_val *= $3->integer_val; break;
                 case ASTOP(DIV): $1->integer_val /= $3->integer_val; break;
                 default: $1->integer_val %= $3->integer_val; break;
+            }
+            $$ = $1;
+            delete $3;
+        } else if (lf && rf) {
+            switch (ast_operator_type($2)) {
+                case ASTOP(MUL): $1->float_val *= $3->float_val; break;
+                case ASTOP(DIV): $1->float_val /= $3->float_val; break;
+                default: break;
             }
             $$ = $1;
             delete $3;

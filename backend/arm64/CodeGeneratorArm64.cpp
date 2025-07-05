@@ -387,7 +387,7 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
                 pIter++;
             }
 			auto piter = callInst->calledFunction->getParams().begin();
-            for (int k = 0, l = std::min(opnum, 8); k < l; k++) {
+            for (int k = 0, l = std::min(opnum, 8); k < l; k++, piter++) {
 
                 // 检查实参的类型是否是临时变量。
                 // 如果是临时变量，该变量可更改为寄存器变量即可，或者设置寄存器号
@@ -405,7 +405,6 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
                     // 创建临时变量，指定寄存器
                     Value * reg = PlatformArm64::regVal[regno];
                     Instruction * assignInst = new MoveInstruction(func, reg, arg);
-
                     callInst->setOperand(k, reg);
 
                     // 函数调用指令前插入后，pIter仍指向函数调用指令
