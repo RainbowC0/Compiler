@@ -45,6 +45,7 @@ ast_node::ast_node(Type * _type) : ast_node(ast_operator_type::AST_OP_LEAF_TYPE,
 ast_node::ast_node(digit_int_attr attr) : ast_node(ASTOP(LEAF_LITERAL_INT), IntegerType::getTypeInt(), attr.lineno)
 {
     integer_val = attr.val;
+    isConst = true;
 }
 
 /// @brief 针对无符号整数字面量的构造函数
@@ -53,6 +54,7 @@ ast_node::ast_node(digit_int_attr attr) : ast_node(ASTOP(LEAF_LITERAL_INT), Inte
 ast_node::ast_node(digit_real_attr attr) : ast_node(ASTOP(LEAF_LITERAL_FLOAT), FloatType::getTypeFloat(), attr.lineno)
 {
     float_val = attr.val;
+    isConst = true;
 }
 
 /// @brief 针对标识符ID的叶子构造函数

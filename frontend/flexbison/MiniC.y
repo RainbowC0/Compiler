@@ -232,18 +232,20 @@ VarDecl : VarDeclExpr ';' {
 
 // 变量声明表达式，可支持逗号分隔定义多个
 VarDeclExpr: BasicType VarDef {
-        Type *tp = typeAttr2Type($1);
-        tp->isConst = $1.isConst;
-
-        $2->type = tp;
-
+        $2->type = typeAttr2Type($1);
 		// 创建变量声明语句，并加入第一个变量
 		$$ = create_contain_node(ASTOP(VAR_DECL), $2);
 	}
+    | CONST BasicType VarDef {
+        $3->type = typeAttr2Type($2);
+        $3->isConst = true;
+        $$ = create_contain_node(ASTOP(VAR_DECL), $3);
+    }
 	| VarDeclExpr ',' VarDef {
 		// 插入到变量声明语句
-        $3->type = $1->sons[0]->type;
-
+        ast_node * s0 = $1->sons[0];
+        $3->type = s0->type;
+        $3->isConst = s0->isConst;
 		$$ = $1->insert_son_node($3);
 	}
 	;
@@ -316,10 +318,6 @@ InitValue : Expr {
 BasicType: T_INT { $$ = $1; }
 	| T_FLOAT { $$ = $1; }
 	| T_VOID { $$ = $1; }
-    | CONST BasicType {
-        $$ = $2;
-        $$.isConst = true;
-    }
 	;
 
 // 语句文法：statement:RETURN expr ';' | lVal '=' expr ';'

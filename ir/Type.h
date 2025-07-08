@@ -71,7 +71,6 @@ public:
         return ID == VoidTyID;
     }
 
-    bool isConst;
     ///
     /// @brief 检查是否是Label类型
     /// @return true 是

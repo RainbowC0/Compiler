@@ -538,7 +538,7 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  11
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   275
+#define YYLAST   261
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  56
@@ -547,7 +547,7 @@ union yyalloc
 /* YYNRULES -- Number of rules.  */
 #define YYNRULES  91
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  162
+#define YYNSTATES  163
 
 /* YYMAXUTOK -- Last valid token kind.  */
 #define YYMAXUTOK   290
@@ -602,14 +602,14 @@ static const yytype_int16 yyrline[] =
 {
        0,   111,   111,   119,   125,   130,   137,   154,   159,   162,
      166,   170,   182,   188,   199,   204,   213,   217,   228,   234,
-     243,   252,   261,   271,   276,   288,   291,   298,   301,   307,
-     310,   316,   317,   318,   319,   329,   335,   338,   344,   349,
-     354,   357,   360,   363,   366,   369,   372,   382,   392,   397,
-     430,   431,   434,   435,   469,   470,   471,   475,   478,   483,
-     484,   485,   486,   489,   490,   491,   494,   495,   502,   503,
-     512,   518,   534,   549,   550,   563,   570,   574,   579,   582,
-     594,   598,   605,   614,   626,   630,   633,   639,   642,   647,
-     652,   657
+     239,   244,   254,   263,   273,   278,   290,   293,   300,   303,
+     309,   312,   318,   319,   320,   327,   333,   336,   342,   347,
+     352,   355,   358,   361,   364,   367,   370,   380,   390,   395,
+     428,   429,   432,   433,   467,   468,   469,   473,   476,   481,
+     482,   483,   484,   487,   488,   489,   492,   493,   500,   501,
+     510,   516,   532,   547,   548,   561,   568,   572,   577,   580,
+     592,   596,   603,   612,   624,   628,   631,   637,   640,   645,
+     650,   655
 };
 #endif
 
@@ -648,7 +648,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-103)
+#define YYPACT_NINF (-104)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -662,23 +662,23 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
-      85,  -103,  -103,  -103,    85,   131,  -103,  -103,     8,    33,
-    -103,  -103,  -103,  -103,    77,  -103,     4,  -103,   -11,  -103,
-     223,     1,    26,    14,  -103,  -103,    48,   223,   223,   223,
-     223,  -103,    29,    16,  -103,  -103,  -103,    -5,   -14,  -103,
-      89,  -103,    42,    93,   223,    57,    47,  -103,  -103,  -103,
-      87,  -103,  -103,   223,  -103,  -103,  -103,   223,   108,  -103,
-      85,    -5,    73,  -103,   145,  -103,    79,  -103,  -103,    10,
-    -103,    16,  -103,    94,    95,   195,    99,   125,   126,   198,
-    -103,  -103,  -103,   158,  -103,  -103,    77,  -103,   129,   130,
-    -103,  -103,  -103,  -103,  -103,  -103,    47,  -103,  -103,    81,
-    -103,  -103,  -103,   223,  -103,   223,   223,   141,   223,  -103,
-    -103,  -103,   140,  -103,  -103,  -103,   223,  -103,   183,  -103,
-      29,   102,    84,   138,   -27,    34,   121,   150,  -103,   154,
-    -103,  -103,  -103,  -103,  -103,   223,   223,   223,   223,   223,
-     195,   195,   223,   223,  -103,    29,   102,   102,    84,   138,
-     170,  -103,    36,     0,   195,   162,   223,  -103,  -103,   137,
-     195,  -103
+     131,  -104,  -104,  -104,   136,    87,  -104,  -104,    -4,    59,
+      63,  -104,  -104,  -104,    63,  -104,    15,  -104,    -2,  -104,
+    -104,   142,    10,    27,    11,  -104,  -104,    65,   142,   142,
+     142,   142,  -104,    30,   103,  -104,  -104,  -104,    67,   -15,
+    -104,   102,  -104,   -40,    96,   142,    57,    35,  -104,  -104,
+    -104,    74,  -104,  -104,   142,  -104,  -104,  -104,   142,   108,
+    -104,   136,    67,    77,  -104,   145,  -104,    79,  -104,  -104,
+      -5,  -104,   103,  -104,    88,   106,   195,   115,   146,   150,
+     198,  -104,  -104,  -104,   158,  -104,  -104,    63,  -104,   154,
+     144,  -104,  -104,  -104,  -104,  -104,  -104,    35,  -104,  -104,
+      76,  -104,  -104,  -104,   142,  -104,   142,   142,   168,   142,
+    -104,  -104,  -104,   159,  -104,  -104,  -104,   142,  -104,     3,
+    -104,    30,    -7,    84,   153,     4,    13,   138,   179,  -104,
+     180,  -104,  -104,  -104,  -104,  -104,   142,   142,   142,   142,
+     142,   195,   195,   142,   142,  -104,    30,    -7,    -7,    84,
+     153,   181,  -104,    39,    73,   195,   187,   142,  -104,  -104,
+     165,   195,  -104
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -686,41 +686,41 @@ static const yytype_int16 yypact[] =
    means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-       0,    31,    32,    33,     0,     0,     2,     3,     0,     0,
-      34,     1,     4,     5,     0,    18,    21,    19,    21,    20,
-       0,     0,     0,    22,    77,    78,    82,     0,     0,     0,
-       0,    23,    47,    48,    52,    70,    79,     0,     0,     8,
-       0,    85,     0,     0,     0,     0,    83,    73,    74,    75,
-       0,    50,    51,     0,    54,    55,    56,     0,     0,     6,
-       0,     0,    10,    84,     0,    24,     0,    71,    80,     0,
-      76,    49,    53,     0,     0,     0,     0,     0,     0,     0,
-      12,    46,    38,     0,    14,    17,     0,    16,     0,    79,
-      40,    41,    43,    42,     9,     7,    11,    26,    30,     0,
-      27,    29,    86,     0,    72,     0,     0,     0,     0,    45,
-      44,    36,     0,    13,    15,    39,     0,    25,     0,    81,
-      57,    63,    66,    68,     0,     0,     0,     0,    35,     0,
-      28,    59,    60,    61,    62,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,    37,    58,    64,    65,    67,    69,
-      88,    89,     0,     0,     0,     0,     0,    87,    91,     0,
-       0,    90
+       0,    32,    33,    34,     0,     0,     2,     3,     0,     0,
+       0,     1,     4,     5,     0,    18,    22,    19,    22,    20,
+      21,     0,     0,     0,    23,    77,    78,    82,     0,     0,
+       0,     0,    24,    47,    48,    52,    70,    79,     0,     0,
+       8,     0,    85,     0,     0,     0,     0,    83,    73,    74,
+      75,     0,    50,    51,     0,    54,    55,    56,     0,     0,
+       6,     0,     0,    10,    84,     0,    25,     0,    71,    80,
+       0,    76,    49,    53,     0,     0,     0,     0,     0,     0,
+       0,    12,    46,    38,     0,    14,    17,     0,    16,     0,
+      79,    40,    41,    43,    42,     9,     7,    11,    27,    31,
+       0,    28,    30,    86,     0,    72,     0,     0,     0,     0,
+      45,    44,    36,     0,    13,    15,    39,     0,    26,     0,
+      81,    57,    63,    66,    68,     0,     0,     0,     0,    35,
+       0,    29,    59,    60,    61,    62,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,    37,    58,    64,    65,    67,
+      69,    88,    89,     0,     0,     0,     0,     0,    87,    91,
+       0,     0,    90
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
-    -103,  -103,   188,  -103,   134,   -24,  -103,   112,    74,  -103,
-     192,   171,  -103,   100,    -3,   -70,   -20,   -90,  -103,   167,
-    -103,   -17,  -103,    83,    92,  -102,    -6,  -103,  -103,   -55,
-     -12,  -103,  -103,  -103,  -103
+    -104,  -104,   215,  -104,   160,    -9,  -104,   143,    75,  -104,
+      37,   182,  -104,   109,    -3,   -71,   -21,   117,  -104,   175,
+    -104,    19,  -104,    91,    92,  -103,   -16,  -104,  -104,   -56,
+     -18,  -104,  -104,  -104,  -104
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_uint8 yydefgoto[] =
 {
-       0,     5,     6,    38,    39,    82,    83,    84,    85,     8,
-      17,    98,    99,   100,     9,    87,    88,    32,    53,    33,
-      57,   121,   135,   122,   123,   124,    34,    35,    69,    36,
-      23,    90,    91,    92,    93
+       0,     5,     6,    39,    40,    83,    84,    85,    86,     8,
+      17,    99,   100,   101,     9,    88,    89,    33,    54,    34,
+      58,   122,   136,   123,   124,   125,    35,    36,    70,    37,
+      24,    91,    92,    93,    94
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -728,66 +728,64 @@ static const yytype_uint8 yydefgoto[] =
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_uint8 yytable[] =
 {
-      31,    10,    42,    89,   125,   107,   139,     1,     2,     3,
-      50,     4,    60,    59,    46,   120,   120,    20,    40,    58,
-      89,    47,    48,    49,    66,    68,   140,   156,    89,    24,
-      25,    26,    20,   139,    14,    15,   103,    95,    16,    61,
-     152,   153,    43,    22,   101,   145,   120,   120,   120,   120,
-      96,    72,   120,   120,    37,    86,    21,    40,    22,   112,
-      24,    25,    26,   104,    54,    55,    56,   139,    44,   139,
-     150,   151,    27,    28,     7,    51,    52,    29,    30,    13,
-      86,    41,    18,   119,   157,    89,    89,   141,   127,   155,
-     161,     1,     2,     3,    62,     4,   129,    63,   101,    89,
-      45,    44,    22,    27,    28,    89,   117,   118,    29,    30,
-      67,    24,    25,    26,     1,     2,     3,    64,     4,   146,
-     147,    73,   136,   137,    74,    75,    76,    22,    77,    78,
-      79,    11,    58,    80,   102,    81,   159,     1,     2,     3,
-      70,     4,   131,   132,   133,   134,   105,   106,    24,    25,
-      26,   108,   109,   110,    27,    28,   115,   126,   116,    29,
-      30,    24,    25,    26,     1,     2,     3,   128,     4,    64,
-      97,    73,   138,   142,    74,    75,    76,   143,    77,    78,
-      79,   144,    58,   113,   154,    81,    24,    25,    26,   158,
-     160,    27,    28,    12,    94,   114,    29,    30,    24,    25,
-      26,    24,    25,    26,    27,    28,    19,    64,    73,    29,
-      30,    74,    75,    76,    65,    77,    78,    79,   130,    58,
-      71,   148,    81,     0,     0,   111,    24,    25,    26,    27,
-      28,   149,     0,     0,    29,    30,     0,     0,     0,     0,
-       0,    27,    28,     0,    27,    28,    29,    30,     0,    29,
-      30,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,    27,
-      28,     0,     0,     0,    29,    30
+      32,    10,    43,    90,   126,   108,    25,    26,    27,    47,
+      51,    61,    48,    49,    50,    64,     1,     2,     3,    41,
+      90,   104,    14,    15,    67,    69,    21,    65,    90,    60,
+      25,    26,    27,   132,   133,   134,   135,   140,    62,    44,
+     153,   154,    73,    21,   102,    97,   140,    19,   105,    28,
+      29,    20,    23,    96,    30,    31,    87,   141,    41,   113,
+      25,    26,    27,    38,    16,    45,   142,    22,    18,    23,
+     151,   152,   140,    28,    29,     7,    52,    53,    30,    31,
+      13,    87,    42,   120,   158,    90,    90,    11,   128,    45,
+     162,    59,   156,     1,     2,     3,   130,     4,   102,    90,
+     157,   118,   119,    28,    29,    90,   140,    63,    30,    31,
+      68,    25,    26,    27,     1,     2,     3,    46,     4,    23,
+      65,    74,   137,   138,    75,    76,    77,    71,    78,    79,
+      80,    23,    59,    81,   103,    82,   160,     1,     2,     3,
+     106,     4,     1,     2,     3,    25,    26,    27,    25,    26,
+      27,    55,    56,    57,    28,    29,   147,   148,   107,    30,
+      31,    25,    26,    27,     1,     2,     3,   109,     4,    65,
+      98,    74,   117,   110,    75,    76,    77,   111,    78,    79,
+      80,   116,    59,   114,   127,    82,   129,   139,    28,    29,
+     143,    28,    29,    30,    31,   155,    30,    31,    25,    26,
+      27,    25,    26,    27,    28,    29,   144,   145,    74,    30,
+      31,    75,    76,    77,   159,    78,    79,    80,   161,    59,
+      12,    95,    82,   121,   121,   112,    66,   115,   131,    72,
+     149,     0,   150,     0,     0,     0,     0,     0,     0,     0,
+       0,    28,    29,     0,    28,    29,    30,    31,     0,    30,
+      31,     0,     0,   146,   121,   121,   121,   121,     0,     0,
+     121,   121
 };
 
 static const yytype_int16 yycheck[] =
 {
-      20,     4,    22,    58,   106,    75,    33,     6,     7,     8,
-      30,    10,    26,    37,    26,   105,   106,    28,    21,    24,
-      75,    27,    28,    29,    44,    45,    53,    27,    83,     3,
-       4,     5,    28,    33,    26,    27,    26,    61,     5,    53,
-     142,   143,    28,    54,    64,   135,   136,   137,   138,   139,
-      62,    57,   142,   143,    53,    58,    52,    60,    54,    79,
-       3,     4,     5,    53,    48,    49,    50,    33,    54,    33,
-     140,   141,    46,    47,     0,    46,    47,    51,    52,     5,
-      83,    55,     5,   103,   154,   140,   141,    53,   108,    53,
-     160,     6,     7,     8,     5,    10,   116,    55,   118,   154,
-      52,    54,    54,    46,    47,   160,    25,    26,    51,    52,
-      53,     3,     4,     5,     6,     7,     8,    24,    10,   136,
-     137,    13,    38,    39,    16,    17,    18,    54,    20,    21,
-      22,     0,    24,    25,    55,    27,   156,     6,     7,     8,
-      53,    10,    40,    41,    42,    43,    52,    52,     3,     4,
-       5,    52,    27,    27,    46,    47,    27,    16,    28,    51,
-      52,     3,     4,     5,     6,     7,     8,    27,    10,    24,
-      25,    13,    34,    52,    16,    17,    18,    27,    20,    21,
-      22,    27,    24,    25,    14,    27,     3,     4,     5,    27,
-      53,    46,    47,     5,    60,    83,    51,    52,     3,     4,
-       5,     3,     4,     5,    46,    47,    14,    24,    13,    51,
-      52,    16,    17,    18,    43,    20,    21,    22,   118,    24,
-      53,   138,    27,    -1,    -1,    27,     3,     4,     5,    46,
-      47,   139,    -1,    -1,    51,    52,    -1,    -1,    -1,    -1,
+      21,     4,    23,    59,   107,    76,     3,     4,     5,    27,
+      31,    26,    28,    29,    30,    55,     6,     7,     8,    22,
+      76,    26,    26,    27,    45,    46,    28,    24,    84,    38,
+       3,     4,     5,    40,    41,    42,    43,    33,    53,    28,
+     143,   144,    58,    28,    65,    63,    33,    10,    53,    46,
+      47,    14,    54,    62,    51,    52,    59,    53,    61,    80,
+       3,     4,     5,    53,     5,    54,    53,    52,     5,    54,
+     141,   142,    33,    46,    47,     0,    46,    47,    51,    52,
+       5,    84,    55,   104,   155,   141,   142,     0,   109,    54,
+     161,    24,    53,     6,     7,     8,   117,    10,   119,   155,
+      27,    25,    26,    46,    47,   161,    33,     5,    51,    52,
+      53,     3,     4,     5,     6,     7,     8,    52,    10,    54,
+      24,    13,    38,    39,    16,    17,    18,    53,    20,    21,
+      22,    54,    24,    25,    55,    27,   157,     6,     7,     8,
+      52,    10,     6,     7,     8,     3,     4,     5,     3,     4,
+       5,    48,    49,    50,    46,    47,   137,   138,    52,    51,
+      52,     3,     4,     5,     6,     7,     8,    52,    10,    24,
+      25,    13,    28,    27,    16,    17,    18,    27,    20,    21,
+      22,    27,    24,    25,    16,    27,    27,    34,    46,    47,
+      52,    46,    47,    51,    52,    14,    51,    52,     3,     4,
+       5,     3,     4,     5,    46,    47,    27,    27,    13,    51,
+      52,    16,    17,    18,    27,    20,    21,    22,    53,    24,
+       5,    61,    27,   106,   107,    27,    44,    84,   119,    54,
+     139,    -1,   140,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
       -1,    46,    47,    -1,    46,    47,    51,    52,    -1,    51,
-      52,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    46,
-      47,    -1,    -1,    -1,    51,    52
+      52,    -1,    -1,   136,   137,   138,   139,   140,    -1,    -1,
+     143,   144
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
@@ -796,21 +794,21 @@ static const yytype_int8 yystos[] =
 {
        0,     6,     7,     8,    10,    57,    58,    64,    65,    70,
       70,     0,    58,    64,    26,    27,     5,    66,     5,    66,
-      28,    52,    54,    86,     3,     4,     5,    46,    47,    51,
-      52,    72,    73,    75,    82,    83,    85,    53,    59,    60,
-      70,    55,    72,    28,    54,    52,    86,    82,    82,    82,
-      72,    46,    47,    74,    48,    49,    50,    76,    24,    61,
-      26,    53,     5,    55,    24,    67,    72,    53,    72,    84,
-      53,    75,    82,    13,    16,    17,    18,    20,    21,    22,
-      25,    27,    61,    62,    63,    64,    70,    71,    72,    85,
-      87,    88,    89,    90,    60,    61,    86,    25,    67,    68,
-      69,    72,    55,    26,    53,    52,    52,    71,    52,    27,
-      27,    27,    72,    25,    63,    27,    28,    25,    26,    72,
-      73,    77,    79,    80,    81,    81,    16,    72,    27,    72,
-      69,    40,    41,    42,    43,    78,    38,    39,    34,    33,
-      53,    53,    52,    27,    27,    73,    77,    77,    79,    80,
-      71,    71,    81,    81,    14,    53,    27,    71,    27,    72,
-      53,    71
+      66,    28,    52,    54,    86,     3,     4,     5,    46,    47,
+      51,    52,    72,    73,    75,    82,    83,    85,    53,    59,
+      60,    70,    55,    72,    28,    54,    52,    86,    82,    82,
+      82,    72,    46,    47,    74,    48,    49,    50,    76,    24,
+      61,    26,    53,     5,    55,    24,    67,    72,    53,    72,
+      84,    53,    75,    82,    13,    16,    17,    18,    20,    21,
+      22,    25,    27,    61,    62,    63,    64,    70,    71,    72,
+      85,    87,    88,    89,    90,    60,    61,    86,    25,    67,
+      68,    69,    72,    55,    26,    53,    52,    52,    71,    52,
+      27,    27,    27,    72,    25,    63,    27,    28,    25,    26,
+      72,    73,    77,    79,    80,    81,    81,    16,    72,    27,
+      72,    69,    40,    41,    42,    43,    78,    38,    39,    34,
+      33,    53,    53,    52,    27,    27,    73,    77,    77,    79,
+      80,    71,    71,    81,    81,    14,    53,    27,    71,    27,
+      72,    53,    71
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
@@ -818,8 +816,8 @@ static const yytype_int8 yyr1[] =
 {
        0,    56,    57,    57,    57,    57,    58,    58,    59,    59,
       60,    60,    61,    61,    62,    62,    63,    63,    64,    65,
-      65,    66,    66,    66,    66,    67,    67,    68,    68,    69,
-      69,    70,    70,    70,    70,    71,    71,    71,    71,    71,
+      65,    65,    66,    66,    66,    66,    67,    67,    68,    68,
+      69,    69,    70,    70,    70,    71,    71,    71,    71,    71,
       71,    71,    71,    71,    71,    71,    71,    72,    73,    73,
       74,    74,    75,    75,    76,    76,    76,    77,    77,    78,
       78,    78,    78,    79,    79,    79,    80,    80,    81,    81,
@@ -833,8 +831,8 @@ static const yytype_int8 yyr2[] =
 {
        0,     2,     1,     1,     2,     2,     5,     6,     1,     3,
        2,     3,     2,     3,     1,     2,     1,     1,     2,     2,
-       3,     1,     2,     3,     4,     3,     2,     1,     3,     1,
-       1,     1,     1,     1,     2,     3,     2,     4,     1,     2,
+       3,     3,     1,     2,     3,     4,     3,     2,     1,     3,
+       1,     1,     1,     1,     1,     3,     2,     4,     1,     2,
        1,     1,     1,     1,     2,     2,     1,     1,     1,     3,
        1,     1,     1,     3,     1,     1,     1,     1,     3,     1,
        1,     1,     1,     1,     3,     3,     1,     3,     1,     3,
@@ -1313,7 +1311,7 @@ yyreduce:
 		// 设置到全局变量中
 		ast_root = (yyval.node);
 	}
-#line 1317 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1315 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 3: /* CompileUnit: VarDecl  */
@@ -1324,7 +1322,7 @@ yyreduce:
 		(yyval.node) = create_contain_node(ASTOP(COMPILE_UNIT), (yyvsp[0].node));
 		ast_root = (yyval.node);
 	}
-#line 1328 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1326 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 4: /* CompileUnit: CompileUnit FuncDef  */
@@ -1334,7 +1332,7 @@ yyreduce:
 		// 把函数定义的节点作为编译单元的孩子
 		(yyval.node) = (yyvsp[-1].node)->insert_son_node((yyvsp[0].node));
 	}
-#line 1338 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1336 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 5: /* CompileUnit: CompileUnit VarDecl  */
@@ -1343,7 +1341,7 @@ yyreduce:
 		// 把变量定义的节点作为编译单元的孩子
 		(yyval.node) = (yyvsp[-1].node)->insert_son_node((yyvsp[0].node));
 	}
-#line 1347 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1345 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 6: /* FuncDef: BasicType T_ID '(' ')' Block  */
@@ -1365,7 +1363,7 @@ yyreduce:
 		// create_func_def函数内会释放funcId中指向的标识符空间，切记，之后不要再释放，之前一定要是通过strdup函数或者malloc分配的空间
 		(yyval.node) = create_func_def(funcReturnType, funcId, blockNode, formalParamsNode);
 	}
-#line 1369 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1367 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 7: /* FuncDef: BasicType T_ID '(' FuncParams ')' Block  */
@@ -1373,7 +1371,7 @@ yyreduce:
                                                    {
         (yyval.node) = create_func_def((yyvsp[-5].type), (yyvsp[-4].var_id), (yyvsp[0].node), (yyvsp[-2].node));
 	}
-#line 1377 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1375 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 8: /* FuncParams: FuncParam  */
@@ -1381,7 +1379,7 @@ yyreduce:
                        {
         (yyval.node) = create_contain_node(ASTOP(FUNC_FORMAL_PARAMS), (yyvsp[0].node));
 	}
-#line 1385 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1383 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 9: /* FuncParams: FuncParams ',' FuncParam  */
@@ -1389,7 +1387,7 @@ yyreduce:
                                    {
         (yyval.node)->insert_son_node((yyvsp[0].node));
 	}
-#line 1393 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1391 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 10: /* FuncParam: BasicType T_ID  */
@@ -1398,7 +1396,7 @@ yyreduce:
         (yyval.node) = ast_node::New((yyvsp[0].var_id));
         (yyval.node)->type = typeAttr2Type((yyvsp[-1].type));
 	}
-#line 1402 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1400 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 11: /* FuncParam: BasicType T_ID ArrayIndexList  */
@@ -1411,7 +1409,7 @@ yyreduce:
         (yyval.node)->type = tp;
         (yyval.node)->insert_son_node((yyvsp[0].node));
     }
-#line 1415 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1413 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 12: /* Block: '{' '}'  */
@@ -1422,7 +1420,7 @@ yyreduce:
 		// 为了方便创建一个空的Block节点
 		(yyval.node) = create_contain_node(ASTOP(BLOCK));
 	}
-#line 1426 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1424 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 13: /* Block: '{' BlockItemList '}'  */
@@ -1433,7 +1431,7 @@ yyreduce:
 		// BlockItemList归约时内部创建Block节点，并把语句加入，这里不创建Block节点
 		(yyval.node) = (yyvsp[-1].node);
 	}
-#line 1437 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1435 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 14: /* BlockItemList: BlockItem  */
@@ -1443,7 +1441,7 @@ yyreduce:
 		// 创建一个AST_OP_BLOCK类型的中间节点，孩子为Statement($1)
 		(yyval.node) = create_contain_node(ASTOP(BLOCK), (yyvsp[0].node));
 	}
-#line 1447 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1445 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 15: /* BlockItemList: BlockItemList BlockItem  */
@@ -1452,7 +1450,7 @@ yyreduce:
 		// 把BlockItem归约的节点加入到BlockItemList的节点中
 		(yyval.node) = (yyvsp[-1].node)->insert_son_node((yyvsp[0].node));
 	}
-#line 1456 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1454 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 16: /* BlockItem: Statement  */
@@ -1461,7 +1459,7 @@ yyreduce:
 		// 语句节点传递给归约后的节点上，综合属性
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1465 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1463 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 17: /* BlockItem: VarDecl  */
@@ -1470,7 +1468,7 @@ yyreduce:
 		// 变量声明节点传递给归约后的节点上，综合属性
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1474 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1472 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 18: /* VarDecl: VarDeclExpr ';'  */
@@ -1478,36 +1476,43 @@ yyreduce:
                           {
 		(yyval.node) = (yyvsp[-1].node);
 	}
-#line 1482 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1480 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 19: /* VarDeclExpr: BasicType VarDef  */
 #line 234 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                               {
-        Type *tp = typeAttr2Type((yyvsp[-1].type));
-        tp->isConst = (yyvsp[-1].type).isConst;
-
-        (yyvsp[0].node)->type = tp;
-
+        (yyvsp[0].node)->type = typeAttr2Type((yyvsp[-1].type));
 		// 创建变量声明语句，并加入第一个变量
 		(yyval.node) = create_contain_node(ASTOP(VAR_DECL), (yyvsp[0].node));
 	}
-#line 1496 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1490 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 20: /* VarDeclExpr: VarDeclExpr ',' VarDef  */
-#line 243 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 20: /* VarDeclExpr: CONST BasicType VarDef  */
+#line 239 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+                             {
+        (yyvsp[0].node)->type = typeAttr2Type((yyvsp[-1].type));
+        (yyvsp[0].node)->isConst = true;
+        (yyval.node) = create_contain_node(ASTOP(VAR_DECL), (yyvsp[0].node));
+    }
+#line 1500 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+    break;
+
+  case 21: /* VarDeclExpr: VarDeclExpr ',' VarDef  */
+#line 244 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                  {
 		// 插入到变量声明语句
-        (yyvsp[0].node)->type = (yyvsp[-2].node)->sons[0]->type;
-
+        ast_node * s0 = (yyvsp[-2].node)->sons[0];
+        (yyvsp[0].node)->type = s0->type;
+        (yyvsp[0].node)->isConst = s0->isConst;
 		(yyval.node) = (yyvsp[-2].node)->insert_son_node((yyvsp[0].node));
 	}
-#line 1507 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1512 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 21: /* VarDef: T_ID  */
-#line 252 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 22: /* VarDef: T_ID  */
+#line 254 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               {
 		// 简单变量定义ID
 
@@ -1517,11 +1522,11 @@ yyreduce:
 		// 对于字符型字面量的字符串空间需要释放
 		free((yyvsp[0].var_id).id);
 	}
-#line 1521 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1526 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 22: /* VarDef: T_ID ArrayIndexList  */
-#line 261 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 23: /* VarDef: T_ID ArrayIndexList  */
+#line 263 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                               {
 		// 多维数组变量定义ID[expr1][expr2]...，支持常量表达式
         (yyval.node) = ast_node::New(var_id_attr{(yyvsp[-1].var_id).id, (yyvsp[-1].var_id).lineno});
@@ -1532,21 +1537,21 @@ yyreduce:
 		// 对于字符型字面量的字符串空间需要释放
 		free((yyvsp[-1].var_id).id);
 	}
-#line 1536 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1541 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 23: /* VarDef: T_ID '=' Expr  */
-#line 271 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 24: /* VarDef: T_ID '=' Expr  */
+#line 273 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                         {
         (yyval.node) = ast_node::New(var_id_attr{(yyvsp[-2].var_id).id, (yyvsp[-2].var_id).lineno});
         (yyval.node)->insert_son_node((yyvsp[0].node));
         free((yyvsp[-2].var_id).id);
     }
-#line 1546 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1551 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 24: /* VarDef: T_ID ArrayIndexList '=' ArrayInitList  */
-#line 276 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 25: /* VarDef: T_ID ArrayIndexList '=' ArrayInitList  */
+#line 278 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                                 {
 		// 多维数组带初始化定义，支持常量表达式
 		(yyval.node) = ast_node::New(var_id_attr{(yyvsp[-3].var_id).id, (yyvsp[-3].var_id).lineno});
@@ -1556,215 +1561,206 @@ yyreduce:
         (yyval.node)->insert_son_node((yyvsp[0].node));
 		free((yyvsp[-3].var_id).id);
 	}
-#line 1560 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1565 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 25: /* ArrayInitList: '{' InitValueList '}'  */
-#line 288 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 26: /* ArrayInitList: '{' InitValueList '}'  */
+#line 290 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                       {
 		(yyval.node) = (yyvsp[-1].node);
 	}
-#line 1568 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1573 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 26: /* ArrayInitList: '{' '}'  */
-#line 291 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 27: /* ArrayInitList: '{' '}'  */
+#line 293 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                   {
 		// 空初始化列表
 		(yyval.node) = create_contain_node(ASTOP(ARRAY_INIT), nullptr);
 	}
-#line 1577 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1582 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 27: /* InitValueList: InitValue  */
-#line 298 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 28: /* InitValueList: InitValue  */
+#line 300 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                           {
 		(yyval.node) = create_contain_node(ASTOP(ARRAY_INIT), (yyvsp[0].node));
 	}
-#line 1585 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1590 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 28: /* InitValueList: InitValueList ',' InitValue  */
-#line 301 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 29: /* InitValueList: InitValueList ',' InitValue  */
+#line 303 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                       {
 		(yyval.node) = (yyvsp[-2].node)->insert_son_node((yyvsp[0].node));
 	}
-#line 1593 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1598 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 29: /* InitValue: Expr  */
-#line 307 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 30: /* InitValue: Expr  */
+#line 309 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                  {
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1601 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1606 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 30: /* InitValue: ArrayInitList  */
-#line 310 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+  case 31: /* InitValue: ArrayInitList  */
+#line 312 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                         {
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1609 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1614 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 31: /* BasicType: T_INT  */
-#line 316 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
-                 { (yyval.type) = (yyvsp[0].type); }
-#line 1615 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
-    break;
-
-  case 32: /* BasicType: T_FLOAT  */
-#line 317 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
-                  { (yyval.type) = (yyvsp[0].type); }
-#line 1621 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
-    break;
-
-  case 33: /* BasicType: T_VOID  */
+  case 32: /* BasicType: T_INT  */
 #line 318 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                  { (yyval.type) = (yyvsp[0].type); }
-#line 1627 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1620 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
-  case 34: /* BasicType: CONST BasicType  */
+  case 33: /* BasicType: T_FLOAT  */
 #line 319 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
-                      {
-        (yyval.type) = (yyvsp[0].type);
-        (yyval.type).isConst = true;
-    }
-#line 1636 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+                  { (yyval.type) = (yyvsp[0].type); }
+#line 1626 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+    break;
+
+  case 34: /* BasicType: T_VOID  */
+#line 320 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+                 { (yyval.type) = (yyvsp[0].type); }
+#line 1632 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 35: /* Statement: RETURN Expr ';'  */
-#line 329 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 327 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                             {
 		// 返回语句
 
 		// 创建返回节点AST_OP_RETURN，其孩子为Expr，即$2
 		(yyval.node) = create_contain_node(ASTOP(RETURN), (yyvsp[-1].node));
 	}
-#line 1647 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1643 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 36: /* Statement: RETURN ';'  */
-#line 335 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 333 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                  {
         (yyval.node) = new ast_node(ASTOP(RETURN));
     }
-#line 1655 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1651 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 37: /* Statement: LVal '=' Expr ';'  */
-#line 338 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 336 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                             {
 		// 赋值语句
 
 		// 创建一个AST_OP_ASSIGN类型的中间节点，孩子为LVal($1)和Expr($3)
 		(yyval.node) = create_contain_node(ASTOP(ASSIGN), (yyvsp[-3].node), (yyvsp[-1].node));
 	}
-#line 1666 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1662 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 38: /* Statement: Block  */
-#line 344 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 342 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                 {
 		// 语句块
 		// 内部已创建block节点，直接传递给Statement
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1676 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1672 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 39: /* Statement: Expr ';'  */
-#line 349 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 347 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                    {
 		// 表达式语句
 		// 内部已创建表达式，直接传递给Statement
 		(yyval.node) = (yyvsp[-1].node);
 	}
-#line 1686 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1682 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 40: /* Statement: IfStmt  */
-#line 354 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 352 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                  {
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1694 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1690 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 41: /* Statement: While  */
-#line 357 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 355 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                 {
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1702 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1698 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 42: /* Statement: DoWhile  */
-#line 360 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 358 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                   {
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1710 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1706 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 43: /* Statement: For  */
-#line 363 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 361 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               {
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1718 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1714 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 44: /* Statement: BREAK ';'  */
-#line 366 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 364 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                     {
 		(yyval.node) = new ast_node(ASTOP(BREAK));
 	}
-#line 1726 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1722 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 45: /* Statement: CONTINUE ';'  */
-#line 369 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 367 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                        {
 		(yyval.node) = new ast_node(ASTOP(CONTINUE));
 	}
-#line 1734 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1730 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 46: /* Statement: ';'  */
-#line 372 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 370 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               {
 		// 空语句
 
 		// 直接返回空指针，需要再把语句加入到语句块时要注意判断，空语句不要加入
 		(yyval.node) = new ast_node(ASTOP(NULL_STMT));
 	}
-#line 1745 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1741 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 47: /* Expr: AddExp  */
-#line 382 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 380 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               {
 		// 直接传递给归约后的节点
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1754 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1750 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 48: /* AddExp: MulExp  */
-#line 392 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 390 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                 {
 		// 一目表达式
 		// 直接传递到归约后的节点
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1764 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1760 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 49: /* AddExp: AddExp AddOp MulExp  */
-#line 397 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 395 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                           { // TODO 隐式转换
 		// 创建加减运算节点，孩子为AddExp($1)和UnaryExp($3)
         bool li = (yyvsp[-2].node)->node_type == ASTOP(LEAF_LITERAL_INT);
@@ -1796,29 +1792,29 @@ yyreduce:
 		    (yyval.node) = create_contain_node(ast_operator_type((yyvsp[-1].op_type)), (yyvsp[-2].node), (yyvsp[0].node));
         }
 	}
-#line 1800 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1796 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 50: /* AddOp: '+'  */
-#line 430 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 428 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
            { (yyval.op_type) = (int)ASTOP(ADD); }
-#line 1806 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1802 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 51: /* AddOp: '-'  */
-#line 431 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 429 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               { (yyval.op_type) = (int)ASTOP(SUB); }
-#line 1812 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1808 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 52: /* MulExp: UnaryExp  */
-#line 434 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 432 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                  { (yyval.node) = (yyvsp[0].node); }
-#line 1818 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1814 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 53: /* MulExp: MulExp MulOp UnaryExp  */
-#line 435 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 433 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                             {
     bool li = (yyvsp[-2].node)->node_type == ASTOP(LEAF_LITERAL_INT);
         bool lf = (yyvsp[-2].node)->node_type == ASTOP(LEAF_LITERAL_FLOAT);
@@ -1851,126 +1847,126 @@ yyreduce:
             (yyval.node) = create_contain_node(ast_operator_type((yyvsp[-1].op_type)), (yyvsp[-2].node), (yyvsp[0].node));
         }
     }
-#line 1855 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1851 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 54: /* MulOp: '*'  */
-#line 469 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 467 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
            { (yyval.op_type) = (int)ASTOP(MUL); }
-#line 1861 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1857 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 55: /* MulOp: '/'  */
-#line 470 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 468 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               { (yyval.op_type) = (int)ASTOP(DIV); }
-#line 1867 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1863 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 56: /* MulOp: '%'  */
-#line 471 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 469 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               { (yyval.op_type) = (int)ASTOP(MOD); }
-#line 1873 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1869 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 57: /* RelExp: AddExp  */
-#line 475 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 473 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                {
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1881 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1877 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 58: /* RelExp: RelExp RelOp AddExp  */
-#line 478 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 476 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                               {
 		(yyval.node) = create_contain_node(ast_operator_type((yyvsp[-1].op_type)), (yyvsp[-2].node), (yyvsp[0].node));
 	}
-#line 1889 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1885 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 59: /* RelOp: '>'  */
-#line 483 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 481 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
            { (yyval.op_type) = (int)ASTOP(GT); }
-#line 1895 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1891 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 60: /* RelOp: T_GE  */
-#line 484 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 482 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                { (yyval.op_type) = (int)ASTOP(GE); }
-#line 1901 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1897 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 61: /* RelOp: '<'  */
-#line 485 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 483 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               { (yyval.op_type) = (int)ASTOP(LT); }
-#line 1907 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1903 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 62: /* RelOp: T_LE  */
-#line 486 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 484 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                { (yyval.op_type) = (int)ASTOP(LE); }
-#line 1913 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1909 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 63: /* EqExp: RelExp  */
-#line 489 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 487 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               { (yyval.node) = (yyvsp[0].node); }
-#line 1919 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1915 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 64: /* EqExp: EqExp T_EQ RelExp  */
-#line 490 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 488 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                         { (yyval.node) = create_contain_node(ASTOP(EQ), (yyvsp[-2].node), (yyvsp[0].node)); }
-#line 1925 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1921 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 65: /* EqExp: EqExp T_NE RelExp  */
-#line 491 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 489 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                         { (yyval.node) = create_contain_node(ASTOP(NE), (yyvsp[-2].node), (yyvsp[0].node)); }
-#line 1931 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1927 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 66: /* AndExp: EqExp  */
-#line 494 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 492 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               { (yyval.node) = adjustCond((yyvsp[0].node)); }
-#line 1937 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1933 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 67: /* AndExp: AndExp T_LAND EqExp  */
-#line 495 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 493 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                           {
         (yyval.node) = create_contain_node(ASTOP(LAND), (yyvsp[-2].node), adjustCond((yyvsp[0].node)));
     }
-#line 1945 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1941 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 68: /* CondExp: AndExp  */
-#line 502 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 500 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                { (yyval.node) = (yyvsp[0].node); }
-#line 1951 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1947 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 69: /* CondExp: CondExp T_LOR AndExp  */
-#line 503 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 501 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                {
 		(yyval.node) = create_contain_node(ASTOP(LOR), (yyvsp[-2].node), (yyvsp[0].node));
 	}
-#line 1959 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1955 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 70: /* UnaryExp: PrimaryExp  */
-#line 512 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 510 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                       {
 		// 基本表达式
 
 		// 传递到归约后的UnaryExp上
 		(yyval.node) = (yyvsp[0].node);
 	}
-#line 1970 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1966 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 71: /* UnaryExp: T_ID '(' ')'  */
-#line 518 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 516 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                        {
 		// 没有实参的函数调用
 
@@ -1987,11 +1983,11 @@ yyreduce:
 		(yyval.node) = create_func_call(name_node, paramListNode);
 
 	}
-#line 1991 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 1987 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 72: /* UnaryExp: T_ID '(' RealParamList ')'  */
-#line 534 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 532 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                      {
 		// 含有实参的函数调用
 
@@ -2007,17 +2003,17 @@ yyreduce:
 		// 创建函数调用节点，其孩子为被调用函数名和实参，实参不为空
 		(yyval.node) = create_func_call(name_node, paramListNode);
 	}
-#line 2011 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2007 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 73: /* UnaryExp: '+' UnaryExp  */
-#line 549 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 547 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                        { (yyval.node) = (yyvsp[0].node); }
-#line 2017 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2013 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 74: /* UnaryExp: '-' UnaryExp  */
-#line 550 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 548 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                        {
 		// TODO 浮点数
         if ((yyvsp[0].node)->node_type==ASTOP(LEAF_LITERAL_INT)) {
@@ -2031,75 +2027,75 @@ yyreduce:
             (yyval.node) = create_contain_node(ASTOP(SUB), v, (yyvsp[0].node));
         }
 	}
-#line 2035 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2031 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 75: /* UnaryExp: '!' UnaryExp  */
-#line 563 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 561 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                        {
 		(yyval.node) = create_contain_node(ASTOP(NOT), (yyvsp[0].node));
 	}
-#line 2043 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2039 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 76: /* PrimaryExp: '(' Expr ')'  */
-#line 570 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 568 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                            {
 		// 带有括号的表达式
 		(yyval.node) = (yyvsp[-1].node);
 	}
-#line 2052 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2048 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 77: /* PrimaryExp: T_DIGIT  */
-#line 574 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 572 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                   {
         	// 无符号整型字面量
 		// 创建一个无符号整型的终结符节点
 		(yyval.node) = ast_node::New((yyvsp[0].integer_num));
 	}
-#line 2062 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2058 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 78: /* PrimaryExp: T_FLOAT_LITERAL  */
-#line 579 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 577 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                           {
 		(yyval.node) = ast_node::New((yyvsp[0].float_num));
 	}
-#line 2070 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2066 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 79: /* PrimaryExp: LVal  */
-#line 582 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 580 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                 {
 		// 具有左值的表达式
 
 		// 左转右，部分需要特殊处理
 		(yyval.node) = create_contain_node(ASTOP(L2R), (yyvsp[0].node));
 	}
-#line 2081 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2077 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 80: /* RealParamList: Expr  */
-#line 594 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 592 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                      {
 		// 创建实参列表节点，并把当前的Expr节点加入
 		(yyval.node) = create_contain_node(ast_operator_type::AST_OP_FUNC_REAL_PARAMS, (yyvsp[0].node));
 	}
-#line 2090 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2086 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 81: /* RealParamList: RealParamList ',' Expr  */
-#line 598 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 596 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                  {
 		// 左递归增加实参表达式
 		(yyval.node) = (yyvsp[-2].node)->insert_son_node((yyvsp[0].node));
 	}
-#line 2099 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2095 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 82: /* LVal: T_ID  */
-#line 605 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 603 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
             {
 		// 变量名终结符
 
@@ -2109,11 +2105,11 @@ yyreduce:
 		// 对于字符型字面量的字符串空间需要释放，因词法用到了strdup进行了字符串复制
 		free((yyvsp[0].var_id).id);
 	}
-#line 2113 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2109 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 83: /* LVal: T_ID ArrayIndexList  */
-#line 614 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 612 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                               {
 		// 多维数组访问 ID[expr1][expr2]...
 		
@@ -2123,77 +2119,77 @@ yyreduce:
 		// 对于字符型字面量的字符串空间需要释放
 		free((yyvsp[-1].var_id).id);
 	}
-#line 2127 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2123 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 84: /* ArrayIndexList: '[' Expr ']'  */
-#line 626 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 624 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                               {
 		// 创建数组索引列表节点，包含第一个索引
 		(yyval.node) = create_contain_node(ASTOP(ARRAY_INDICES), (yyvsp[-1].node));
 	}
-#line 2136 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2132 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 85: /* ArrayIndexList: '[' ']'  */
-#line 630 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 628 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
               {
         (yyval.node) = create_contain_node(ASTOP(ARRAY_INDICES), ast_node::New(digit_int_attr{0, yylineno}));
     }
-#line 2144 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2140 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 86: /* ArrayIndexList: ArrayIndexList '[' Expr ']'  */
-#line 633 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 631 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                       {
 		// 向数组索引列表添加新索引
 		(yyval.node) = (yyvsp[-3].node)->insert_son_node((yyvsp[-1].node));
 	}
-#line 2153 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2149 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 87: /* IfStmt: IF '(' CondExp ')' Statement ELSE Statement  */
-#line 639 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 637 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                                      {
 		(yyval.node) = create_contain_node(ASTOP(IF), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[0].node));
 	}
-#line 2161 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2157 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 88: /* IfStmt: IF '(' CondExp ')' Statement  */
-#line 642 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 640 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                                 {
 		(yyval.node) = create_contain_node(ASTOP(IF), (yyvsp[-2].node), (yyvsp[0].node));
 	}
-#line 2169 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2165 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 89: /* While: WHILE '(' CondExp ')' Statement  */
-#line 647 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 645 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                         {
 		(yyval.node) = create_contain_node(ast_operator_type::AST_OP_WHILE, (yyvsp[-2].node), (yyvsp[0].node));
 	}
-#line 2177 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2173 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 90: /* For: FOR '(' Expr ';' CondExp ';' Expr ')' Statement  */
-#line 652 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 650 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                                       {
 		//$$ = create_contain_node(ast_operator_type::AST_OP_FOR, $3, $5, $7, $9);
 	}
-#line 2185 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2181 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
   case 91: /* DoWhile: DO Statement WHILE '(' CondExp ')' ';'  */
-#line 657 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 655 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
                                                  {
 		(yyval.node) = create_contain_node(ast_operator_type::AST_OP_DOWHILE, (yyvsp[-5].node), (yyvsp[-2].node));
 	}
-#line 2193 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2189 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
     break;
 
 
-#line 2197 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
+#line 2193 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/autogenerated/MiniCBison.cpp"
 
       default: break;
     }
@@ -2386,7 +2382,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 661 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
+#line 659 "/media/rainbow/14701F54701F3C44/projects/cpll/compiler/frontend/flexbison/MiniC.y"
 
 
 // 语法识别错误要调用函数的定义

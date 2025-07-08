@@ -547,9 +547,11 @@ void ILocArm64::leaStack(int rs_reg_no, int base_reg_no, int off)
     std::string rs_reg_name = xregs(rs_reg_no);
     std::string base_reg_name = xregs(base_reg_no);
 
-    if (PlatformArm64::constExpr(off))
+    if (off == 0)
+        emit("mov", rs_reg_name, base_reg_name);
+    else if (PlatformArm64::constExpr(off))
         // add r8,fp,#-16
-        emit("add", rs_reg_name, base_reg_name, off ? toStr(off) : PlatformArm64::xregName[ARM64_ZR_REG_NO]);
+        emit("add", rs_reg_name, base_reg_name, toStr(off));
     else {
         // ldr r8,=-257
         load_imm(rs_reg_no, off);

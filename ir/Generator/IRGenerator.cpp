@@ -744,11 +744,13 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
             } else {
                 // 非数组初始化
                 int v;
-                if (calcConstExpr(s, &v)) {
-                    // TODO 浮点数
-                    ConstInt * cint = module->newConstInt(v);
-                    module->setVal(val, cint);
-                    s->val = cint;
+                if (s->isConst && calcConstExpr(s, &v)) {
+                    Constant * cst = s->node_type == ASTOP(LEAF_LITERAL_INT)
+                                    ? (Constant*) module->newConstInt(v)
+                                    : (Constant*) module->newConstFloat(v);
+                    module->setVal(val, cst);
+                    s->val = cst;
+                    //fprintf(stderr, "//const %s\n", val->getName().c_str());
                 }
                 CHECK_NODE(s, s);
                 node->blockInsts.addInst(s->blockInsts);
@@ -773,25 +775,28 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 
             child->val = module->newVarValue(child->type, child->name);
 
-            // 修复：全局const int常量专门处理
-            /*if (child->type->isIntegerType() && child->type->isConst) {
-                // 只支持常量初始化
-                if (c != -1) {
-                    ast_node * s = child->sons[c];
-                    int v = 0;
-                    if (calcConstExpr(s, &v)) {
-                        ConstInt * cint = module->newConstInt(v);
-                        module->setVal(child->val, cint);
-                        child->val = cint;
-                        continue;
-                    }
-                }
-                minic_log(LOG_ERROR, "全局const int %s 必须有常量初始化", child->name.c_str());
-                continue;
-            }*/
+            if (c == -1) continue;
 
-            if (c == -1)
-                continue;
+            if (child->isConst && !child->type->isArrayType()) {
+                // 只支持常量初始化
+                ast_node * s = child->sons[c];
+                int v = 0;
+                if (calcConstExpr(s, &v)) {
+                    // 隐式转换
+                    if (s->node_type == ASTOP(LEAF_LITERAL_FLOAT) && child->type->isIntegerType()) {
+                        s->node_type = ASTOP(LEAF_LITERAL_INT);
+                        s->integer_val = s->float_val;
+                    } else if (s->node_type == ASTOP(LEAF_LITERAL_INT) && child->type->isFloatType()) {
+                        s->node_type = ASTOP(LEAF_LITERAL_FLOAT);
+                        s->float_val = s->integer_val;
+                    }
+                    Constant * cint = s->node_type == ASTOP(LEAF_LITERAL_FLOAT)
+                        ? (Constant*)module->newConstFloat(s->float_val)
+                        : (Constant*)module->newConstInt(s->integer_val);
+                    module->setVal(child->val, cint);
+                }
+            }
+
             ast_node * CHECK_NODE(s, child->sons[c]);
             if (Instanceof(cexp, ConstInt *, s->val)) {
                 Instanceof(gVal, GlobalVariable *, child->val);
@@ -1041,7 +1046,7 @@ bool IRGenerator::ir_lval_to_r(ast_node * node)
     node->blockInsts.addInst(s->blockInsts);
     Type * tp = s->type;
     Value * v = s->val;
-    if (s->node_type == ASTOP(ARRAY_ACCESS)) {
+    if (s->node_type == ASTOP(ARRAY_ACCESS) && !tp->isArrayType()) {
         //fprintf(stderr, "%s \n", tp->toString().c_str());
         auto func = module->getCurrentFunction();
         auto ldr = new LoadInstruction(func, v, tp);
@@ -1179,6 +1184,8 @@ typedef union {int i;float f;} uif;
 /// @brief 计算常量表达式（只包含常量符号、字面量）
 bool IRGenerator::calcConstExpr(ast_node * node, void * ret)
 {
+    uif a, b;
+    ast_node * l, * r;
     switch (node->node_type) {
         case ASTOP(LEAF_LITERAL_INT):
             *(int *) ret = node->integer_val;
@@ -1189,22 +1196,30 @@ bool IRGenerator::calcConstExpr(ast_node * node, void * ret)
         case ASTOP(VAR_ID): {
             Value * v = module->findVarValue(node->name);
             if (Instanceof(cint, ConstInt *, module->getVal(v))) {
-                *(int *) ret = cint->getVal();
+                *(int *) ret = node->integer_val = cint->getVal();
+                node->node_type = ASTOP(LEAF_LITERAL_INT);
+                return true;
+            } else if (Instanceof(cfloat, ConstFloat *, module->getVal(v))) {
+                *(float *) ret = node->float_val = cfloat->getVal();
+                node->node_type = ASTOP(LEAF_LITERAL_FLOAT);
                 return true;
             } else {
                 Instanceof(glb, GlobalVariable *, v);
                 if (glb && nullptr != glb->intVal) {
-                    *(int *) ret = *glb->intVal;
+                    *(int *) ret = node->integer_val = *glb->intVal;
+                    node->node_type = glb->getType()->isFloatType()
+                        ? ASTOP(LEAF_LITERAL_FLOAT)
+                        : ASTOP(LEAF_LITERAL_INT);
                     return true;
                 }
             }
             return false;
         }
-        case ASTOP(ADD):
-            uif a, b;
-            ast_node *l = node->sons[0], *r = node->sons[1];
-            calcConstExpr(l, &a.i);
-            calcConstExpr(r, &b.i);
+        case ASTOP(ADD): {
+            l = node->sons[0]; r = node->sons[1];
+            if (!(calcConstExpr(l, &a.i)
+                && calcConstExpr(r, &b.i)))
+                return false;
             bool li = l->node_type == ASTOP(LEAF_LITERAL_INT);
             bool lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT);
             bool ri = r->node_type == ASTOP(LEAF_LITERAL_INT);
@@ -1217,15 +1232,18 @@ bool IRGenerator::calcConstExpr(ast_node * node, void * ret)
                 *(float *) ret = a.f + b.i;
             else
                 *(float *) ret = a.f + b.f;
+            node->integer_val = *(int *) ret;
             node->node_type = li && ri ? ASTOP(LEAF_LITERAL_INT) : ASTOP(LEAF_LITERAL_FLOAT);
             return true;
-        case ASTOP(SUB):
-            l = node->sons[0], r = node->sons[1];
-            calcConstExpr(l, &a);
-            calcConstExpr(r, &b);
-            li = l->node_type == ASTOP(LEAF_LITERAL_INT);
-            lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT);
-            ri = r->node_type == ASTOP(LEAF_LITERAL_INT);
+        }
+        case ASTOP(SUB): {
+            l = node->sons[0]; r = node->sons[1];
+            if (!(calcConstExpr(l, &a.i)
+                && calcConstExpr(r, &b.i)))
+                return false;
+            bool li = l->node_type == ASTOP(LEAF_LITERAL_INT),
+            lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT),
+            ri = r->node_type == ASTOP(LEAF_LITERAL_INT),
             rf = r->node_type == ASTOP(LEAF_LITERAL_FLOAT);
             if (li && ri)
                 *(int *) ret = a.i - b.i;
@@ -1235,15 +1253,18 @@ bool IRGenerator::calcConstExpr(ast_node * node, void * ret)
                 *(float *) ret = a.f - b.i;
             else
                 *(float *) ret = a.f - b.f;
+            node->integer_val = *(int *) ret;
             node->node_type = li && ri ? ASTOP(LEAF_LITERAL_INT) : ASTOP(LEAF_LITERAL_FLOAT);
             return true;
-        case ASTOP(MUL):
-            l = node->sons[0], r = node->sons[1];
-            calcConstExpr(l, &a);
-            calcConstExpr(r, &b);
-            li = l->node_type == ASTOP(LEAF_LITERAL_INT);
-            lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT);
-            ri = r->node_type == ASTOP(LEAF_LITERAL_INT);
+        }
+        case ASTOP(MUL): {
+            l = node->sons[0]; r = node->sons[1];
+            if (!(calcConstExpr(l, &a.i)
+                && calcConstExpr(r, &b.i)))
+                return false;
+            bool li = l->node_type == ASTOP(LEAF_LITERAL_INT),
+            lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT),
+            ri = r->node_type == ASTOP(LEAF_LITERAL_INT),
             rf = r->node_type == ASTOP(LEAF_LITERAL_FLOAT);
             if (li && ri)
                 *(int *) ret = a.i * b.i;
@@ -1253,15 +1274,18 @@ bool IRGenerator::calcConstExpr(ast_node * node, void * ret)
                 *(float *) ret = a.f * b.i;
             else
                 *(float *) ret = a.f * b.f;
+            node->integer_val = *(int *) ret;
             node->node_type = li && ri ? ASTOP(LEAF_LITERAL_INT) : ASTOP(LEAF_LITERAL_FLOAT);
             return true;
-        case ASTOP(DIV):
+        }
+        case ASTOP(DIV): {
             l = node->sons[0], r = node->sons[1];
-            calcConstExpr(l, &a.i);
-            calcConstExpr(r, &b.i);
-            li = l->node_type == ASTOP(LEAF_LITERAL_INT);
-            lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT);
-            ri = r->node_type == ASTOP(LEAF_LITERAL_INT);
+            if (!(calcConstExpr(l, &a.i)
+                && calcConstExpr(r, &b.i)))
+                return false;
+            bool li = l->node_type == ASTOP(LEAF_LITERAL_INT),
+            lf = l->node_type == ASTOP(LEAF_LITERAL_FLOAT),
+            ri = r->node_type == ASTOP(LEAF_LITERAL_INT),
             rf = r->node_type == ASTOP(LEAF_LITERAL_FLOAT);
             if (li && ri)
                 *(int *) ret = a.i / b.i;
@@ -1271,15 +1295,25 @@ bool IRGenerator::calcConstExpr(ast_node * node, void * ret)
                 *(float *) ret = a.f / b.i;
             else
                 *(float *) ret = a.f / b.f;
+            node->integer_val = *(int *) ret;
             node->node_type = li && ri ? ASTOP(LEAF_LITERAL_INT) : ASTOP(LEAF_LITERAL_FLOAT);
             return true;
+        }
         case ASTOP(MOD):
-            calcConstExpr(node->sons[0], &a);
-            calcConstExpr(node->sons[1], &b);
-            *(int *) ret = a % b;
+            if (!(calcConstExpr(node->sons[0], &a)
+                && calcConstExpr(node->sons[1], &b)))
+                return false;
+            *(int *) ret = a.i % b.i;
+            node->integer_val = *(int *) ret;
+            node->node_type = ASTOP(LEAF_LITERAL_INT);
             return true;
-        case ASTOP(L2R):
-            return calcConstExpr(node->sons[0], ret);
+        case ASTOP(L2R): {
+            if (!calcConstExpr(node->sons[0], ret))
+                return false;
+            node->integer_val = node->sons[0]->integer_val;
+            node->node_type = node->sons[0]->node_type;
+            return true;
+        }
         default:
             return false;
     }

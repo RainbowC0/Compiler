@@ -22,13 +22,13 @@
 ///
 /// @brief 浮点常量类
 ///
-class ConstFloat : public Value {
+class ConstFloat : public Constant {
 public:
     ///
     /// @brief 构造函数
     /// @param _val 浮点值
     ///
-    explicit ConstFloat(float _val) : Value(FloatType::getTypeFloat()), val(_val)
+    explicit ConstFloat(float _val) : Constant(FloatType::getTypeFloat()), val(_val)
     {}
 
     ///

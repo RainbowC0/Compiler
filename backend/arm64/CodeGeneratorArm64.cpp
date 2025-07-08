@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 #include <algorithm>
+#include <typeinfo>
 
 #include "FormalParam.h"
 #include "Function.h"
@@ -362,8 +363,6 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
         // 检查是否是函数调用指令，并且含有返回值
         if (Instanceof(callInst, FuncCallInstruction *, inst)) {
 
-            // if (callInst->getCalledName() == "memset")
-            //     continue;
             //  实参前8个要寄存器传值，其它参数通过栈传递
             //  前8个的后面参数采用栈传递
             int esp = 0;
@@ -386,7 +385,7 @@ void CodeGeneratorArm64::adjustFuncCallInsts(Function * func)
                 pIter = insts.insert(pIter, assignInst);
                 pIter++;
             }
-			auto piter = callInst->calledFunction->getParams().begin();
+            auto piter = callInst->calledFunction->getParams().begin();
             for (int k = 0, l = std::min(opnum, 8); k < l; k++, piter++) {
 
                 // 检查实参的类型是否是临时变量。
@@ -450,6 +449,7 @@ const std::vector<LiveRange> & calculateLiveRanges(Function * func)
     auto ranges = new std::vector<LiveRange>();
     const auto & insts = func->getInterCode().getInsts();
     std::vector<std::pair<Instruction *, int>> labels;
+    const bool hasFuncCall = func->getExistFuncCall();
 
     // 遍历指令，记录变量的定义和使用位置
     for (int pos = 0, l = insts.size(); pos < l; ++pos) {
@@ -464,6 +464,7 @@ const std::vector<LiveRange> & calculateLiveRanges(Function * func)
             ranges->push_back(range);
         } else if (inst->getOp() == IRINST_OP_LABEL) {
             // 记录Label的位置
+            // TODO 外部声明无效
             labels.emplace_back(inst, pos);
         } else if (inst->getOp() == IRINST_OP_GOTO) {
             // 对于Goto指令，检查其前向跳转的范围
@@ -486,7 +487,7 @@ const std::vector<LiveRange> & calculateLiveRanges(Function * func)
             if (operand == inst)
                 continue;
             if (dynamic_cast<Instruction *>(operand) || dynamic_cast<LocalVariable *>(operand) ||
-                dynamic_cast<FormalParam *>(operand)) {
+                (hasFuncCall && dynamic_cast<FormalParam *>(operand))) {
                 extendRangeIfExists(*ranges, operand, pos);
             }
         }

@@ -90,8 +90,12 @@ public:
     {
         str = getIRName()
             +" dso_local global "+getType()->toString()
-            +" "+std::to_string(intVal?*intVal:0)
-            +", align "+std::to_string(alignment);
+            +" ";
+        if (type->isIntegerType())
+            str += std::to_string(intVal?*intVal:0);
+        else
+            str += std::to_string(floatVal?*floatVal:0.f);
+        str += ", align "+std::to_string(alignment);
     }
 
     union {

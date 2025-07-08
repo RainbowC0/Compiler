@@ -280,7 +280,6 @@ void InstSelectorArm64::translate_assign(Instruction * inst)
     if (arg1_regId != -1) {
         // 寄存器 => 内存
         // 寄存器 => 寄存器
-
         iloc.store_var(arg1_regId, result, arg1->getType()->isFloatType() ? ARM64_FTMP_REG_NO : ARM64_TMP_REG_NO, ARRTYPE(arg1));
     } else if (result_regId != -1) {
         // 内存变量 => 寄存器
@@ -492,6 +491,17 @@ void InstSelectorArm64::translate_rem_int32(Instruction * inst)
     }
 }
 
+/// @brief 是否被Store、Load、GEP指令使用过
+static inline bool usedByAddrs(Instruction * inst)
+{
+    int32_t opnum = inst->getOperandsNum();
+    return inst->hasResultValue() && opnum && ({
+               User * u = inst->getOperands()[opnum - 1]->getUser();
+               Instanceof(ins, Instruction *, u);
+               ins && ins != inst && (ins->getOp() != IRINST_OP_GEP && ins->getOp() != IRINST_OP_LOAD && ins->getOp() != IRINST_OP_STORE);
+           });
+}
+
 void InstSelectorArm64::translate_gep(Instruction * inst)
 {
     Value * arg1 = inst->getOperand(0);
@@ -554,6 +564,10 @@ void InstSelectorArm64::translate_gep(Instruction * inst)
         }
         inst->setMemoryAddr(ARM64_TMP_REG_NO, baseOff);
         // add t1, l0, l1, lsl 2
+    }
+    if (usedByAddrs(inst) && inst->getRegId() != -1) {
+        iloc.lea_var(inst->getRegId(), inst);
+        fprintf(stderr, "%d\n", inst->getRegId());
     }
     // fprintf(stderr, "gep [x%d,%ld]\n", baseReg, baseOff);
 }
