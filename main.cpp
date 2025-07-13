@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file main.cpp
  * @author zenglj (zenglj@nwpu.edu.cn)
  * @brief 主程序文件
@@ -276,13 +276,13 @@ static int compile(std::string inputFile, std::string outputFile)
         free_ast(astRoot);
 
         // 执行优化（如果优化级别大于0）
-        if (gOptLevel > 0) {
+        /*if (gOptLevel > 0) {
             for (auto fun: module->getFunctionList()) {
                 if (!fun->isBuiltin()) {
                     fun->optimize();
                 }
             }
-        }
+        }*/
 
         if (gShowLineIR) {
 
