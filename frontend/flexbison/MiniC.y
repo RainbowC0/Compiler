@@ -459,7 +459,14 @@ MulExp: UnaryExp { $$ = $1; }
             $$ = $1;
             delete $3;
         } else {
-            $$ = create_contain_node(ast_operator_type($2), $1, $3);
+            if ($2 == (int)ASTOP(MUL) && ((li && $1->integer_val == 1) || (lf && $1->float_val == 1.f))) {
+                $$ = $3;
+                delete $1;
+            } else if ((ri && $3->integer_val == 1) || (rf && $3->float_val == 1.f)) {
+                $$ = $1;
+                delete $3;
+            } else
+                $$ = create_contain_node(ast_operator_type($2), $1, $3);
         }
     }
     ;

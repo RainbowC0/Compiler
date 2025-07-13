@@ -320,7 +320,7 @@ void CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
         int32_t reg = param->getRegId();
         if (ARM64_CALLER_SAVE(reg)) {
             std::remove(protects.begin(), protects.end(), reg);
-			protects.pop_back();
+            protects.pop_back();
         }
         param->setRegId(k + param->getType()->isFloatType() * ARM64_F0);
         simpleRegisterAllocator.Allocate(k);
@@ -535,15 +535,22 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(std::vector<LiveRange> & r
         // 2. 溢出到栈
         if ((range.value->getType()->isArrayType() && dynamic_cast<LocalVariable *>(range.value)) || frees.empty()) {
             range.stackOffset = allocateStackSlot(func, range.value);
-        } else if ((inst = dynamic_cast<Instruction *>(range.value)) && usedByFunc0(inst)) {
-            // 当该指令作为其他函数的第一个参数时，设置结果寄存器0
-            range.reg = isFloat ? ARM64_F0 : 0;
-        } else {
-            // 3. 分配寄存器
-            range.reg = frees.back();
-            frees.pop_back();
-            active.push_back(range);
+            continue;
+        } else if ((inst = dynamic_cast<Instruction *>(range.value))) {
+            int32_t opnum = inst->getOperandsNum();
+            if (inst->hasResultValue() && opnum) {
+                User * user = inst->getOperands()[opnum-1]->getUser();
+                // 当该指令作为其他函数的第一个参数时，设置结果寄存器0
+                if (dynamic_cast<FuncCallInstruction*>(user) && user->getOperandsNum() && user->getOperand(0) == inst) {
+                    range.reg = isFloat ? ARM64_F0 : 0;
+                    continue;
+                }
+            }
         }
+        // 3. 分配寄存器
+        range.reg = frees.back();
+        frees.pop_back();
+        active.push_back(range);
     }
 
     // 4. 更新变量的寄存器或栈偏移
@@ -554,7 +561,7 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(std::vector<LiveRange> & r
             if (ARM64_CALLER_SAVE(range.reg) &&
                 std::find(protects.begin(), protects.end(), range.reg) == protects.end()) {
                 protects.push_back(range.reg);
-			}
+            }
         } else {
             range.value->setMemoryAddr(ARM64_FP_REG_NO, range.stackOffset);
         }

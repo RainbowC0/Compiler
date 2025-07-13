@@ -478,22 +478,25 @@ bool IRGenerator::ir_binary(ast_node * node)
     // 获取结果类型
     Type * resultType = TypeSystem::getBinaryResultType(op, leftType, rightType);
 
+    Type * opType = TypeSystem::getCommonType(leftType, rightType);
+
     Function * func = module->getCurrentFunction();
 
     // 如果操作数类型与结果类型不同，需要进行隐式类型转换
-    if (resultType->isFloatType()) {
+    // 包括float bool int
+    if (opType->isFloatType()) {
         if (Instanceof(leftInt, ConstInt *, leftVal)) {
             leftVal = module->newConstFloat((float) leftInt->getVal());
         } else if (Instanceof(rightInt, ConstInt *, rightVal)) {
             rightVal = module->newConstFloat((float) rightInt->getVal());
         } else if (!leftType->isFloatType()) {
             // 整数转浮点 - 使用CastInstruction
-            Instruction * castInst = new CastInstruction(func, leftVal, resultType, CastInstruction::INT_TO_FLOAT);
+            Instruction * castInst = new CastInstruction(func, leftVal, rightType, CastInstruction::INT_TO_FLOAT);
             left->blockInsts.addInst(castInst);
             leftVal = castInst;
         } else if (!rightType->isFloatType()) {
             // 整数转浮点 - 使用CastInstruction
-            Instruction * castInst = new CastInstruction(func, rightVal, resultType, CastInstruction::INT_TO_FLOAT);
+            Instruction * castInst = new CastInstruction(func, rightVal, leftType, CastInstruction::INT_TO_FLOAT);
             right->blockInsts.addInst(castInst);
             rightVal = castInst;
         }

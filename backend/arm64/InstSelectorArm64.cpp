@@ -277,6 +277,16 @@ void InstSelectorArm64::translate_assign(Instruction * inst)
     int32_t arg1_regId = arg1->getRegId();
     int32_t result_regId = result->getRegId();
 
+    // move指令消减
+    Instanceof(inst1, Instruction*, arg1);
+    if (inst1 && arg1_regId>=0 && result_regId>=0 && !iloc.getCode().empty()) {
+        ArmInst * ains = iloc.getCode().back();
+        if (ains->result == PlatformArm64::regName[arg1_regId]
+            || ains->result == xreg(arg1_regId)) {
+            ains->result = (ARRTYPE(arg1) ? PlatformArm64::xregName : PlatformArm64::regName)[result_regId];
+            return;
+        }
+    }
     if (arg1_regId != -1) {
         // 寄存器 => 内存
         // 寄存器 => 寄存器
@@ -513,7 +523,6 @@ void InstSelectorArm64::translate_gep(Instruction * inst)
     int64_t baseOff = 0;
 
     // gep指令的内存地址表示地址计算结果，而一般的内存地址表示存储的地址，因此gep处理的结果是设置内存地址
-    // Instanceof(gep, Instruction *, arg1);
     if (arg1->getType()->isArrayType() && !dynamic_cast<FormalParam *>(arg1)) {
         if (!arg1->getMemoryAddr(&baseReg, &baseOff)) {
             baseReg = reg1;
@@ -532,15 +541,11 @@ void InstSelectorArm64::translate_gep(Instruction * inst)
     uint32_t l = ((ArrayType *) (inst->getType()))->getElementType()->getSize();
     if (off) {
         if (dynamic_cast<GlobalVariable *>(arg1)) {
-            iloc.lea_var(ARM64_TMP_REG_NO, arg1);
             baseReg = ARM64_TMP_REG_NO;
+            iloc.lea_var(baseReg, arg1);
         }
         inst->setMemoryAddr(baseReg, baseOff + off->getVal() * l);
-        // inst->setRegId(-1);
     } else {
-        // TODO
-        // %t1 = getelemptr [3xi32] %l0, %l1
-        // // mul l1, l1, lx
         if (baseReg == -1) {
             baseReg = ARM64_TMP_REG_NO;
             if (dynamic_cast<GlobalVariable *>(arg1)) {
@@ -554,20 +559,21 @@ void InstSelectorArm64::translate_gep(Instruction * inst)
             reg2 = ARM64_TMP_REG_NO2;
             iloc.load_var(reg2, arg2);
         }
+        int32_t regret = inst->getRegId();
+        if (regret == -1) regret = ARM64_TMP_REG_NO;
         if (__builtin_popcount(l) == 1) {
-            iloc.inst("add", xreg(ARM64_TMP_REG_NO), xreg(baseReg),
+            iloc.inst("add", xreg(regret), xreg(baseReg),
                 xreg(reg2) + ",lsl " + to_string(__builtin_ctz(l)));
         } else {
             const int tmp = reg2 == ARM64_TMP_REG_NO2 ? ARM64_TMP_REG_NO : ARM64_TMP_REG_NO2;
             iloc.load_imm(tmp, l, true);
-            iloc.inst("madd", xreg(ARM64_TMP_REG_NO), xreg(reg2), xreg(tmp) + "," + xreg(baseReg));
+            iloc.inst("madd", xreg(regret), xreg(reg2), xreg(tmp) + "," + xreg(baseReg));
         }
-        inst->setMemoryAddr(ARM64_TMP_REG_NO, baseOff);
+        inst->setMemoryAddr(regret, baseOff);
         // add t1, l0, l1, lsl 2
     }
     if (usedByAddrs(inst) && inst->getRegId() != -1) {
         iloc.lea_var(inst->getRegId(), inst);
-        fprintf(stderr, "%d\n", inst->getRegId());
     }
     // fprintf(stderr, "gep [x%d,%ld]\n", baseReg, baseOff);
 }

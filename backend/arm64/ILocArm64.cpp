@@ -333,10 +333,10 @@ void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset, bool wide)
     } else {
 
         // ldr r8,=-4096
-        load_imm(rs_reg_no, offset);
+        load_imm(ARM64_TMP_REG_NO2, offset);
 
         // fp,r8
-        base += "," + rsReg + ",sxtw";
+        base += "," + PlatformArm64::xregName[ARM64_TMP_REG_NO2];
     }
 
     // 内存寻址
