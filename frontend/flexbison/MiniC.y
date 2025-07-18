@@ -401,9 +401,11 @@ AddExp : MulExp {
         if (li && rf) {
             lf = true; li = false;
             $1->float_val = $1->integer_val;
+            $1->node_type = ASTOP(LEAF_LITERAL_FLOAT);
         } else if (lf && ri) {
             rf = true; ri = false;
             $3->float_val = $3->integer_val;
+            $3->node_type = ASTOP(LEAF_LITERAL_FLOAT);
         }
         if (li && ri) {
             if ($2 == (int)ASTOP(ADD))
@@ -438,9 +440,11 @@ MulExp: UnaryExp { $$ = $1; }
         if (li && rf) {
             lf = true; li = false;
             $1->float_val = $1->integer_val;
+            $1->node_type = ASTOP(LEAF_LITERAL_FLOAT);
         } else if (lf && ri) {
             rf = true; ri = false;
             $3->float_val = $3->integer_val;
+            $3->node_type = ASTOP(LEAF_LITERAL_FLOAT);
         }
         if (li && ri) {
             switch (ast_operator_type($2)) {

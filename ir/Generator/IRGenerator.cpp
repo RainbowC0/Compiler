@@ -766,9 +766,9 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
                     } else if (tv->isIntegerType() && ts->isFloatType()) {
                         inst = new CastInstruction(func, s->val, tv, CastInstruction::FLOAT_TO_INT);
                     }
+                    node->blockInsts.addInst(inst);
                 }
-                if (!inst)
-                    inst = new MoveInstruction(func, val, s->val);
+                inst = new MoveInstruction(func, val, inst!=nullptr ? inst : s->val);
                 node->blockInsts.addInst(inst);
             }
         }

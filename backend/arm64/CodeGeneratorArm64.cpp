@@ -541,7 +541,7 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(std::vector<LiveRange> & r
             if (inst->hasResultValue() && opnum) {
                 User * user = inst->getOperands()[opnum-1]->getUser();
                 // 当该指令作为其他函数的第一个参数时，设置结果寄存器0
-                if (dynamic_cast<FuncCallInstruction*>(user) && user->getOperandsNum() && user->getOperand(0) == inst) {
+                if (dynamic_cast<FuncCallInstruction*>(user) && user->getOperandsNum()==1 && user->getOperand(0) == inst) {
                     range.reg = isFloat ? ARM64_F0 : 0;
                     continue;
                 }
