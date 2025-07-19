@@ -545,7 +545,7 @@ void ILocArm64::store_var(int src_reg_no, Value * dest_var, int tmp_reg_no, bool
 void ILocArm64::leaStack(int rs_reg_no, int base_reg_no, int off)
 {
     std::string rs_reg_name = xregs(rs_reg_no);
-    std::string base_reg_name = xregs(base_reg_no);
+    std::string base_reg_name = base_reg_no == ARM64_ZR_REG_NO ? "sp" : xregs(base_reg_no);
 
     if (off == 0)
         emit("mov", rs_reg_name, base_reg_name);
@@ -597,7 +597,12 @@ void ILocArm64::allocStack(Function * func, int tmp_reg_no)
     }
 
     // 函数调用通过栈传递的基址寄存器设置
-    inst("add", ARM64_FP, "sp", toStr(argSize));
+    if (PlatformArm64::constExpr(argSize))
+        emit("add", ARM64_FP, "sp", toStr(argSize));
+    else {
+        load_imm(tmp_reg_no, argSize);
+        emit("add", ARM64_FP, "sp", xregs(tmp_reg_no));
+    }
 }
 
 /// @brief 调用函数fun

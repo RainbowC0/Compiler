@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <string>
 #include <algorithm>
+#include <unordered_set>
 
 #include "CastInstruction.h"
 #include "Common.h"
@@ -43,6 +44,8 @@ static const char * cmpmap[] = {"eq", "ne", "gt", "le", "ge", "lt"};
 #define ARRTYPE(v) (v->getType() && v->getType()->isArrayType())
 
 #define xreg(i) PlatformArm64::xregName[i]
+
+static std::unordered_set<Value*> loadedGlobals;
 
 using std::to_string;
 // static GotoInstruction *lastBranch;
@@ -172,6 +175,10 @@ void InstSelectorArm64::translate_label(Instruction * inst)
     if (ai && ai->opcode[0] == 'b' && ai->result == labelInst->getName())
         ai->setDead();
     iloc.label(labelInst->getName());
+    for (auto var : loadedGlobals) {
+        var->setLoadRegId(var->getLoadRegId()|0x80);
+    }
+    loadedGlobals.clear();
 }
 
 /// @brief goto指令指令翻译成ARM64汇编
@@ -287,11 +294,11 @@ void InstSelectorArm64::translate_assign(Instruction * inst)
             return;
         }
     }
-    if (arg1_regId != -1) {
+    if (arg1_regId >= 0) {
         // 寄存器 => 内存
         // 寄存器 => 寄存器
         iloc.store_var(arg1_regId, result, arg1->getType()->isFloatType() ? ARM64_FTMP_REG_NO : ARM64_TMP_REG_NO, ARRTYPE(arg1));
-    } else if (result_regId != -1) {
+    } else if (result_regId >= 0) {
         // 内存变量 => 寄存器
         // 地址 => 寄存器
         if (arg1->getType()->isArrayType()) {
@@ -337,7 +344,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, cstr operator
     int32_t load_result_reg_no, load_arg1_reg_no, load_arg2_reg_no;
 
     // 看arg1是否是寄存器，若是则寄存器寻址，否则要load变量到寄存器中
-    if (arg1_reg_no == -1) {
+    if (arg1_reg_no < 0) {
 
         // 分配一个寄存器r8
         load_arg1_reg_no = arg1->getType()->isFloatType() ? ARM64_FTMP_REG_NO : ARM64_TMP_REG_NO;
@@ -350,7 +357,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, cstr operator
 
     const std::string * sarg2;
     // 看arg2是否是寄存器，若是则寄存器寻址，否则要load变量到寄存器中
-    if (arg2_reg_no == -1) {
+    if (arg2_reg_no < 0) {
         Instanceof(cint, ConstInt *, arg2);
         if (cint && test(cint->getVal())) {
             std::string s("#" + to_string(cint->getVal()));
@@ -370,7 +377,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, cstr operator
     }
 
     // 看结果变量是否是寄存器，若不是则需要分配一个新的寄存器来保存运算的结果
-    if (result_reg_no == -1) {
+    if (result_reg_no < 0) {
         // 分配一个寄存器r10，用于暂存结果
         load_result_reg_no = isFloat ? ARM64_FTMP_REG_NO2 : ARM64_TMP_REG_NO2;
     } else {
@@ -384,7 +391,7 @@ void InstSelectorArm64::translate_two_operator(Instruction * inst, cstr operator
               *sarg2);
 
     // 结果不是寄存器，则需要把rs_reg_name保存到结果变量中
-    if (result_reg_no == -1) {
+    if (result_reg_no < 0) {
 
         // 这里使用预留的临时寄存器，因为立即数可能过大，必须借助寄存器才可操作。
 
@@ -482,7 +489,7 @@ void InstSelectorArm64::translate_rem_int32(Instruction * inst)
     int32_t res = inst->getRegId();
     int32_t loadreg = -1;
 
-    if (res != -1) {
+    if (res >= 0) {
         loadreg = simpleRegisterAllocator.Allocate();
         // 参数寄存器与结果寄存器相同时，要借助临时寄存器
         if (res == reg1) {
@@ -496,7 +503,7 @@ void InstSelectorArm64::translate_rem_int32(Instruction * inst)
     translate_two_operator(inst, "rem");
     arg1->setRegId(reg1);
     arg2->setRegId(reg2);
-    if (loadreg != -1) {
+    if (loadreg >= 0) {
         simpleRegisterAllocator.free(loadreg);
     }
 }
@@ -530,7 +537,7 @@ void InstSelectorArm64::translate_gep(Instruction * inst)
         }
     } else {
         baseReg = reg1;
-        if (baseReg == -1) {
+        if (baseReg < 0) {
             iloc.load_var(ARM64_TMP_REG_NO, arg1, true);
             baseReg = ARM64_TMP_REG_NO;
             baseOff = 0;
@@ -541,26 +548,45 @@ void InstSelectorArm64::translate_gep(Instruction * inst)
     uint32_t l = ((ArrayType *) (inst->getType()))->getElementType()->getSize();
     if (off) {
         if (dynamic_cast<GlobalVariable *>(arg1)) {
-            baseReg = ARM64_TMP_REG_NO;
-            iloc.lea_var(baseReg, arg1);
+            baseReg = arg1->getLoadRegId();
+            if (baseReg >= 0) {
+                if (baseReg > 0x80) {
+                    iloc.lea_var(baseReg ^= 0x80, arg1);
+                    loadedGlobals.insert(arg1);
+                }
+                arg1->setLoadRegId(baseReg);
+            } else {
+                baseReg = ARM64_TMP_REG_NO;
+                iloc.lea_var(baseReg, arg1);
+            }
         }
         inst->setMemoryAddr(baseReg, baseOff + off->getVal() * l);
     } else {
-        if (baseReg == -1) {
+        if (baseReg < 0) {
             baseReg = ARM64_TMP_REG_NO;
             if (dynamic_cast<GlobalVariable *>(arg1)) {
-                iloc.lea_var(baseReg, arg1);
+                baseReg = arg1->getLoadRegId();
+                if (baseReg >= 0) {
+                    if (baseReg > 0x80) {
+                        iloc.lea_var(baseReg ^= 0x80, arg1);
+                        loadedGlobals.insert(arg1);
+                    }
+                    arg1->setLoadRegId(baseReg);
+                } else {
+                    baseReg = ARM64_TMP_REG_NO;
+                    iloc.lea_var(baseReg, arg1);
+                }
             } else {
                 iloc.load_var(baseReg, arg1);
             }
         }
         int32_t reg2 = arg2->getRegId();
-        if (reg2 == -1) {
+        if (reg2 < 0) {
             reg2 = ARM64_TMP_REG_NO2;
             iloc.load_var(reg2, arg2);
         }
         int32_t regret = inst->getRegId();
-        if (regret == -1) regret = ARM64_TMP_REG_NO;
+        if (regret < 0) regret = ARM64_TMP_REG_NO;
         if (__builtin_popcount(l) == 1) {
             iloc.inst("add", xreg(regret), xreg(baseReg),
                 xreg(reg2) + ",lsl " + to_string(__builtin_ctz(l)));
@@ -572,7 +598,7 @@ void InstSelectorArm64::translate_gep(Instruction * inst)
         inst->setMemoryAddr(regret, baseOff);
         // add t1, l0, l1, lsl 2
     }
-    if (usedByAddrs(inst) && inst->getRegId() != -1) {
+    if (usedByAddrs(inst) && inst->getRegId() >= 0) {
         iloc.lea_var(inst->getRegId(), inst);
     }
     // fprintf(stderr, "gep [x%d,%ld]\n", baseReg, baseOff);
@@ -585,11 +611,11 @@ void InstSelectorArm64::translate_store(Instruction * inst)
     int32_t basereg = ptr->getRegId(), loadreg = src->getRegId();
     if (ptr->getType()->isArrayType() && !dynamic_cast<FormalParam *>(ptr)) {
         ptr->getMemoryAddr(&basereg, &off);
-    } else if (basereg == -1) {
+    } else if (basereg < 0) {
         basereg = ARM64_TMP_REG_NO;
         iloc.load_var(basereg, ptr, true);
     }
-    if (loadreg == -1) {
+    if (loadreg < 0) {
         loadreg = ARM64_TMP_REG_NO2 + src->getType()->isFloatType() * ARM64_F0;
         iloc.load_var(loadreg, src);
     }
@@ -607,18 +633,20 @@ void InstSelectorArm64::translate_load(Instruction * inst)
     // Instanceof(gep, Instruction *, addr);
     if (addr->getType()->isArrayType() && !dynamic_cast<FormalParam *>(addr)) {
         addr->getMemoryAddr(&basereg, &off);
-    } else if (basereg == -1) {
+    } else if (basereg < 0) {
         basereg = ARM64_TMP_REG_NO;
         iloc.load_var(basereg, addr);
     }
-    if (loadreg == -1) {
+    if (loadreg < 0) {
         loadreg = ARM64_TMP_REG_NO;
-        iloc.load_var(loadreg, addr);
     }
     if (inst->getType()->isArrayType()) {
         iloc.leaStack(loadreg, basereg, off);
     } else {
         iloc.load_base(loadreg, basereg, off);
+    }
+    if (loadreg == ARM64_TMP_REG_NO) {
+        iloc.store_var(loadreg, inst, ARM64_TMP_REG_NO2);
     }
 }
 
@@ -639,11 +667,9 @@ void InstSelectorArm64::translate_fcmp(Instruction * inst)
             ArmInst * i = iloc.getCode().back();
             i->result = i->arg1;
             i->arg1 = i->arg2;
-            // i->arg1[0] = 's';
             if (i->arg1 == "wzr")
                 i->arg1 = "#0.0";
             i->arg2 = "";
-            // i->result[0] = 's';
             inst->setRegId(x);
         }
         default:
@@ -689,7 +715,7 @@ void InstSelectorArm64::translate_cast(Instruction * inst)
     int32_t reg = arg->getRegId();
     switch (cast->getCastType()) {
         case CastInstruction::BOOL_TO_INT:
-            if (reg == -1) {
+            if (reg < 0) {
                 iloc.load_var(ARM64_TMP_REG_NO, arg);
                 reg = ARM64_TMP_REG_NO2;
             }
@@ -699,14 +725,14 @@ void InstSelectorArm64::translate_cast(Instruction * inst)
             }
             break;
         case CastInstruction::FLOAT_TO_INT:
-            if (reg == -1) {
+            if (reg < 0) {
                 reg = ARM64_FTMP_REG_NO;
                 iloc.load_var(reg, arg);
             }
             iloc.inst("fcvtzs", PlatformArm64::regName[inst->getRegId()], PlatformArm64::regName[reg]);
             break;
         case CastInstruction::INT_TO_FLOAT:
-            if (reg == -1) {
+            if (reg < 0) {
                 reg = ARM64_TMP_REG_NO;
                 iloc.load_var(reg, arg);
             }
@@ -724,13 +750,13 @@ void InstSelectorArm64::translate_xor_int32(Instruction * inst)
     IRInstOperator ir;
     if (v && l && v->getVal() == 1 && (ir = l->getOp()) >= IRINST_OP_IEQ && ir <= IRINST_OP_ILT) {
         int32_t regId = inst->getRegId(), load_regId;
-        if (regId == -1) {
+        if (regId < 0) {
             load_regId = simpleRegisterAllocator.Allocate(inst);
         } else {
             load_regId = regId;
         }
         iloc.inst("cset", PlatformArm64::regName[load_regId], CSTRJ(ir));
-        if (regId == -1) {
+        if (regId < 0) {
             iloc.store_var(load_regId, inst, ARM64_FP_REG_NO);
         }
         simpleRegisterAllocator.free(inst);
@@ -845,7 +871,7 @@ void InstSelectorArm64::translate_arg(Instruction * inst)
 
     if (realArgCount < 8) {
         // 前四个参数
-        if (regId != -1) {
+        if (regId >= 0) {
             if (regId != realArgCount) {
                 // 肯定寄存器分配有误
                 minic_log(LOG_ERROR, "第%d个ARG指令对象寄存器分配有误: %d", argCount + 1, regId);

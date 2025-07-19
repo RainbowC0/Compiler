@@ -261,10 +261,15 @@ void CodeGeneratorArm64::registerAllocation(Function * func)
     std::vector<LiveRange> ranges = calculateLiveRanges(func);
 
     // 2. 按起始位置排序
-    std::sort(ranges.begin(), ranges.end(), [](const LiveRange & a, const LiveRange & b) { return a.start < b.start; });
+    std::sort(ranges.begin(), ranges.end(), [](const LiveRange & a, const LiveRange & b) { return a.start < b.start || (a.start == b.start && a.end < b.end); });
 
     // 3. 分配寄存器
     linearScanRegisterAllocation(ranges, func);
+    /*for (auto & rng : ranges) {
+        int b; int64_t f;
+        rng.value->getMemoryAddr(&b, &f);
+        fprintf(stderr, "%s %d %d %d\n", rng.value->getName().c_str(), rng.reg, b, f);
+    }*/
 
     // 4. 处理剩余逻辑（如保护寄存器）
     adjustFuncCallInsts(func);
@@ -303,8 +308,9 @@ void CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
         auto param = params[k];
         Type * type = param->getType();
         moves[k] = new MoveInstruction(func, param, PlatformArm64::regVal[type->isFloatType() ? k + ARM64_F0 : k]);
-        if (type->isArrayType())
-            params[k]->setMemoryAddr(params[k]->getRegId(), 0);
+        int32_t reg;
+        if (type->isArrayType() && (reg = params[k]->getRegId()) >= 0)
+            params[k]->setMemoryAddr(reg, 0);
         simpleRegisterAllocator.Allocate(k);
     }
     auto & insts = func->getInterCode().getInsts();
@@ -487,7 +493,9 @@ const std::vector<LiveRange> & calculateLiveRanges(Function * func)
             if (operand == inst)
                 continue;
             if (dynamic_cast<Instruction *>(operand) || dynamic_cast<LocalVariable *>(operand) ||
-                (hasFuncCall && dynamic_cast<FormalParam *>(operand))) {
+                (hasFuncCall && dynamic_cast<FormalParam *>(operand))
+                || (dynamic_cast<GlobalVariable *>(operand)
+                    && (i!=0 || (inst->getOp() != IRINST_OP_ASSIGN && inst->getOp() != IRINST_OP_STORE)))) {
                 extendRangeIfExists(*ranges, operand, pos);
             }
         }
@@ -556,7 +564,10 @@ void CodeGeneratorArm64::linearScanRegisterAllocation(std::vector<LiveRange> & r
     // 4. 更新变量的寄存器或栈偏移
     for (const auto & range: ranges) {
         if (range.reg != -1) {
-            range.value->setRegId(range.reg);
+            if (dynamic_cast<GlobalVariable*>(range.value))
+                range.value->setLoadRegId(0x80|range.reg);
+            else
+                range.value->setRegId(range.reg);
             simpleRegisterAllocator.Allocate(range.reg);
             if (ARM64_CALLER_SAVE(range.reg) &&
                 std::find(protects.begin(), protects.end(), range.reg) == protects.end()) {
@@ -600,10 +611,11 @@ int allocateStackSlot(Function * func, Value * value)
     int offset = func->getMaxDep();
     Type * tp = value->getType();
     int sz;
-    if (tp->isArrayType() && dynamic_cast<Instruction *>(value)) {
+    if (tp->isArrayType() && dynamic_cast<Instruction *>(value) || dynamic_cast<GlobalVariable*>(value)) {
         sz = 0;
-    } else
+    } else {
         sz = tp->getSize();
+    }
     func->setMaxDep(offset + sz); // 假设4字节对齐
     return offset;
 }
@@ -623,6 +635,8 @@ void extendRangeIfExists(std::vector<LiveRange> & ranges, Value * value, int cur
         LiveRange lr;
         lr.value = value;
         lr.start = dynamic_cast<FormalParam *>(value) == nullptr ? currentPos : 0;
+        if (dynamic_cast<GlobalVariable*>(value))
+            lr.start --;
         lr.end = currentPos;
         ranges.push_back(lr);
     }
