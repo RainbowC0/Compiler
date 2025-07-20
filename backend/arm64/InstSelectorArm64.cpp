@@ -226,6 +226,18 @@ void InstSelectorArm64::translate_entry(Instruction * inst)
 
     // 为fun分配栈帧，含局部变量、函数调用值传递的空间等
     iloc.allocStack(func, ARM64_TMP_REG_NO);
+
+    auto & params = func->getParams();
+    m = params.size();
+    int32_t fp_esp = func->getMaxDep() + ((protectedReg.size() + 1) & ~1) * 8;
+    for (i = 8; i < m; i++) {
+        params[i]->setMemoryAddr(ARM64_SP_REG_NO, fp_esp);
+        int32_t reg = params[i]->getRegId();
+        if (reg >= 0) {
+            iloc.load_base(reg, ARM64_SP_REG_NO, fp_esp, true);
+        }
+        fp_esp += 8;
+    }
 }
 
 /// @brief 函数出口指令翻译成ARM64汇编
@@ -294,10 +306,11 @@ void InstSelectorArm64::translate_assign(Instruction * inst)
             return;
         }
     }
+    bool isArray = result->getType()->isArrayType() || arg1->getType()->isArrayType();
     if (arg1_regId >= 0) {
         // 寄存器 => 内存
         // 寄存器 => 寄存器
-        iloc.store_var(arg1_regId, result, arg1->getType()->isFloatType() ? ARM64_FTMP_REG_NO : ARM64_TMP_REG_NO, ARRTYPE(arg1));
+        iloc.store_var(arg1_regId, result, arg1->getType()->isFloatType() ? ARM64_FTMP_REG_NO : ARM64_TMP_REG_NO, isArray);
     } else if (result_regId >= 0) {
         // 内存变量 => 寄存器
         // 地址 => 寄存器
@@ -427,56 +440,26 @@ void InstSelectorArm64::translate_div_int32(Instruction * inst)
 void InstSelectorArm64::translate_fadd(Instruction * inst)
 {
     translate_two_operator(inst, "fadd");
-    /*ArmInst * i = iloc.getCode().back();
-    if (i->opcode == "fadd") {
-        i->result[0] = 's';
-        i->arg1[0] = 's';
-        i->arg2[0] = 's';
-    }*/
 }
 
 void InstSelectorArm64::translate_fsub(Instruction * inst)
 {
     translate_two_operator(inst, "fsub");
-    /*ArmInst * i = iloc.getCode().back();
-    if (i->opcode == "fsub") {
-        i->result[0] = 's';
-        i->arg1[0] = 's';
-        i->arg2[0] = 's';
-    }*/
 }
 
 void InstSelectorArm64::translate_fmul(Instruction * inst)
 {
     translate_two_operator(inst, "fmul");
-    /*ArmInst * i = iloc.getCode().back();
-    if (i->opcode == "fmul") {
-        i->result[0] = 's';
-        i->arg1[0] = 's';
-        i->arg2[0] = 's';
-    }*/
 }
 
 void InstSelectorArm64::translate_fdiv(Instruction * inst)
 {
     translate_two_operator(inst, "fdiv");
-    /*ArmInst * i = iloc.getCode().back();
-    if (i->opcode == "fdiv") {
-        i->result[0] = 's';
-        i->arg1[0] = 's';
-        i->arg2[0] = 's';
-    }*/
 }
 
 void InstSelectorArm64::translate_fmod(Instruction * inst)
 {
     translate_two_operator(inst, "fmod");
-    /*ArmInst * i = iloc.getCode().back();
-    if (i->opcode == "fmod") {
-        i->result[0] = 's';
-        i->arg1[0] = 's';
-        i->arg2[0] = 's';
-    }*/
 }
 
 void InstSelectorArm64::translate_rem_int32(Instruction * inst)
@@ -601,7 +584,6 @@ void InstSelectorArm64::translate_gep(Instruction * inst)
     if (usedByAddrs(inst) && inst->getRegId() >= 0) {
         iloc.lea_var(inst->getRegId(), inst);
     }
-    // fprintf(stderr, "gep [x%d,%ld]\n", baseReg, baseOff);
 }
 
 void InstSelectorArm64::translate_store(Instruction * inst)
@@ -713,6 +695,7 @@ void InstSelectorArm64::translate_cast(Instruction * inst)
     Instanceof(cast, CastInstruction *, inst);
     Value * arg = inst->getOperand(0);
     int32_t reg = arg->getRegId();
+    int32_t retreg = inst->getRegId();
     switch (cast->getCastType()) {
         case CastInstruction::BOOL_TO_INT:
             if (reg < 0) {
@@ -729,14 +712,22 @@ void InstSelectorArm64::translate_cast(Instruction * inst)
                 reg = ARM64_FTMP_REG_NO;
                 iloc.load_var(reg, arg);
             }
-            iloc.inst("fcvtzs", PlatformArm64::regName[inst->getRegId()], PlatformArm64::regName[reg]);
+            if (retreg < 0)
+                retreg = ARM64_TMP_REG_NO;
+            iloc.inst("fcvtzs", PlatformArm64::regName[retreg], PlatformArm64::regName[reg]);
+            if (retreg == ARM64_TMP_REG_NO)
+                iloc.store_var(retreg, inst, ARM64_TMP_REG_NO2);
             break;
         case CastInstruction::INT_TO_FLOAT:
             if (reg < 0) {
                 reg = ARM64_TMP_REG_NO;
                 iloc.load_var(reg, arg);
             }
-            iloc.inst("scvtf", PlatformArm64::regName[inst->getRegId()], PlatformArm64::regName[reg]);
+            if (retreg < 0)
+                retreg = ARM64_FTMP_REG_NO;
+            iloc.inst("scvtf", PlatformArm64::regName[retreg], PlatformArm64::regName[reg]);
+            if (retreg == ARM64_FTMP_REG_NO)
+                iloc.store_var(retreg, inst, ARM64_TMP_REG_NO);
             break;
         default:
             break;

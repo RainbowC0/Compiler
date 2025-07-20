@@ -257,6 +257,9 @@ void CodeGeneratorArm64::registerAllocation(Function * func)
         protectedRegNo.push_back(ARM64_LR_REG_NO);
     }
 
+    // 6. 调整形参
+    adjustFormalParamInsts(func);
+
     // 1. 计算活跃区间
     std::vector<LiveRange> ranges = calculateLiveRanges(func);
 
@@ -265,11 +268,6 @@ void CodeGeneratorArm64::registerAllocation(Function * func)
 
     // 3. 分配寄存器
     linearScanRegisterAllocation(ranges, func);
-    /*for (auto & rng : ranges) {
-        int b; int64_t f;
-        rng.value->getMemoryAddr(&b, &f);
-        fprintf(stderr, "%s %d %d %d\n", rng.value->getName().c_str(), rng.reg, b, f);
-    }*/
 
     // 4. 处理剩余逻辑（如保护寄存器）
     adjustFuncCallInsts(func);
@@ -279,8 +277,6 @@ void CodeGeneratorArm64::registerAllocation(Function * func)
     func->setMaxDep((dep + 15) & ~15);
     if (dep)
         protectedRegNo.push_back(ARM64_FP_REG_NO);
-    // 6. 调整形参
-    adjustFormalParamInsts(func);
 
 #if 0
     // 临时输出调整后的IR指令，用于查看当前的寄存器分配、栈内变量分配、实参入栈等信息的正确性
@@ -302,51 +298,26 @@ void CodeGeneratorArm64::adjustFormalParamInsts(Function * func)
     // 形参的前8个通过寄存器来传值R0-R7
     // 先排除需要函数调用的参数，这些参数需要重新分配寄存器
     int pm = func->getExistFuncCall() ? params.size() : 0;
-    int k;
+    int k, j;
     std::vector<Instruction *> moves(std::min(8, pm));
-    for (k = 0; k < std::min(8, pm); k++) {
+    for (k = 0, j = std::min(8, pm); k < j; k++) {
         auto param = params[k];
         Type * type = param->getType();
-        moves[k] = new MoveInstruction(func, param, PlatformArm64::regVal[type->isFloatType() ? k + ARM64_F0 : k]);
-        int32_t reg;
-        if (type->isArrayType() && (reg = params[k]->getRegId()) >= 0)
-            params[k]->setMemoryAddr(reg, 0);
-        simpleRegisterAllocator.Allocate(k);
+        int reg = type->isFloatType() ? k + ARM64_F0 : k;
+        moves[k] = new MoveInstruction(func, param, PlatformArm64::regVal[reg]);
+        simpleRegisterAllocator.Allocate(reg);
     }
     auto & insts = func->getInterCode().getInsts();
     insts.insert(insts.begin() + 1, moves.begin(), moves.end());
 
-    auto & protects = func->getProtectedReg();
     pm = params.size();
 
     for (int j = std::min(pm, 8); k < j; k++) {
-
         // 前8个设置分配寄存器
         FormalParam * param = params[k];
-        int32_t reg = param->getRegId();
-        if (ARM64_CALLER_SAVE(reg)) {
-            std::remove(protects.begin(), protects.end(), reg);
-            protects.pop_back();
-        }
-        param->setRegId(k + param->getType()->isFloatType() * ARM64_F0);
-        simpleRegisterAllocator.Allocate(k);
-    }
-
-    // 根据ARM64版C语言的调用约定，除前8个外的实参进行值传递，逆序入栈
-    for (; k < pm; k++) {
-        auto param = params[k];
-        // 目前假定变量大小都是8字节。
-        int32_t reg = param->getRegId();
-        if (ARM64_CALLER_SAVE(reg)) {
-            std::remove(protects.begin(), protects.end(), reg);
-            protects.pop_back();
-        }
-        param->setRegId(-1);
-    }
-    int32_t fp_esp = func->getMaxDep() + ((protects.size() + 1) & ~1) * 8;
-    for (k = 8; k < pm; k++) {
-        params[k]->setMemoryAddr(ARM64_SP_REG_NO, fp_esp);
-        fp_esp += 8;
+        int reg = k + param->getType()->isFloatType() * ARM64_F0;
+        param->setRegId(reg);
+        simpleRegisterAllocator.Allocate(reg);
     }
 }
 
@@ -614,7 +585,7 @@ int allocateStackSlot(Function * func, Value * value)
     if ((tp->isArrayType() && dynamic_cast<Instruction *>(value)) || dynamic_cast<GlobalVariable*>(value)) {
         sz = 0;
     } else {
-        sz = tp->getSize();
+        sz = tp->isArrayType() && dynamic_cast<FormalParam*>(value) ? 8 : tp->getSize();
     }
     func->setMaxDep(offset + sz); // 假设4字节对齐
     return offset;

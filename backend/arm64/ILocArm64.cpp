@@ -366,9 +366,6 @@ void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_re
         }
     } else {
         // 先把立即数赋值给指定的寄存器tmpReg，然后采用基址+寄存器的方式进行
-        if (base_reg_no==tmp_reg_no) {
-            fprintf(stderr, "errr\n");
-        }
         // ldr r9,=-4096
         load_imm(tmp_reg_no, disp);
 

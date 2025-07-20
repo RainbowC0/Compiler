@@ -62,6 +62,8 @@ static inline void backPatch(std::vector<LabelInstruction **> * a, LabelInstruct
 }
 static inline std::vector<LabelInstruction **> * merge(std::vector<LabelInstruction **> *,
                                                        std::vector<LabelInstruction **> *);
+static bool isZeroValue(ast_node * node);
+static uint32_t countNonZeroElements(ast_node * initList);
 }
 
 /// @brief 构造函数
@@ -420,6 +422,8 @@ bool IRGenerator::ir_function_call(ast_node * node)
     // 函数调用结果Value保存到node中，可能为空，上层节点可利用这个值
     node->val = funcCallInst;
 
+    node->type = type;
+
     return true;
 }
 
@@ -674,6 +678,7 @@ bool IRGenerator::ir_node_var_id(ast_node * node)
         return false;
     }
     node->val = val;
+    node->type = val->getType();
     return true;
 }
 
@@ -688,6 +693,7 @@ bool IRGenerator::ir_leaf_node_uint(ast_node * node)
     val = module->newConstInt(node->integer_val);
 
     node->val = val;
+    node->type = val->getType();
 
     return true;
 }
@@ -701,6 +707,7 @@ bool IRGenerator::ir_leaf_node_float(ast_node * node)
     ConstFloat * val = module->newConstFloat(node->float_val);
 
     node->val = val;
+    node->type = val->getType();
 
     return true;
 }
@@ -711,6 +718,42 @@ static void init_global_array(ast_node * node)
 {
     vec->push_back(node->integer_val);
 }
+
+static bool useMemset;
+static ast_node * rootNode;
+static uint32_t contzeros;
+static uint32_t off;
+static Value * arrayVal;
+static Type * bType;
+static Function * tfunc;
+static Module * mod;
+
+static void init_var_array(ast_node * node) {
+    auto & block = rootNode->blockInsts;
+    if (isZeroValue(node)) {
+        contzeros++;
+    } else {
+        Type * tp = bType;
+        if (!useMemset) {
+            uint32_t i = contzeros, of = off;
+            while (i--) {
+                Instruction * ptr =
+                        new BinaryInstruction(tfunc, IRINST_OP_GEP, arrayVal, mod->newConstInt(of), tp);
+                block.addInst(ptr);
+                block.addInst(new StoreInstruction(tfunc, ptr, mod->newConstInt(0)));
+                of++;
+            }
+        }
+        off += contzeros;
+        contzeros = 0;
+        block.addInst(node->blockInsts);
+        Instruction * ptr = new BinaryInstruction(tfunc, IRINST_OP_GEP, arrayVal, mod->newConstInt(off), bType);
+        block.addInst(ptr);
+        block.addInst(new StoreInstruction(tfunc, ptr, node->val));
+        off++;
+    }
+}
+
 /// @brief 变量声明语句节点翻译成线性中间IR
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
@@ -741,9 +784,44 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
                     arrayType->setNumElements(s->sons.size());
                 }
 
-                // 使用新的数组初始化处理函数
-                uint32_t currentOffset = 0;
-                processArrayInitialization(val, arrayType, s, node->blockInsts, currentOffset);
+                // 2. 计算总元素数和非零元素数
+                uint32_t totalElements = arrayType->getSize() / 4;
+                uint32_t nonZeroCount = countNonZeroElements(s);
+
+                // 3. 稀疏数组优化：如果非零元素少于50%，使用memset清零
+                useMemset = ((nonZeroCount << 1) < totalElements) && (totalElements > 4);
+
+                if (useMemset) {
+                    // 生成memset调用清零整个数组
+                    uint32_t arraySize = totalElements * IntegerType::getTypeInt()->getSize();
+                    Instruction * memsetCall =
+                        new FuncCallInstruction(module->getCurrentFunction(),
+                                                module->findFunction("memset"),
+                                                {val, module->newConstInt(0), module->newConstInt(arraySize)},
+                                                VoidType::getType());
+                    node->blockInsts.addInst(memsetCall);
+                    module->getCurrentFunction()->setExistFuncCall(true);
+                }
+                rootNode = node;
+                off = 0;
+                contzeros = 0;
+                bType = getBaseArrayType(arrayType);
+                mod = module;
+                tfunc = func;
+                arrayVal = val;
+                array_init(arrayType, s->sons.begin(), s->sons.end(), init_var_array);
+                rootNode = nullptr;
+                mod = nullptr;
+                tfunc = nullptr;
+                if ((!useMemset) && off < totalElements) {
+                    auto & block = node->blockInsts;
+                    for (uint32_t i = off; i < totalElements; i++) {
+                        auto ptr = new BinaryInstruction(func, IRINST_OP_GEP, val, module->newConstInt(i), bType);
+                        block.addInst(ptr);
+                        block.addInst(new StoreInstruction(func, ptr, module->newConstInt(0)));
+                    }
+                }
+                bType = nullptr;
             } else {
                 // 非数组初始化
                 int v;
@@ -753,7 +831,6 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
                                     : (Constant*) module->newConstFloat(v);
                     module->setVal(val, cst);
                     s->val = cst;
-                    //fprintf(stderr, "//const %s\n", val->getName().c_str());
                 }
                 CHECK_NODE(s, s);
                 node->blockInsts.addInst(s->blockInsts);
@@ -1050,7 +1127,6 @@ bool IRGenerator::ir_lval_to_r(ast_node * node)
     Type * tp = s->type;
     Value * v = s->val;
     if (s->node_type == ASTOP(ARRAY_ACCESS) && !tp->isArrayType()) {
-        //fprintf(stderr, "%s \n", tp->toString().c_str());
         auto func = module->getCurrentFunction();
         auto ldr = new LoadInstruction(func, v, tp);
         node->blockInsts.addInst(ldr);
@@ -1113,6 +1189,11 @@ bool IRGenerator::array_init(ArrayType * type,
                 hasVariable = true;
             dim++;
         }
+        if (begin == end) {
+            if (array_init((ArrayType *) arrTp, begin, end, process))
+                hasVariable = true;
+            dim++;
+        }
         if (type->getNumElements() == 0)
             type->setNumElements(dim);
     } else {
@@ -1153,8 +1234,8 @@ bool IRGenerator::array_init(ArrayType * type,
                                                                             : CastInstruction::FLOAT_TO_INT);
                         vl->blockInsts.addInst(inst);
                         vl->val = inst;
-                        vl->type = (Type *) tp;
                     }
+                    vl->type = (Type *) tp;
                 }
             }
             process(vl);
@@ -1163,24 +1244,6 @@ bool IRGenerator::array_init(ArrayType * type,
             process(cnst);
     }
     return hasVariable;
-}
-
-/// @brief 计算数组总元素个数
-/// @param arrayType 数组类型
-/// @return 总元素个数
-uint32_t IRGenerator::getTotalArrayElements(ArrayType * arrayType)
-{
-    uint32_t totalElements = arrayType->getNumElements();
-    const Type * elementType = arrayType->getElementType();
-
-    // 递归计算多维数组的总元素个数
-    while (elementType && elementType->isArrayType()) {
-        ArrayType * subArrayType = (ArrayType *) elementType;
-        totalElements *= subArrayType->getNumElements();
-        elementType = subArrayType->getElementType();
-    }
-
-    return totalElements;
 }
 
 typedef union {int i;float f;} uif;
@@ -1347,42 +1410,6 @@ int IRGenerator::calcDims(ast_node * child)
     return 0;
 }
 
-/// @brief 计算多维数组索引的一维偏移
-/// @param arrayType 数组类型
-/// @param indices 多维索引值列表
-/// @return 一维偏移
-uint32_t IRGenerator::calculateMultiDimOffset(ArrayType * arrayType, const std::vector<uint32_t> & indices)
-{
-    std::vector<uint32_t> dimensions;
-    ArrayType * currentType = arrayType;
-
-    // 收集所有维度大小
-    while (currentType) {
-        dimensions.push_back(currentType->getNumElements());
-        const Type * elementType = currentType->getElementType();
-        if (elementType->isArrayType()) {
-            currentType = (ArrayType *) elementType;
-        } else {
-            break;
-        }
-    }
-
-    uint32_t offset = 0;
-    uint32_t multiplier = 1;
-
-    // 从最后一维开始向前计算 offset = i0×(d1×d2×d3) + i1×(d2×d3) + i2×d3 + i3
-    for (int i = dimensions.size() - 1; i >= 0; i--) {
-        if (i < (int) indices.size()) {
-            offset += indices[i] * multiplier;
-        }
-        if (i > 0) {
-            multiplier *= dimensions[i];
-        }
-    }
-
-    return offset;
-}
-
 /// @brief 获取多维数组的底层数组类型（一维表示）
 /// @param arrayType 多维数组类型
 /// @return 底层一维数组类型
@@ -1395,123 +1422,16 @@ ArrayType * IRGenerator::getBaseArrayType(ArrayType * arrayType)
     }
 
     // 计算总元素个数
-    uint32_t totalElements = getTotalElements(arrayType);
+    uint32_t totalElements = arrayType->getSize() / 4;
 
     // 创建一维数组类型，如 [16 x i32]
     return new ArrayType(baseElementType, totalElements);
 }
 
-/// @brief 计算数组总元素个数
-/// @param arrayType 数组类型
-/// @return 总元素个数
-uint32_t IRGenerator::getTotalElements(ArrayType * arrayType)
-{
-    uint32_t totalElements = arrayType->getNumElements();
-    const Type * elementType = arrayType->getElementType();
-
-    while (elementType && elementType->isArrayType()) {
-        ArrayType * subArrayType = (ArrayType *) elementType;
-        totalElements *= subArrayType->getNumElements();
-        elementType = subArrayType->getElementType();
-    }
-
-    return totalElements;
-}
-
-/// @brief 处理数组初始化，计算每个元素的一维偏移
-/// @param arrayVal 数组变量
-/// @param arrayType 数组类型
-/// @param initList 初始化列表节点
-/// @param func 当前函数
-/// @param blockInsts 指令块
-/// @param currentOffset 当前偏移（引用，会被修改）
-void IRGenerator::processArrayInitialization(Value * arrayVal,
-                                             ArrayType * arrayType,
-                                             ast_node * initList,
-                                             InterCode & blockInsts,
-                                             uint32_t & currentOffset)
-{
-    if (!initList) {
-        return;
-    }
-
-    // 1. 计算维度信息
-    std::vector<uint32_t> dimensions = getDimensions(arrayType);
-    std::vector<uint32_t> dimensionsCnt = calculateDimensionsCnt(dimensions);
-
-    // 2. 计算总元素数和非零元素数
-    uint32_t totalElements = getTotalElements(arrayType);
-    uint32_t nonZeroCount = countNonZeroElements(initList);
-
-    // 3. 稀疏数组优化：如果非零元素少于50%，使用memset清零
-    bool useMemset = ((nonZeroCount << 1) < totalElements) && (totalElements > 4);
-
-    if (useMemset) {
-        // 生成memset调用清零整个数组
-        uint32_t arraySize = totalElements * IntegerType::getTypeInt()->getSize();
-        Instruction * memsetCall =
-            new FuncCallInstruction(module->getCurrentFunction(),
-                                    module->findFunction("memset"),
-                                    {arrayVal, module->newConstInt(0), module->newConstInt(arraySize)},
-                                    VoidType::getType());
-        blockInsts.addInst(memsetCall);
-        module->getCurrentFunction()->setExistFuncCall(true);
-    }
-
-    // 4. 处理原始嵌套结构，保持维度边界
-    currentOffset = 0;
-    processInitListWithOffset(initList, dimensions, dimensionsCnt, currentOffset, arrayVal, blockInsts, useMemset, 0);
-
-    // 5. 扁平化初始化列表（注释掉，我们已经在上面处理过了）
-    // ir_array_init(initList);
-}
-
-/// @brief 计算数组维度信息
-/// @param arrayType 数组类型
-/// @return 维度列表
-std::vector<uint32_t> IRGenerator::getDimensions(ArrayType * arrayType)
-{
-    std::vector<uint32_t> dimensions;
-    ArrayType * currentType = arrayType;
-
-    while (currentType) {
-        dimensions.push_back(currentType->getNumElements());
-        const Type * elementType = currentType->getElementType();
-        if (elementType->isArrayType()) {
-            currentType = (ArrayType *) elementType;
-        } else {
-            break;
-        }
-    }
-
-    return dimensions;
-}
-
-/// @brief 计算维度累积信息
-/// @param dimensions 维度列表
-/// @return 累积信息列表
-std::vector<uint32_t> IRGenerator::calculateDimensionsCnt(const std::vector<uint32_t> & dimensions)
-{
-    std::vector<uint32_t> dimensionsCnt(dimensions.size());
-
-    // 计算每个维度对应的步长
-    // 对于[2][2]，dimensionsCnt应该是[2, 1]
-    // 对于[2][3][4]，dimensionsCnt应该是[12, 4, 1]
-    for (int i = dimensions.size() - 1; i >= 0; i--) {
-        if (i == dimensions.size() - 1) {
-            dimensionsCnt[i] = 1; // 最后一维步长为1
-        } else {
-            dimensionsCnt[i] = dimensionsCnt[i + 1] * dimensions[i + 1];
-        }
-    }
-
-    return dimensionsCnt;
-}
-
 /// @brief 统计初始化列表中的非零元素数量
 /// @param initList 初始化列表
 /// @return 非零元素数量
-uint32_t IRGenerator::countNonZeroElements(ast_node * initList)
+uint32_t countNonZeroElements(ast_node * initList)
 {
     if (!initList || initList->sons.empty()) {
         return 0;
@@ -1536,7 +1456,7 @@ uint32_t IRGenerator::countNonZeroElements(ast_node * initList)
 /// @brief 检查是否为零值
 /// @param node AST节点
 /// @return 是否为零值
-bool IRGenerator::isZeroValue(ast_node * node)
+bool isZeroValue(ast_node * node)
 {
     if (!node)
         return true;
@@ -1552,104 +1472,3 @@ bool IRGenerator::isZeroValue(ast_node * node)
     }
 }
 
-/// @brief 处理初始化列表的一维偏移
-/// @param initList 初始化列表
-/// @param dimensions 维度信息
-/// @param dimensionsCnt 累积维度信息
-/// @param currentOffset 当前偏移
-/// @param arrayVal 数组变量
-/// @param func 当前函数
-/// @param blockInsts 指令块
-/// @param usedMemset 是否已经使用memset清零
-/// @param dimLevel 当前维度级别
-void IRGenerator::processInitListWithOffset(ast_node * initList,
-                                            const std::vector<uint32_t> & dimensions,
-                                            const std::vector<uint32_t> & dimensionsCnt,
-                                            uint32_t & currentOffset,
-                                            Value * arrayVal,
-                                            InterCode & blockInsts,
-                                            bool usedMemset,
-                                            int dimLevel)
-{
-    if (!initList) {
-        return;
-    }
-
-    // 计算当前维度的步长
-    uint32_t elementSize = (dimLevel < dimensionsCnt.size()) ? dimensionsCnt[dimLevel] : 1;
-
-    ArrayType * flatType = getBaseArrayType((ArrayType *) arrayVal->getType());
-    Type * elemType = (Type*)flatType->getElementType();
-
-    Function * func = module->getCurrentFunction();
-    for (size_t i = 0; i < initList->sons.size(); i++) {
-        ast_node * item = initList->sons[i];
-
-        if (item->node_type == ASTOP(ARRAY_INIT)) {
-            uint32_t startOffset = currentOffset;
-            processInitListWithOffset(item,
-                                      dimensions,
-                                      dimensionsCnt,
-                                      currentOffset,
-                                      arrayVal,
-                                      blockInsts,
-                                      usedMemset,
-                                      dimLevel + 1);
-
-            // 处理完一个嵌套列表后，需要跳跃到下一个同级位置
-            // 计算这个嵌套列表应该占用的总大小
-            uint32_t expectedOffset = startOffset + elementSize;
-
-            // 如果实际处理的元素少于预期，需要补零
-            if (usedMemset)
-                currentOffset = startOffset + elementSize;
-            else
-                for (; currentOffset < expectedOffset; currentOffset++) {
-                    Instruction * ptr = new BinaryInstruction(func,
-                                                              IRINST_OP_GEP,
-                                                              arrayVal,
-                                                              module->newConstInt(currentOffset),
-                                                              flatType);
-                    blockInsts.addInst(ptr);
-
-                    // 存储值
-                    blockInsts.addInst(new StoreInstruction(func, ptr, module->newConstInt(0)));
-                }
-        } else {
-            // 叶子节点，生成存储指令
-            if (!ir_visit_ast_node(item)) {
-                currentOffset++;
-                continue;
-            }
-
-            blockInsts.addInst(item->blockInsts);
-
-            if (!(isZeroValue(item) && usedMemset)) {
-                // 使用一维偏移，创建GEP指令
-                // 这里使用扁平化的数组类型进行GEP
-                Instruction * ptr =
-                    new BinaryInstruction(func, IRINST_OP_GEP, arrayVal, module->newConstInt(currentOffset), flatType);
-                blockInsts.addInst(ptr);
-                Value * vl = item->val;
-                if (elemType != vl->getType()) {
-                    if (elemType->isFloatType() && dynamic_cast<ConstInt*>(vl)) {
-                        vl = module->newConstFloat(((ConstInt*)vl)->getVal());
-                    } else if (elemType->isIntegerType() && dynamic_cast<ConstFloat*>(vl)) {
-                        vl = module->newConstInt(((ConstFloat*)vl)->getVal());
-                    } else {
-                        auto * inst = new CastInstruction(func,
-                                                          vl,
-                                                          elemType,
-                                                          elemType->isFloatType() ? CastInstruction::INT_TO_FLOAT
-                                                                            : CastInstruction::FLOAT_TO_INT);
-                        blockInsts.addInst(inst);
-                        vl = inst;
-                    }
-                }
-                // 存储值
-                blockInsts.addInst(new StoreInstruction(func, ptr, vl));
-            }
-            currentOffset++;
-        }
-    }
-}

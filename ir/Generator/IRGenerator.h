@@ -164,78 +164,11 @@ protected:
                     std::vector<ast_node *>::const_iterator begin,
                     std::vector<ast_node *>::const_iterator end,
                     void (*process)(ast_node *));
-    /// @brief 计算多维数组索引的一维偏移
-    /// @param arrayType 数组类型
-    /// @param indices 多维索引值列表
-    /// @return 一维偏移
-    uint32_t calculateMultiDimOffset(ArrayType * arrayType, const std::vector<uint32_t> & indices);
 
     /// @brief 获取多维数组的底层数组类型（一维表示）
     /// @param arrayType 多维数组类型
     /// @return 底层一维数组类型
     ArrayType * getBaseArrayType(ArrayType * arrayType);
-
-    /// @brief 计算数组总元素个数
-    /// @param arrayType 数组类型
-    /// @return 总元素个数
-    uint32_t getTotalElements(ArrayType * arrayType);
-
-    /// @brief 处理数组初始化，计算每个元素的一维偏移
-    /// @param arrayVal 数组变量
-    /// @param arrayType 数组类型
-    /// @param initList 初始化列表节点
-    /// @param func 当前函数
-    /// @param blockInsts 指令块
-    /// @param currentOffset 当前偏移（引用，会被修改）
-    void processArrayInitialization(Value * arrayVal,
-                                    ArrayType * arrayType,
-                                    ast_node * initList,
-                                    InterCode & blockInsts,
-                                    uint32_t & currentOffset);
-
-    /// @brief 计算数组维度信息
-    /// @param arrayType 数组类型
-    /// @return 维度列表
-    std::vector<uint32_t> getDimensions(ArrayType * arrayType);
-
-    /// @brief 计算维度累积信息
-    /// @param dimensions 维度列表
-    /// @return 累积信息列表
-    std::vector<uint32_t> calculateDimensionsCnt(const std::vector<uint32_t> & dimensions);
-
-    /// @brief 统计初始化列表中的非零元素数量
-    /// @param initList 初始化列表
-    /// @return 非零元素数量
-    uint32_t countNonZeroElements(ast_node * initList);
-
-    /// @brief 检查是否为零值
-    /// @param node AST节点
-    /// @return 是否为零值
-    bool isZeroValue(ast_node * node);
-
-    /// @brief 获取数组总元素个数
-    /// @param arrayType 数组类型
-    /// @return 总元素个数
-    uint32_t getTotalArrayElements(ArrayType * arrayType);
-
-    /// @brief 处理初始化列表的一维偏移
-    /// @param initList 初始化列表
-    /// @param dimensions 维度信息
-    /// @param dimensionsCnt 累积维度信息
-    /// @param currentOffset 当前偏移
-    /// @param arrayVal 数组变量
-    /// @param func 当前函数
-    /// @param blockInsts 指令块
-    /// @param usedMemset 是否已经使用memset清零
-    /// @param dimLevel 当前维度级别
-    void processInitListWithOffset(ast_node * initList,
-                                   const std::vector<uint32_t> & dimensions,
-                                   const std::vector<uint32_t> & dimensionsCnt,
-                                   uint32_t & currentOffset,
-                                   Value * arrayVal,
-                                   InterCode & blockInsts,
-                                   bool usedMemset,
-                                   int dimLevel = 0);
 
     /// @brief AST的节点操作函数
     typedef bool (IRGenerator::*ast2ir_handler_t)(ast_node *);
