@@ -611,7 +611,7 @@ int allocateStackSlot(Function * func, Value * value)
     int offset = func->getMaxDep();
     Type * tp = value->getType();
     int sz;
-    if (tp->isArrayType() && dynamic_cast<Instruction *>(value) || dynamic_cast<GlobalVariable*>(value)) {
+    if ((tp->isArrayType() && dynamic_cast<Instruction *>(value)) || dynamic_cast<GlobalVariable*>(value)) {
         sz = 0;
     } else {
         sz = tp->getSize();
