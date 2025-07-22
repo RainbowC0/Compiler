@@ -86,6 +86,8 @@ typedef enum IRInstOperator {
 
     IRINST_OP_XOR,
 
+    IRINST_OP_SHL,
+
     /// @brief 赋值指令，一元运算
     IRINST_OP_ASSIGN,
 
@@ -131,6 +133,7 @@ public:
     /// @return 指令操作码
     IRInstOperator getOp();
 
+    void setOp(IRInstOperator);
     ///
     /// @brief 转换成IR指令文本形式
     /// @param str IR指令文本

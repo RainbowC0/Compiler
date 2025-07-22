@@ -102,12 +102,20 @@ bool PlatformArm64::imm12sh(int num)
     return num >= 0 && (num < 4096 || ((num & 4095) == 0 && num < 4095 * 4096));
 }
 
+bool PlatformArm64::imm32(int num) {
+    return 0 <= num && num < 32;
+}
+
+bool PlatformArm64::imm64(int num) {
+    return 0 <= num && num <= 64;
+}
+
 /// @brief 判定是否是合法的偏移
 /// @param num
 /// @return
-bool PlatformArm64::isDisp(int num)
+bool PlatformArm64::isDisp(int num, bool wide)
 {
-    return num < 4096 && num > -4096;
+    return (num < 256 && num >= -256) || (num & (0x3ffc << wide)) == num;
 }
 
 /// @brief 判断是否是合法的寄存器名

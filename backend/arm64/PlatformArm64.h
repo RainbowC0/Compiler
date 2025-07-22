@@ -68,10 +68,16 @@ public:
     /// @brief add/sub等判断是否为imm12立即数
     static bool imm12sh(int num);
 
+    /// @brief lsl 32位
+    static bool imm32(int num);
+
+    /// @brief lsl 64位
+    static bool imm64(int num);
+
     /// @brief 判定是否是合法的偏移
     /// @param num
     /// @return
-    static bool isDisp(int num);
+    static bool isDisp(int num, bool wide = false);
 
     /// @brief 判断是否是合法的寄存器名
     /// @param name 寄存器名字

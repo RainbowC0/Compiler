@@ -167,6 +167,8 @@ void ILocArm64::deleteUsed()
 void ILocArm64::outPut(FILE * file, bool outputEmpty)
 {
     for (auto arm: code) {
+        if (arm->dead)
+            continue;
         std::string s = arm->outPut();
 
         if (arm->result == ":") {
@@ -324,7 +326,7 @@ void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset, bool wide)
     std::string rsReg = regs[rs_reg_no];
     std::string base = base_reg_no == ARM64_ZR_REG_NO ? "sp" : PlatformArm64::xregName[base_reg_no];
 
-    if (PlatformArm64::isDisp(offset)) {
+    if (PlatformArm64::isDisp(offset, wide)) {
         // 有效的偏移常量
         if (offset) {
             // [fp,#-16] [fp]
@@ -344,6 +346,9 @@ void ILocArm64::load_base(int rs_reg_no, int base_reg_no, int offset, bool wide)
 
     // ldr r8,[fp,#-16]
     // ldr r8,[fp,r8]
+    ArmInst *ai = code.back();
+    if (ai && !ai->dead && ai->opcode == "str" && ai->result == rsReg && ai->arg1 == base)
+        return;
     emit("ldr", rsReg, base);
 }
 
@@ -356,7 +361,7 @@ void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_re
 {
     std::string base = base_reg_no == ARM64_ZR_REG_NO ? "sp" : PlatformArm64::xregName[base_reg_no];
 
-    if (PlatformArm64::isDisp(disp)) {
+    if (PlatformArm64::isDisp(disp, wide)) {
         // 有效的偏移常量
 
         // 若disp为0，则直接采用基址，否则采用基址+偏移
@@ -370,7 +375,7 @@ void ILocArm64::store_base(int src_reg_no, int base_reg_no, int disp, int tmp_re
         load_imm(tmp_reg_no, disp);
 
         // fp,r9
-        base += "," + PlatformArm64::regName[tmp_reg_no] + ",sxtw";
+        base += "," + PlatformArm64::xregName[tmp_reg_no];
     }
 
     // 内存间接寻址

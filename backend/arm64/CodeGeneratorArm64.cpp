@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 #include <algorithm>
-#include <typeinfo>
 
 #include "FormalParam.h"
 #include "Function.h"
@@ -27,17 +26,13 @@
 #include "Instruction.h"
 #include "LocalVariable.h"
 #include "Module.h"
-// #include "PlatformArm64.h"
 #include "CodeGeneratorArm64.h"
 #include "InstSelectorArm64.h"
-// #include "SimpleRegisterAllocator.h"
 #include "ILocArm64.h"
-// #include "RegVariable.h"
 #include "FuncCallInstruction.h"
 #include "ArgInstruction.h"
 #include "MoveInstruction.h"
 #include "PlatformArm64.h"
-#include "ArrayType.h"
 #include "Use.h"
 
 #define DEBUG 1

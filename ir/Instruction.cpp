@@ -33,6 +33,10 @@ IRInstOperator Instruction::getOp()
     return op; 
 }
 
+void Instruction::setOp(IRInstOperator op) {
+    this->op = op;
+}
+
 /// @brief 转换成字符串
 /// @param str 转换后的字符串
 void Instruction::toString(std::string & str)

@@ -78,7 +78,9 @@ void BinaryInstruction::toString(std::string & str)
         case IROP(XOR):
             opstr = " = xor ";
             break;
-
+        case IROP(SHL):
+            opstr = " = shl ";
+            break;
         // 浮点操作
         case IROP(FADD):
             opstr = " = fadd ";

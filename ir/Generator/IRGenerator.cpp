@@ -28,6 +28,7 @@
 #include "Function.h"
 #include "IRCode.h"
 #include "IRGenerator.h"
+#include "Instruction.h"
 #include "Module.h"
 #include "EntryInstruction.h"
 #include "LabelInstruction.h"
@@ -80,7 +81,7 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     /* 表达式运算， 加减 */
     ast2ir_handlers[ast_operator_type::AST_OP_SUB] = &IRGenerator::ir_binary;
     ast2ir_handlers[ast_operator_type::AST_OP_ADD] = &IRGenerator::ir_binary;
-    ast2ir_handlers[ast_operator_type::AST_OP_MUL] = &IRGenerator::ir_binary;
+    ast2ir_handlers[ast_operator_type::AST_OP_MUL] = &IRGenerator::ir_mul;
     ast2ir_handlers[ast_operator_type::AST_OP_DIV] = &IRGenerator::ir_binary;
     ast2ir_handlers[ast_operator_type::AST_OP_MOD] = &IRGenerator::ir_binary;
     ast2ir_handlers[ASTOP(EQ)] = &IRGenerator::ir_relop;
@@ -542,6 +543,18 @@ bool IRGenerator::ir_relop(ast_node * node)
         node->val = cast;
     }
 
+    return true;
+}
+
+bool IRGenerator::ir_mul(ast_node * node) {
+    if (!ir_binary(node))
+        return false;
+    Instanceof(inst, Instruction*, node->val);
+    Instanceof(cint, ConstInt*, inst->getOperand(1));
+    if (cint && __builtin_popcount(cint->intVal) == 1) {
+        inst->setOp(IRINST_OP_SHL);
+        inst->setOperand(1, module->newConstInt(__builtin_ctz(cint->intVal)));
+    }
     return true;
 }
 
