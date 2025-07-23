@@ -41,12 +41,14 @@ Module::Module(const std::string & _name) : name(_name)
     (void) newFunction("putch", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}}, true);
     (void) newFunction("getfloat", FloatType::getTypeFloat(), {}, true);
     (void) newFunction("putfloat", VoidType::getType(), {new FormalParam{FloatType::getTypeFloat(), ""}}, true);
-    // TODO 使用 ArrayType
+
     (void) newFunction("getarray", IntegerType::getTypeInt(), {new FormalParam{iv, ""}}, true);
     (void) newFunction("getfarray", IntegerType::getTypeInt(), {new FormalParam{fv, ""}}, true);
     (void) newFunction("putarray", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{iv, ""}}, true);
     (void) newFunction("putfarray", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{fv, ""}}, true);
-    // TODO 使用 ArrayType
+
+    (void) newFunction("_sysy_starttime", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}}, true);
+    (void) newFunction("_sysy_stoptime", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}}, true);
     (void) newFunction("memset", VoidType::getType(), {new FormalParam{ArrayType::empty(), ""}, new FormalParam{IntegerType::getTypeInt(), ""}, new FormalParam{IntegerType::getTypeInt(), ""}}, true);
 }
 
